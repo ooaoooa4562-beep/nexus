@@ -34,6 +34,8 @@
    const target=home?'#overview':'#'+page;if(location.hash!==target)history.replaceState(null,'',target);
   }
   document.querySelectorAll('[data-page]').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();navigate(a.dataset.page);}));
+  window.addEventListener('hashchange',()=>{const page=location.hash.slice(1);navigate(info[page]?page:'overview');});
+  window.NEXUSNavigate=navigate;
   $('#mobileMenu').addEventListener('click',()=>sidebar.classList.toggle('open'));
   $('#themeButton').addEventListener('click',()=>{document.body.classList.toggle('light-mode');const light=document.body.classList.contains('light-mode');$('#themeButton').textContent=light?'☀':'◐';addEvent('Visual mode changed',light?'Light appearance enabled':'Dark appearance enabled','info');});
   function addEvent(title,detail,type){const list=$('#eventList');if(!list)return;const d=document.createElement('div');d.className='event-item';d.innerHTML='<span class="event-icon '+type+'">↗</span><span><b></b><small></small></span><time>JUST NOW</time>';d.querySelector('b').textContent=title;d.querySelector('small').textContent=detail;list.prepend(d);while(list.children.length>5)list.lastElementChild.remove();}

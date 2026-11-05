@@ -1,87 +1,12 @@
 (() => {
-  const $ = (selector) => document.querySelector(selector);
-  const clock = $("#clock");
-  const dateLabel = $("#dateLabel");
-  const breadcrumb = $("#breadcrumb");
-  const sidebar = $("#sidebar");
-  const overview = $("#overview");
-  const modulePage = $("#modulePage");
-  const moduleTitle = $("#moduleTitle");
-  const moduleDescription = $("#moduleDescription");
-  const moduleIcon = $("#moduleIcon");
-
-  const moduleInfo = {
-    flow: ["Flow Studio", "⌘", "Design visual processes and connect actions into reusable workflows."],
-    storage: ["Storage", "▤", "Organize local data, inspect collections and manage your workspace."],
-    network: ["Network", "⌁", "Explore connection status and inspect network activity."],
-    monitor: ["Monitor", "◷", "Review system events, resource metrics and service health."],
-    terminal: ["Terminal", "›_", "A command workspace for interacting with the NEXUS environment."],
-    extensions: ["Extensions", "⊞", "Discover and manage additional capabilities for NEXUS."]
-  };
-
-  function updateTime() {
-    const now = new Date();
-    clock.textContent = now.toLocaleTimeString([], { hour12: false });
-    dateLabel.textContent = now.toLocaleDateString([], { weekday: "short", day: "2-digit", month: "short", year: "numeric" }).toUpperCase();
-  }
-
-  function navigate(page) {
-    const isOverview = page === "overview" || !moduleInfo[page];
-    overview.hidden = !isOverview;
-    modulePage.hidden = isOverview;
-    if (!isOverview) {
-      const [title, icon, description] = moduleInfo[page];
-      moduleTitle.textContent = title;
-      moduleIcon.textContent = icon;
-      moduleDescription.textContent = description;
-      breadcrumb.textContent = title;
-    } else {
-      breadcrumb.textContent = "Overview";
-    }
-    document.querySelectorAll(".nav-link").forEach((link) => {
-      link.classList.toggle("active", link.dataset.page === (isOverview ? "overview" : page));
-    });
-    sidebar.classList.remove("open");
-    if (location.hash !== (isOverview ? "#overview" : "#" + page)) {
-      history.replaceState(null, "", isOverview ? "#overview" : "#" + page);
-    }
-  }
-
-  document.querySelectorAll("[data-page]").forEach((link) => {
-    link.addEventListener("click", (event) => {
-      event.preventDefault();
-      navigate(link.dataset.page);
-    });
-  });
-
-  $("#backButton").addEventListener("click", () => navigate("overview"));
-  $("#mobileMenu").addEventListener("click", () => sidebar.classList.toggle("open"));
-  $("#themeButton").addEventListener("click", () => {
-    document.body.classList.toggle("light-mode");
-    const light = document.body.classList.contains("light-mode");
-    $("#themeButton").textContent = light ? "☀" : "◐";
-    addEvent("Visual mode changed", light ? "Light appearance enabled" : "Dark appearance enabled", "info");
-  });
-
-  function addEvent(title, detail, type = "success") {
-    const list = $("#eventList");
-    const item = document.createElement("div");
-    item.className = "event-item";
-    const symbol = type === "success" ? "✓" : type === "info" ? "↗" : "◇";
-    item.innerHTML = '<span class="event-icon ' + type + '">' + symbol + '</span><span><b></b><small></small></span><time>JUST NOW</time>';
-    item.querySelector("b").textContent = title;
-    item.querySelector("small").textContent = detail;
-    list.prepend(item);
-    while (list.children.length > 5) list.lastElementChild.remove();
-  }
-
-  $("#clearLog").addEventListener("click", () => {
-    $("#eventList").replaceChildren();
-    addEvent("Activity log cleared", "No previous events are displayed", "info");
-  });
-
-  updateTime();
-  setInterval(updateTime, 1000);
-  const initialPage = location.hash.replace("#", "");
-  navigate(moduleInfo[initialPage] ? initialPage : "overview");
+ const $=s=>document.querySelector(s),clock=$('#clock'),dateLabel=$('#dateLabel'),breadcrumb=$('#breadcrumb'),sidebar=$('#sidebar'),overview=$('#overview'),modulePage=$('#modulePage');
+ const info={flow:['Flow Studio','⌘','Design visual processes.'],storage:['Storage','▤','Manage local records.'],network:['Network','⌁','Explore connectivity.'],monitor:['Monitor','◷','Review system events.'],terminal:['Terminal','›_','Command interface.'],extensions:['Extensions','⊞','Manage extensions.']};
+ function updateTime(){const n=new Date();clock.textContent=n.toLocaleTimeString([],{hour12:false});dateLabel.textContent=n.toLocaleDateString([],{weekday:'short',day:'2-digit',month:'short',year:'numeric'}).toUpperCase();}
+ function navigate(page){const home=page==='overview'||!info[page];overview.hidden=!home;modulePage.hidden=home;if(!home){breadcrumb.textContent=info[page][0];const mod=window.NEXUSModules&&window.NEXUSModules[page];modulePage.innerHTML=mod?mod.render():'<div class="eyebrow">NEXUS MODULE</div><h1>'+info[page][0]+'</h1><p class="subtitle">'+info[page][2]+'</p><div class="coming-card">MODULE IN DEVELOPMENT</div>';if(mod)mod.mount(modulePage);}else breadcrumb.textContent='Overview';document.querySelectorAll('.nav-link').forEach(a=>a.classList.toggle('active',a.dataset.page===(home?'overview':page)));sidebar.classList.remove('open');if(location.hash!==(home?'#overview':'#'+page))history.replaceState(null,'',home?'#overview':'#'+page);}
+ document.querySelectorAll('[data-page]').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();navigate(a.dataset.page);}));
+ $('#mobileMenu').addEventListener('click',()=>sidebar.classList.toggle('open'));
+ $('#themeButton').addEventListener('click',()=>{document.body.classList.toggle('light-mode');const light=document.body.classList.contains('light-mode');$('#themeButton').textContent=light?'☀':'◐';addEvent('Visual mode changed',light?'Light appearance enabled':'Dark appearance enabled','info');});
+ function addEvent(title,detail,type){const list=$('#eventList');if(!list)return;const d=document.createElement('div');d.className='event-item';d.innerHTML='<span class="event-icon '+type+'">↗</span><span><b></b><small></small></span><time>JUST NOW</time>';d.querySelector('b').textContent=title;d.querySelector('small').textContent=detail;list.prepend(d);while(list.children.length>5)list.lastElementChild.remove();}
+ $('#clearLog').addEventListener('click',()=>{$('#eventList').replaceChildren();addEvent('Activity log cleared','No previous events are displayed','info');});
+ updateTime();setInterval(updateTime,1000);const first=location.hash.slice(1);navigate(info[first]?first:'overview');
 })();

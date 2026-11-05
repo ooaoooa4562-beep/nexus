@@ -1,63 +1,55 @@
 # NEXUS — Digital Laboratory
 
-**NEXUS** is a modular digital workspace concept for workflow design, local data organization, system insights and extensible tools.
+**Current release: 0.2.0 — Core modules.**
 
-> Current release: **0.1.0 — Interface foundation**
+## Implemented
 
-## Preview
+### Terminal
+- Interactive command line with history (arrow keys).
+- Commands: `help`, `status`, `time`, `clear`, `modules`, `about`, `echo`, `calc`.
+- Runs inside the browser; it is not an operating-system shell.
 
-The first release contains a responsive dashboard with:
-- A workspace overview and module navigation
-- System status and activity panels
-- A live local clock and date
-- A responsive sidebar for mobile screens
-- Dark and light appearance toggle
-- A basic activity log
-- Placeholder pages for planned modules
+### Storage
+- Create, edit, search and delete text records.
+- Import and export JSON.
+- Data persists in browser localStorage, not on a server.
 
-The dashboard currently uses illustrative demo metrics. It does not yet inspect real system resources, network traffic or storage.
+### Flow Studio
+- Add action, condition and output blocks.
+- Edit block titles and descriptions; reorder and delete blocks.
+- Run a step-by-step workflow simulation.
+- Saves the workflow draft in browser localStorage.
 
-## Project structure
+## Structure
 
-```text
-NEXUS/
-├── index.html
-├── README.md
-└── assets/
-    ├── css/
-    │   └── style.css
-    └── js/
-        └── app.js
-```
+- `index.html`
+- `assets/css/style.css`
+- `assets/js/app.js`
+- `assets/js/terminal.js`
+- `assets/js/storage.js`
+- `assets/js/flow.js`
 
-## Run locally
+## Run
+Open `index.html` in a modern browser. No build tools or dependencies are required. GitHub Pages can host the project from the main branch root.
 
-No build tools are required for the first release.
-
-1. Clone or download this repository.
-2. Open `index.html` in a modern browser.
-
-For GitHub Pages, open **Settings → Pages**, select **Deploy from a branch**, choose the `main` branch and `/ (root)`, then save.
+## Limitations
+- Terminal is a browser command simulator, not a real OS shell.
+- Flow Studio simulates steps; it does not execute external code or connect to services.
+- Storage is local to the browser profile. Clearing site data may remove records.
+- Dashboard activity metrics are illustrative.
 
 ## Roadmap
-
-- [x] 0.1.0 — Dashboard foundation
-- [ ] 0.2.0 — NEXUS Terminal
-- [ ] 0.3.0 — Storage module
-- [ ] 0.4.0 — Monitor module
-- [ ] 0.5.0 — Network module
-- [ ] 0.6.0 — Visual Flow Studio
-- [ ] 0.7.0 — Extension system
-- [ ] 1.0.0 — Integrated release
+- [x] 0.1.0 Dashboard foundation
+- [x] 0.2.0 Terminal, Storage and Flow Studio
+- [ ] 0.3.0 Advanced data collections
+- [ ] 0.4.0 Monitor
+- [ ] 0.5.0 Network
+- [ ] 0.6.0 Advanced workflow engine
+- [ ] 0.7.0 Extension system
+- [ ] 1.0.0 Integrated release
 
 ## Technology
-
-- HTML5
-- CSS3
-- Vanilla JavaScript
-
-Python and SQLite are planned for the desktop/backend phase. The initial web interface is intentionally static and can be hosted with GitHub Pages.
+HTML5, CSS3, vanilla JavaScript and browser localStorage. Python and SQLite are potential future desktop/backend components.
 
 ## License
-
 MIT

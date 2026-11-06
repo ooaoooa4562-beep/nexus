@@ -47,3 +47,77 @@
 .extension-control button{min-width:96px;padding:8px 10px;font-size:9px}.extension-control button:disabled{opacity:.5;cursor:not-allowed}
 @media(max-width:900px){.monitor-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.monitor-columns{grid-template-columns:1fr}}
 @media(max-width:600px){.monitor-metrics,.network-overview{grid-template-columns:repeat(2,minmax(0,1fr))}.extension-row{grid-template-columns:36px 1fr}.extension-icon{width:34px;height:34px}.extension-control{grid-column:2;display:flex;align-items:center;justify-content:flex-start}.extension-control button{min-width:90px}.monitor-event{grid-template-columns:8px 1fr}.monitor-event time{grid-column:2}.extension-summary{gap:7px}.extension-summary>div{padding:12px}.extension-summary b{font-size:18px}}
+
+
+/* NEXUS Code Editor — VS Code inspired workspace */
+.editor-heading{margin-bottom:20px}
+.editor-heading-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.editor-connection{font:9px var(--mono);letter-spacing:.7px;color:#8da4c9;border:1px solid #2a3b56;padding:9px 11px;border-radius:5px;background:#111a29}
+.code-ide{height:min(760px,calc(100vh - 210px));min-height:570px;display:grid;grid-template-columns:42px 225px minmax(0,1fr);border:1px solid #27364d;border-radius:10px;overflow:hidden;background:#0d1421;box-shadow:0 18px 55px #0003}
+.ide-activity{display:flex;flex-direction:column;align-items:center;gap:7px;padding:10px 4px;background:#111a29;border-right:1px solid #26344b}
+.ide-activity-button{width:33px;height:37px;border:0;border-left:2px solid transparent;background:transparent;color:#8797b1;font-size:19px;cursor:pointer}
+.ide-activity-button.active{border-left-color:#91a7ff;color:#e1e9fb}
+.ide-activity-spacer{flex:1}
+.ide-activity-brand{font:800 17px var(--font);color:#8fa6ff;padding:8px}
+.ide-explorer{min-width:0;display:flex;flex-direction:column;background:#111a29;border-right:1px solid #26344b;overflow:hidden}
+.ide-explorer-title{display:flex;flex-direction:column;gap:6px;padding:14px 12px 9px}
+.ide-explorer-title b{font:10px var(--mono);letter-spacing:1px;color:#d8e2f4}
+.ide-explorer-title span{font:8px var(--mono);color:#7185a5;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ide-explorer-toolbar{display:flex;gap:4px;padding:0 8px 9px;border-bottom:1px solid #26344b}
+.ide-explorer-toolbar button,.ide-explorer-footer button{border:0;background:transparent;color:#9aabc4;padding:6px 9px;border-radius:4px;cursor:pointer;font:12px var(--mono)}
+.ide-explorer-toolbar button:hover,.ide-explorer-footer button:hover{background:#26364e;color:white}
+.ide-tree{overflow:auto;flex:1;padding:7px 0}
+.ide-tree-item{display:flex;align-items:center;gap:7px;width:100%;height:27px;padding:0 7px 0 calc(8px + var(--depth,0)*13px);border:0;background:transparent;color:#aebbd0;text-align:left;cursor:pointer;font:10px var(--font);white-space:nowrap}
+.ide-tree-item:hover{background:#202d42;color:#fff}
+.ide-tree-item.file{color:#bdc9dc}
+.ide-tree-glyph{width:12px;flex:none;text-align:center;color:#8197bd;font-size:12px}
+.ide-tree-item.directory .ide-tree-glyph{color:#d5b66e}
+.ide-tree-children{padding:0}
+.ide-empty{padding:14px 12px;color:#71819a;font:10px/1.7 var(--mono);overflow-wrap:anywhere}
+.ide-empty code{color:#a9bbff}
+.ide-explorer-footer{display:flex;flex-direction:column;gap:5px;padding:10px;border-top:1px solid #26344b}
+.ide-explorer-footer span{font:8px var(--mono);letter-spacing:.7px;color:#6f809b}
+.ide-explorer-footer button{text-align:left;font-size:8px;padding:5px 0}
+.ide-main{display:flex;flex-direction:column;min-width:0;min-height:0;background:#0d1421}
+.ide-tabs{height:39px;display:flex;align-items:stretch;overflow:auto;background:#111a29;border-bottom:1px solid #26344b;flex:none}
+.ide-tab{display:flex;align-items:center;gap:8px;min-width:110px;max-width:190px;padding:0 11px;border:0;border-right:1px solid #26344b;border-top:2px solid transparent;background:#111a29;color:#9eacc2;cursor:pointer;font:10px var(--mono)}
+.ide-tab.active{border-top-color:#8da5ff;background:#0d1421;color:#e8efff}
+.ide-tab>span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ide-tab-dirty{color:#f1c879;font-size:9px}
+.ide-tab-close{margin-left:auto;color:#7d8da8;font-size:15px}
+.ide-tab-close:hover{color:white}
+.ide-tab-empty{padding:12px;color:#687993;font:9px var(--mono)}
+.ide-editor-toolbar{height:38px;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 12px;border-bottom:1px solid #202d41;background:#0e1726;flex:none}
+.ide-editor-toolbar>div:first-child{display:flex;align-items:center;gap:10px;min-width:0}
+#ideFilePath{font:9px var(--mono);color:#8fa1bd;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ide-dirty-label{font:8px var(--mono);color:#eac77e;white-space:nowrap}
+.ide-editor-actions{display:flex;gap:6px;flex:none}
+.ide-editor-actions button{border:1px solid #34445e;border-radius:4px;background:#172337;color:#aebbd0;padding:6px 8px;cursor:pointer;font:8px var(--mono)}
+.ide-editor-actions button:disabled{opacity:.4;cursor:not-allowed}
+.ide-editor-actions .ide-save-button{background:#263b6a;border-color:#4766a5;color:#e4ebff}
+.ide-save-button kbd{margin-left:5px;color:#aabbe2}
+.ide-editor-host{position:relative;flex:1;min-height:0;overflow:hidden}
+#codeEditor{position:absolute;inset:0;width:100%;height:100%;font:13px var(--mono)}
+.ide-editor-welcome{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px;background:#0d1421;color:#dce6f8}
+.ide-editor-welcome[hidden]{display:none}
+.ide-welcome-logo{font:800 50px var(--font);color:#9bb0ff;letter-spacing:-5px}
+.ide-welcome-logo span{color:#61d9e8}
+.ide-editor-welcome h2{font-size:18px;margin:15px 0 7px}
+.ide-editor-welcome p{font-size:11px;color:#8090aa;margin:0 0 24px}
+.ide-shortcuts{display:grid;gap:10px;text-align:left}
+.ide-shortcuts span{display:flex;align-items:center;gap:5px;color:#aebbd0;font:9px var(--mono)}
+.ide-shortcuts small{margin-left:8px;color:#70819b}
+.ide-shortcuts kbd{padding:4px 6px;border:1px solid #35445c;border-radius:4px;background:#172337;color:#c8d5ec}
+.ide-statusbar{height:24px;display:flex;align-items:center;justify-content:flex-end;gap:15px;padding:0 10px;background:#344f89;color:#f1f5ff;font:8px var(--mono);flex:none}
+.ide-statusbar span:first-child{margin-right:auto}
+.ide-notice{position:fixed;right:22px;bottom:25px;z-index:1000;max-width:min(420px,calc(100vw - 40px));padding:12px 16px;border:1px solid #395d87;border-radius:7px;background:#14243a;color:#e4edff;font:10px var(--mono);box-shadow:0 12px 30px #0007;opacity:0;transform:translateY(8px);pointer-events:none;transition:.2s}
+.ide-notice.visible{opacity:1;transform:translateY(0)}
+.ide-notice.error{border-color:#9a4d5b;background:#351e2a;color:#ffdce1}
+.ide-quick-open{position:fixed;z-index:1001;top:18%;left:50%;transform:translateX(-50%);width:min(540px,calc(100vw - 30px));max-height:65vh;overflow:auto;padding:9px;border:1px solid #435878;border-radius:9px;background:#121d2d;box-shadow:0 24px 70px #000a}
+.ide-quick-open[hidden]{display:none}
+.ide-quick-open input{width:100%;padding:12px;border:1px solid #344966;border-radius:5px;background:#0b1422;color:#e9f0ff;font:11px var(--mono);outline:none}
+#ideQuickResults{display:grid;margin-top:7px}
+#ideQuickResults button{padding:9px 10px;border:0;border-radius:4px;background:transparent;color:#bac8de;text-align:left;font:10px var(--mono);cursor:pointer}
+#ideQuickResults button:hover{background:#263750;color:#fff}
+@media(max-width:900px){.code-ide{grid-template-columns:38px 185px minmax(0,1fr);height:calc(100vh - 190px)}.ide-statusbar{gap:8px;font-size:7px}}
+@media(max-width:650px){.editor-heading{align-items:flex-start}.editor-heading-actions{width:100%}.code-ide{height:calc(100vh - 215px);min-height:530px;grid-template-columns:32px 130px minmax(0,1fr)}.ide-activity-button{width:27px}.ide-explorer-title{padding:11px 7px}.ide-explorer-title b{font-size:8px}.ide-explorer-title span{font-size:7px}.ide-tree-item{font-size:8px;gap:4px;padding-left:calc(5px + var(--depth,0)*8px)}.ide-editor-toolbar{padding:0 6px}.ide-editor-actions button{font-size:7px;padding:6px}.ide-editor-actions button kbd{display:none}.ide-tab{min-width:90px;padding:0 7px;font-size:8px}.ide-statusbar{gap:6px;padding:0 5px;font-size:6px}.ide-connection{font-size:7px}.ide-notice{right:10px;bottom:12px}}

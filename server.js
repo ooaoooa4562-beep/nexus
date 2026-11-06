@@ -89,7 +89,7 @@ app.use((req, res, next) => {
     res.setHeader("Vary", "Origin");
     res.setHeader("Access-Control-Allow-Credentials", "true");
     res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-    res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+    res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,OPTIONS");
   }
   if (req.method === "OPTIONS") return res.sendStatus(204);
   if (["POST", "PUT", "PATCH", "DELETE"].includes(req.method) && !originAllowed(req)) return res.status(403).json({ error: "Origin not allowed." });
@@ -174,6 +174,53 @@ app.get("/api/repos", requireSession, async (req, res) => {
   try {
     const repos = await githubRequest("/user/repos?per_page=100&sort=updated&affiliation=owner,collaborator,organization_member", req.github.accessToken);
     res.json({ repositories: repos.map(repo => ({ fullName: repo.full_name, name: repo.name, private: repo.private, defaultBranch: repo.default_branch, htmlUrl: repo.html_url, permissions: repo.permissions || {} })) });
+  } catch (error) { safeError(res, error); }
+});
+app.get("/api/tree", requireSession, async (req, res) => {
+  try {
+    const repository = req.query.repository;
+    const path = typeof req.query.path === "string" ? req.query.path : "";
+    if (!validRepoName(repository)) return res.status(400).json({ error: "Repository must use owner/name format." });
+    if (path && !validPath(path)) return res.status(400).json({ error: "Invalid directory path." });
+    const repo = await githubRequest("/repos/" + repository, req.github.accessToken);
+    const branch = typeof req.query.branch === "string" && req.query.branch.trim() ? req.query.branch.trim() : repo.default_branch;
+    const endpoint = "/repos/" + repository + "/contents" + (path ? "/" + path.split("/").map(encodeURIComponent).join("/") : "") + "?ref=" + encodeURIComponent(branch);
+    const result = await githubRequest(endpoint, req.github.accessToken);
+    if (!Array.isArray(result)) return res.status(400).json({ error: "The requested path is not a directory." });
+    res.json({ repository, branch, path, items: result.map(item => ({ name: item.name, path: item.path, type: item.type, size: item.size, sha: item.sha })) });
+  } catch (error) { safeError(res, error); }
+});
+app.get("/api/file", requireSession, async (req, res) => {
+  try {
+    const repository = req.query.repository, path = req.query.path;
+    if (!validRepoName(repository)) return res.status(400).json({ error: "Repository must use owner/name format." });
+    if (!validPath(path)) return res.status(400).json({ error: "Invalid file path." });
+    const repo = await githubRequest("/repos/" + repository, req.github.accessToken);
+    const branch = typeof req.query.branch === "string" && req.query.branch.trim() ? req.query.branch.trim() : repo.default_branch;
+    const encodedPath = path.split("/").map(encodeURIComponent).join("/");
+    const file = await githubRequest("/repos/" + repository + "/contents/" + encodedPath + "?ref=" + encodeURIComponent(branch), req.github.accessToken);
+    if (file.type !== "file" || !file.content) return res.status(400).json({ error: "The requested path is not a readable text file." });
+    const content = Buffer.from(file.content.replace(/\\n/g, ""), "base64").toString("utf8");
+    if (Buffer.byteLength(content, "utf8") > MAX_FILE_BYTES) return res.status(413).json({ error: "Files larger than 1 MB cannot be opened in the editor." });
+    res.json({ repository, branch, path: file.path, name: file.name, sha: file.sha, content, size: file.size });
+  } catch (error) { safeError(res, error); }
+});
+app.put("/api/files", requireSession, async (req, res) => {
+  try {
+    const body = req.body || {};
+    const repository = body.repository, path = body.path, content = body.content, sha = body.sha;
+    if (!validRepoName(repository)) return res.status(400).json({ error: "Repository must use owner/name format." });
+    if (!validPath(path)) return res.status(400).json({ error: "Invalid file path." });
+    if (typeof content !== "string" || Buffer.byteLength(content, "utf8") > MAX_FILE_BYTES) return res.status(400).json({ error: "File content must be text up to 1 MB." });
+    if (typeof sha !== "string" || !/^[a-f0-9]{40}$/i.test(sha)) return res.status(400).json({ error: "A valid current file SHA is required to save." });
+    const repo = await githubRequest("/repos/" + repository, req.github.accessToken);
+    const branch = typeof body.branch === "string" && body.branch.trim() ? body.branch.trim() : repo.default_branch;
+    const encodedPath = path.split("/").map(encodeURIComponent).join("/");
+    const result = await githubRequest("/repos/" + repository + "/contents/" + encodedPath, req.github.accessToken, {
+      method: "PUT",
+      body: JSON.stringify({ message: body.message || ("Update " + path), content: Buffer.from(content, "utf8").toString("base64"), sha, branch })
+    });
+    res.json({ ok: true, path, branch, sha: result.content.sha, commit: result.commit.sha, url: result.content.html_url });
   } catch (error) { safeError(res, error); }
 });
 app.post("/api/files", requireSession, async (req, res) => {

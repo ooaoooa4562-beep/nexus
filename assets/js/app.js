@@ -1,47 +1,44 @@
 (() => {
- const currentScript=document.currentScript;
- const scriptBase=currentScript&&currentScript.src?currentScript.src:new URL('assets/js/app.js',document.baseURI).href;
- const moduleFiles={terminal:'terminal.js',storage:'storage.js',flow:'flow.js',monitor:'monitor.js',network:'network.js',extensions:'extensions.js',editor:'editor.js'};
- function ensureModule(name,file){
-  window.NEXUSModules=window.NEXUSModules||{};
-  if(window.NEXUSModules[name])return Promise.resolve();
-  return new Promise((resolve,reject)=>{
-   const script=document.createElement('script');
-   script.src=new URL(file,scriptBase).href;
-   script.onload=()=>window.NEXUSModules&&window.NEXUSModules[name]?resolve():reject(new Error(name+' loaded but did not register'));
-   script.onerror=()=>reject(new Error('Could not load '+file));
-   document.head.appendChild(script);
-  });
- }
- Promise.all(Object.entries(moduleFiles).map(([name,file])=>ensureModule(name,file)))
- .then(startApp)
- .catch(error=>{console.error('[NEXUS] Module startup failed:',error);startApp(error);});
- function startApp(loadError){
-  const $=s=>document.querySelector(s),clock=$('#clock'),dateLabel=$('#dateLabel'),breadcrumb=$('#breadcrumb'),sidebar=$('#sidebar'),overview=$('#overview'),modulePage=$('#modulePage');
-  const info={flow:['Flow Studio','⌘','Design visual processes.'],storage:['Storage','▤','Manage local records.'],network:['Network','⌁','Explore connectivity.'],monitor:['Monitor','◷','Review system events.'],terminal:['Terminal','›_','Command interface.'],extensions:['Extensions','⊞','Manage extensions.'],editor:['Code Editor','</>','Edit GitHub repository files.']};
-  function updateTime(){const n=new Date();if(clock)clock.textContent=n.toLocaleTimeString([],{hour12:false});if(dateLabel)dateLabel.textContent=n.toLocaleDateString([],{weekday:'short',day:'2-digit',month:'short',year:'numeric'}).toUpperCase();}
-  function navigate(page){
-   const home=page==='overview'||!info[page];
-   overview.hidden=!home;modulePage.hidden=home;
-   if(!home){
-    breadcrumb.textContent=info[page][0];
-    if(page!=='extensions'&&window.NEXUSExtensionEnabled&&!window.NEXUSExtensionEnabled(page)){modulePage.innerHTML='<div class="eyebrow">MODULE DISABLED</div><h1>'+info[page][0]+'</h1><p class="subtitle">This module is disabled in the Extension Manager.</p><button class="primary-button" id="openExtensions">OPEN EXTENSION MANAGER</button>';modulePage.querySelector('#openExtensions').onclick=()=>navigate('extensions');document.querySelectorAll('.nav-link').forEach(a=>a.classList.toggle('active',a.dataset.page===page));sidebar.classList.remove('open');return;}
-    const mod=window.NEXUSModules&&window.NEXUSModules[page];
-    if(mod){modulePage.innerHTML=mod.render();try{mod.mount(modulePage);}catch(error){console.error('[NEXUS] '+page+' mount failed:',error);modulePage.innerHTML='<div class="eyebrow">MODULE ERROR</div><h1>'+info[page][0]+'</h1><p class="subtitle">The module loaded, but could not start.</p><pre class="module-error"></pre>';modulePage.querySelector('.module-error').textContent=String(error);}}
-    else{modulePage.innerHTML='<div class="eyebrow">MODULE UNAVAILABLE</div><h1>'+info[page][0]+'</h1><p class="subtitle">NEXUS could not load this module.</p><p class="module-error"></p>';modulePage.querySelector('.module-error').textContent=loadError?String(loadError):'Module registration is missing. Check the browser console and network requests.';}
-   }else breadcrumb.textContent='Overview';
-   document.querySelectorAll('.nav-link').forEach(a=>a.classList.toggle('active',a.dataset.page===(home?'overview':page)));
-   sidebar.classList.remove('open');
-   const target=home?'#overview':'#'+page;if(location.hash!==target)history.replaceState(null,'',target);
+ const script=document.currentScript,base=script&&script.src?script.src:new URL('assets/js/app.js',document.baseURI).href;
+ const files={terminal:'terminal.js',storage:'storage.js',flow:'flow.js',monitor:'monitor.js',network:'network.js',extensions:'extensions.js',editor:'editor.js'};
+ const ensure=(id,file)=>{window.NEXUSModules=window.NEXUSModules||{};if(window.NEXUSModules[id])return Promise.resolve();return new Promise((ok,no)=>{const s=document.createElement('script');s.src=new URL(file,base).href;s.onload=()=>window.NEXUSModules&&window.NEXUSModules[id]?ok():no(Error(id+' did not register'));s.onerror=()=>no(Error('Could not load '+file));document.head.append(s);});};
+ Promise.all(Object.entries(files).map(([id,file])=>ensure(id,file))).then(start).catch(e=>{console.error('[NEXUS]',e);start(e);});
+ function start(loadError){
+  const $=s=>document.querySelector(s),sidebar=$('#sidebar'),home=$('#overview'),page=$('#modulePage'),crumb=$('#breadcrumb');
+  const info={editor:['Code Editor'],terminal:['Terminal'],flow:['Flow Studio'],storage:['Storage'],monitor:['Monitor'],network:['Network'],extensions:['Extensions'],profile:['My profile'],settings:['Settings']};
+  const read=(k,f)=>{try{return JSON.parse(localStorage.getItem(k)||'null')||f;}catch{return f;}};
+  const profile=read('nexus.profile.v1',{name:'Operator',bio:'Building things with NEXUS.',avatar:'',id:'NX-'+Math.random().toString(36).slice(2,8).toUpperCase()});
+  const prefs=read('nexus.settings.v1',{theme:'dark',accent:'multi',motion:'advanced'});
+  localStorage.setItem('nexus.profile.v1',JSON.stringify(profile));
+  const saveProfile=()=>localStorage.setItem('nexus.profile.v1',JSON.stringify(profile)),savePrefs=()=>localStorage.setItem('nexus.settings.v1',JSON.stringify(prefs));
+  function applyPrefs(){document.body.classList.toggle('light-mode',prefs.theme==='light');document.documentElement.style.setProperty('--accent',prefs.accent==='multi'?'#9aaeff':prefs.accent);document.body.classList.toggle('reduced-motion',prefs.motion==='reduced');$('#themeButton').textContent=prefs.theme==='light'?'☀':'◐';}
+  function syncProfile(){const n=profile.name||'Operator';$('#welcomeName').textContent=n+'.';$('#sidebarName').textContent=n;$('#topProfile').textContent=n.slice(0,1).toUpperCase();const img=$('#sidebarAvatar'),fallback=$('#sidebarAvatarFallback');if(profile.avatar){img.src=profile.avatar;img.hidden=false;fallback.hidden=true;}else{img.hidden=true;fallback.hidden=false;fallback.textContent=n.slice(0,1).toUpperCase();}}
+  function tick(){const d=new Date();$('#clock').textContent=d.toLocaleTimeString([],{hour12:false});$('#dateLabel').textContent=d.toLocaleDateString([],{weekday:'short',day:'2-digit',month:'short',year:'numeric'}).toUpperCase();}
+  function event(title,detail,type='info'){const list=$('#eventList');if(!list)return;const row=document.createElement('div');row.className='event-item';const ico=document.createElement('span');ico.className='event-icon '+type;ico.textContent='✓';const wrap=document.createElement('span'),b=document.createElement('b'),sm=document.createElement('small'),time=document.createElement('time');b.textContent=title;sm.textContent=detail;time.textContent='NOW';wrap.append(b,sm);row.append(ico,wrap,time);list.prepend(row);while(list.children.length>5)list.lastElementChild.remove();}
+  function profilePage(){page.innerHTML='<div class="eyebrow">PERSONAL / PROFILE</div><div class="module-title-row"><div><h1>My <span>Profile.</span></h1><p class="subtitle">Manage your local NEXUS identity.</p></div></div><div class="profile-layout"><section class="profile-card"><div class="eyebrow">ACCOUNT DETAILS</div><div class="profile-hero"><img class="profile-large-avatar" id="profilePreview" alt="Profile avatar"><div><b id="profileHeading"></b><p class="subtitle">Local profile</p><button class="secondary-button" id="chooseAvatar">CHANGE AVATAR</button><input type="file" id="avatarFile" accept="image/png,image/jpeg,image/webp" hidden></div></div><form class="profile-form" id="profileForm"><label for="profileName">DISPLAY NAME</label><input id="profileName" maxlength="32" required><label for="profileBio">BIO</label><input id="profileBio" maxlength="120"><label>LOCAL PROFILE ID</label><div class="profile-id" id="profileId"></div><button class="primary-button" type="submit">SAVE PROFILE</button></form></section><section class="friends-card"><div class="eyebrow">SOCIAL / FRIENDS</div><h2>Friends system — next phase</h2><p>People search, friend requests, accept/decline and shared profiles need server-side accounts and a database. This profile is stored only in this browser; its local ID is not yet searchable by other users.</p><p>We will build social features as a separate backend subsystem, keeping GitHub OAuth and repository access intact.</p></section></div>';
+   const img=$('#profilePreview');img.src=profile.avatar||'data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100%" height="100%" rx="16" fill="#34425d"/><text x="50%" y="56%" font-size="42" text-anchor="middle" fill="#dce7ff" font-family="Arial">'+(profile.name||'N').slice(0,1).toUpperCase()+'</text></svg>');
+   $('#profileHeading').textContent=profile.name;$('#profileName').value=profile.name;$('#profileBio').value=profile.bio||'';$('#profileId').textContent=profile.id;
+   $('#chooseAvatar').onclick=()=>$('#avatarFile').click();$('#avatarFile').onchange=()=>{const f=$('#avatarFile').files[0];if(!f)return;if(f.size>2*1024*1024){alert('Image must be smaller than 2 MB.');return;}const rd=new FileReader();rd.onload=()=>{profile.avatar=String(rd.result);img.src=profile.avatar;saveProfile();syncProfile();};rd.readAsDataURL(f);};
+   $('#profileForm').onsubmit=e=>{e.preventDefault();profile.name=$('#profileName').value.trim()||'Operator';profile.bio=$('#profileBio').value.trim();saveProfile();syncProfile();$('#profileHeading').textContent=profile.name;event('Profile updated','Local profile saved','success');};
   }
-  document.querySelectorAll('[data-page]').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();navigate(a.dataset.page);}));
-  window.addEventListener('hashchange',()=>{const page=location.hash.slice(1);navigate(info[page]?page:'overview');});
-  window.NEXUSNavigate=navigate;
-  $('#mobileMenu').addEventListener('click',()=>sidebar.classList.toggle('open'));
-  $('#themeButton').addEventListener('click',()=>{document.body.classList.toggle('light-mode');const light=document.body.classList.contains('light-mode');$('#themeButton').textContent=light?'☀':'◐';addEvent('Visual mode changed',light?'Light appearance enabled':'Dark appearance enabled','info');});
-  function addEvent(title,detail,type){const list=$('#eventList');if(!list)return;const d=document.createElement('div');d.className='event-item';d.innerHTML='<span class="event-icon '+type+'">↗</span><span><b></b><small></small></span><time>JUST NOW</time>';d.querySelector('b').textContent=title;d.querySelector('small').textContent=detail;list.prepend(d);while(list.children.length>5)list.lastElementChild.remove();}
-  $('#clearLog').addEventListener('click',()=>{$('#eventList').replaceChildren();addEvent('Activity log cleared','No previous events are displayed','info');});
-  updateTime();setInterval(updateTime,1000);
-  const first=location.hash.slice(1);navigate(info[first]?first:'overview');
+  function settingsPage(){page.innerHTML='<div class="eyebrow">PERSONAL / PREFERENCES</div><div class="module-title-row"><div><h1>Workspace <span>Settings.</span></h1><p class="subtitle">Customize your NEXUS environment.</p></div></div><div class="settings-grid"><section class="settings-card"><div class="eyebrow">APPEARANCE</div><label for="themeSelect">COLOR THEME</label><select id="themeSelect"><option value="dark">Dark</option><option value="light">Light</option></select><label for="accentSelect">ACCENT COLOR</label><select id="accentSelect"><option value="multi">Multi / NEXUS</option><option value="#79a7ff">Blue</option><option value="#bd9bff">Purple</option><option value="#65d9e8">Cyan</option><option value="#ff7b86">Red</option><option value="#77d6a5">Green</option></select><div class="setting-row"><span>Advanced motion<small>Panel transitions and micro-interactions</small></span><input id="motionToggle" type="checkbox"></div></section><section class="settings-card"><div class="eyebrow">WORKSPACE</div><div class="setting-row"><span>Layout<small>VS Code-inspired sidebar</small></span><b>SIDEBAR</b></div><div class="setting-row"><span>Terminal<small>Command environment</small></span><b>READY</b></div><button class="secondary-button" id="resetSettings">RESET PREFERENCES</button></section></div>';
+   $('#themeSelect').value=prefs.theme;$('#accentSelect').value=prefs.accent;$('#motionToggle').checked=prefs.motion==='advanced';
+   $('#themeSelect').onchange=()=>{prefs.theme=$('#themeSelect').value;savePrefs();applyPrefs();};$('#accentSelect').onchange=()=>{prefs.accent=$('#accentSelect').value;savePrefs();applyPrefs();};$('#motionToggle').onchange=()=>{prefs.motion=$('#motionToggle').checked?'advanced':'reduced';savePrefs();applyPrefs();};
+   $('#resetSettings').onclick=()=>{Object.assign(prefs,{theme:'dark',accent:'multi',motion:'advanced'});savePrefs();applyPrefs();settingsPage();};
+  }
+  function navigate(id){const isHome=id==='overview'||!info[id];home.hidden=!isHome;page.hidden=isHome;
+   if(!isHome){crumb.textContent=info[id][0];if(id==='profile')profilePage();else if(id==='settings')settingsPage();else if(id!=='extensions'&&window.NEXUSExtensionEnabled&&!window.NEXUSExtensionEnabled(id)){page.innerHTML='<div class="eyebrow">MODULE DISABLED</div><h1>'+info[id][0]+'</h1><p class="subtitle">Enable this module in Extensions.</p><button class="primary-button" id="openExtensions">OPEN EXTENSIONS</button>';$('#openExtensions').onclick=()=>navigate('extensions');}
+    else{const mod=window.NEXUSModules&&window.NEXUSModules[id];if(mod){page.innerHTML=mod.render();try{mod.mount(page);}catch(e){console.error('[NEXUS] module error',e);page.innerHTML='<h1>Module error</h1><pre class="module-error"></pre>';page.querySelector('pre').textContent=String(e);}}else{page.innerHTML='<h1>Module unavailable</h1><p class="subtitle"></p>';page.querySelector('p').textContent=loadError?String(loadError):'Module registration is missing.';}}
+   }else crumb.textContent='Overview';
+   document.querySelectorAll('.nav-link').forEach(a=>a.classList.toggle('active',a.dataset.page===(isHome?'overview':id)));sidebar.classList.remove('open');const hash=isHome?'#overview':'#'+id;if(location.hash!==hash)history.replaceState(null,'',hash);
+  }
+  document.querySelectorAll('[data-page]').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();navigate(a.dataset.page);}));document.querySelectorAll('[data-open-page]').forEach(b=>b.addEventListener('click',()=>navigate(b.dataset.openPage)));
+  window.addEventListener('hashchange',()=>navigate(info[location.hash.slice(1)]?location.hash.slice(1):'overview'));window.NEXUSNavigate=navigate;
+  $('#mobileMenu').onclick=()=>sidebar.classList.toggle('open');$('#themeButton').onclick=()=>{prefs.theme=prefs.theme==='light'?'dark':'light';savePrefs();applyPrefs();event('Appearance changed',prefs.theme+' mode enabled');};$('#topProfile').onclick=()=>navigate('profile');
+  $('#clearLog').onclick=()=>{$('#eventList').replaceChildren();event('Activity log cleared','Previous events cleared');};
+  const palette=$('#commandPalette'),input=$('#commandInput'),results=$('#commandResults'),choices=[['Overview','overview'],...Object.entries(info).map(([id,v])=>[v[0],id])];
+  function draw(){const q=input.value.toLowerCase();results.replaceChildren();choices.filter(x=>x[0].toLowerCase().includes(q)||x[1].includes(q)).forEach(([label,id])=>{const b=document.createElement('button');b.textContent=label+'  →';b.onclick=()=>{palette.hidden=true;navigate(id);};results.append(b);});}
+  function openPalette(){palette.hidden=false;input.value='';draw();input.focus();}input.oninput=draw;input.onkeydown=e=>{if(e.key==='Enter')results.querySelector('button')?.click();if(e.key==='Escape')palette.hidden=true;};palette.onclick=e=>{if(e.target===palette)palette.hidden=true;};$('#globalSearch').onfocus=openPalette;document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();openPalette();}if(e.key==='Escape')palette.hidden=true;});
+  applyPrefs();syncProfile();tick();setInterval(tick,1000);navigate(info[location.hash.slice(1)]?location.hash.slice(1):'overview');
  }
 })();

@@ -6,7 +6,8 @@
  {id:'flow',name:'Flow Studio',version:'0.5',description:'Visual node editor for reusable workflows.',icon:'⌘',group:'WORKSPACE'},
  {id:'monitor',name:'Monitor',version:'0.1',description:'Browser session diagnostics and event stream.',icon:'◷',group:'SYSTEM TOOLS'},
  {id:'network',name:'Network',version:'0.1',description:'Connectivity checks for the NEXUS API.',icon:'⌁',group:'SYSTEM TOOLS'},
- {id:'extensions',name:'Extensions',version:'0.1',description:'Manage built-in NEXUS modules.',icon:'⊞',group:'SYSTEM TOOLS',locked:true},\n {id:'editor',name:'Code Editor',version:'0.1',description:'GitHub-connected code editor with syntax highlighting and save support.',icon:'</>',group:'WORKSPACE',locked:true}
+ {id:'extensions',name:'Extensions',version:'0.1',description:'Manage built-in NEXUS modules.',icon:'⊞',group:'SYSTEM TOOLS',locked:true},
+ {id:'editor',name:'Code Editor',version:'0.1',description:'GitHub-connected code editor with syntax highlighting and save support.',icon:'</>',group:'WORKSPACE',locked:true}
  ];
  const read=()=>{try{const v=JSON.parse(localStorage.getItem(KEY)||'[]');return Array.isArray(v)?v:[];}catch{return[];}};
  const write=a=>localStorage.setItem(KEY,JSON.stringify(a));

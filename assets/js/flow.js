@@ -205,6 +205,7 @@
      pending=node.id;$('#graphStatus').textContent='Output selected. Click another top-level block input.';renderPorts();return;
     }
     if(!pending){$('#graphStatus').textContent='First select an output connector.';return;}
+    if(!findTop(pending)){pending=null;$('#graphStatus').textContent='The selected block is no longer on the top-level workspace.';renderPorts();return;}
     if(pending===node.id){$('#graphStatus').textContent='Choose a different block.';return;}
     if(outgoing(pending))links=links.filter(l=>l.from!==pending);
     if(incoming(node.id))links=links.filter(l=>l.to!==node.id);
@@ -224,6 +225,7 @@
       const wasTop=!!findTop(movingId),block=takeBlock(movingId);
       if(!block)return;
       if(wasTop)links=links.filter(l=>l.from!==movingId&&l.to!==movingId);
+      if(pending===movingId)pending=null;
       target.push(block);
      }else{
       const type=e.dataTransfer.getData('application/x-nexus-type')||e.dataTransfer.getData('text/plain');

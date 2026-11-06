@@ -2,6 +2,7 @@ const express = require("express");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const crypto = require("node:crypto");
+const { Pool } = require("pg");
 
 const app = express();
 const PORT = Number(process.env.PORT || 10000);
@@ -11,11 +12,14 @@ const COOKIE_NAME = "nexus_github_session";
 const STATE_COOKIE = "nexus_oauth_state";
 const SESSION_TTL = 8 * 60 * 60;
 const MAX_FILE_BYTES = 1024 * 1024;
+const MAX_AVATAR_BYTES = 1024 * 1024;
+const pool = process.env.DATABASE_URL ? new Pool({ connectionString: process.env.DATABASE_URL, ssl: process.env.DATABASE_SSL === "false" ? false : { rejectUnauthorized: false }, max: 5, connectionTimeoutMillis: 8000 }) : null;
+let schemaReady;
 
 app.set("trust proxy", 1);
 app.disable("x-powered-by");
 app.use(helmet());
-app.use(express.json({ limit: "1.2mb" }));
+app.use(express.json({ limit: "2.5mb" }));
 app.use(rateLimit({ windowMs: 15 * 60 * 1000, limit: 180, standardHeaders: "draft-7", legacyHeaders: false }));
 
 function parseCookies(req) {
@@ -157,7 +161,7 @@ app.get("/auth/github/callback", async (req, res) => {
     const tokenData = await tokenResponse.json();
     if (!tokenResponse.ok || tokenData.error || !tokenData.access_token) throw new Error(tokenData.error_description || "GitHub authorization failed.");
     const profile = await githubRequest("/user", tokenData.access_token);
-    const session = seal({ accessToken: tokenData.access_token, login: profile.login, avatarUrl: profile.avatar_url, expiresAt: Date.now() + SESSION_TTL * 1000 });
+    const session = seal({ accessToken: tokenData.access_token, githubId: String(profile.id), login: profile.login, avatarUrl: profile.avatar_url, expiresAt: Date.now() + SESSION_TTL * 1000 });
     res.append("Set-Cookie", COOKIE_NAME + "=" + encodeURIComponent(session) + "; " + cookieOptions(SESSION_TTL));
     res.redirect(FRONTEND_URL + "/?github=connected");
   } catch (error) { res.status(400).send(error.message || "GitHub authorization failed."); }
@@ -245,6 +249,130 @@ app.post("/api/files", requireSession, async (req, res) => {
     res.status(201).json({ ok: true, path, branch: targetBranch, commit: result.commit.sha, url: result.content.html_url });
   } catch (error) { safeError(res, error); }
 });
+async function ensureSchema() {
+  if (!pool) throw Object.assign(new Error("NEXUS social database is not configured. Set DATABASE_URL on the Render service."), { status: 503 });
+  if (!schemaReady) schemaReady = pool.query(
+    "CREATE TABLE IF NOT EXISTS nexus_users (github_id TEXT PRIMARY KEY, public_id TEXT NOT NULL UNIQUE, github_login TEXT NOT NULL, display_name VARCHAR(32) NOT NULL, bio VARCHAR(160) NOT NULL DEFAULT '', avatar_url TEXT NOT NULL DEFAULT '', avatar_data TEXT NOT NULL DEFAULT '', created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW());" +
+    "CREATE TABLE IF NOT EXISTS nexus_friendships (id BIGSERIAL PRIMARY KEY, requester_id TEXT NOT NULL REFERENCES nexus_users(github_id) ON DELETE CASCADE, addressee_id TEXT NOT NULL REFERENCES nexus_users(github_id) ON DELETE CASCADE, status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','accepted','declined')), created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), CHECK (requester_id <> addressee_id), UNIQUE (requester_id, addressee_id));" +
+    "CREATE INDEX IF NOT EXISTS nexus_friendships_addressee_status_idx ON nexus_friendships(addressee_id, status);" +
+    "CREATE INDEX IF NOT EXISTS nexus_friendships_requester_status_idx ON nexus_friendships(requester_id, status);"
+  ).catch(error => { schemaReady = null; throw error; });
+  await schemaReady;
+}
+function makePublicId() { return "NX-" + crypto.randomBytes(5).toString("hex").toUpperCase(); }
+async function ensureNexusUser(session) {
+  await ensureSchema();
+  let profile = null;
+  if (!session.githubId) profile = await githubRequest("/user", session.accessToken);
+  const githubId = String(session.githubId || profile.id);
+  const login = session.login || profile.login || "github-user";
+  const avatarUrl = session.avatarUrl || profile.avatar_url || "";
+  let result = await pool.query("SELECT * FROM nexus_users WHERE github_id=$1", [githubId]);
+  if (!result.rows.length) {
+    for (let attempt = 0; attempt < 4; attempt++) {
+      try {
+        result = await pool.query("INSERT INTO nexus_users (github_id,public_id,github_login,display_name,avatar_url) VALUES ($1,$2,$3,$4,$5) ON CONFLICT (github_id) DO UPDATE SET github_login=EXCLUDED.github_login, updated_at=NOW() RETURNING *", [githubId, makePublicId(), login, profile && profile.name ? profile.name.slice(0,32) : login.slice(0,32), avatarUrl]);
+        break;
+      } catch (error) { if (error.code !== "23505" || attempt === 3) throw error; }
+    }
+  } else {
+    result = await pool.query("UPDATE nexus_users SET github_login=$2, avatar_url=CASE WHEN avatar_data='' THEN $3 ELSE avatar_url END, updated_at=NOW() WHERE github_id=$1 RETURNING *", [githubId, login, avatarUrl]);
+  }
+  return result.rows[0];
+}
+function publicUser(row) {
+  return { id: row.public_id, displayName: row.display_name, bio: row.bio, avatarUrl: row.avatar_data || row.avatar_url || "", githubLogin: row.github_login, createdAt: row.created_at };
+}
+function requireSocialUser(req, res, next) {
+  const session = getSession(req);
+  if (!session || !session.accessToken) {
+    clearCookie(res, COOKIE_NAME);
+    return res.status(401).json({ error: "Connect your GitHub account to use NEXUS profiles and friends." });
+  }
+  req.github = session;
+  ensureNexusUser(session).then(user => { req.nexusUser = user; next(); }).catch(error => {
+    console.error("[NEXUS social]", error.message);
+    res.status(error.status || 500).json({ error: error.status === 503 ? error.message : "Could not load your NEXUS account. Check database configuration." });
+  });
+}
+app.get("/api/profile", requireSocialUser, (req, res) => res.json({ profile: publicUser(req.nexusUser) }));
+app.put("/api/profile", requireSocialUser, async (req, res) => {
+  try {
+    const body = req.body || {};
+    const name = typeof body.displayName === "string" ? body.displayName.trim() : "";
+    const bio = typeof body.bio === "string" ? body.bio.trim() : "";
+    const avatar = typeof body.avatar === "string" ? body.avatar : "";
+    if (!name || name.length > 32) return res.status(400).json({ error: "Display name must contain 1–32 characters." });
+    if (bio.length > 160) return res.status(400).json({ error: "Bio must be 160 characters or fewer." });
+    if (avatar && !/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/]+=*$/.test(avatar)) return res.status(400).json({ error: "Avatar must be a PNG, JPEG or WebP image." });
+    if (Buffer.byteLength(avatar, "utf8") > Math.ceil(MAX_AVATAR_BYTES * 1.4)) return res.status(413).json({ error: "Avatar must be smaller than 1 MB." });
+    const saved = await pool.query("UPDATE nexus_users SET display_name=$2,bio=$3,avatar_data=$4,updated_at=NOW() WHERE github_id=$1 RETURNING *", [req.nexusUser.github_id, name, bio, avatar]);
+    res.json({ ok: true, profile: publicUser(saved.rows[0]) });
+  } catch (error) { console.error("[NEXUS profile]", error.message); res.status(500).json({ error: "Could not save profile." }); }
+});
+app.get("/api/social/search", requireSocialUser, async (req, res) => {
+  try {
+    const q = String(req.query.q || "").trim().toUpperCase();
+    if (q.length < 3 || q.length > 40) return res.status(400).json({ error: "Enter at least 3 characters of a NEXUS ID." });
+    const result = await pool.query("SELECT * FROM nexus_users WHERE public_id LIKE $1 AND github_id<>$2 ORDER BY public_id LIMIT 10", [q.replace(/[\\%_]/g, "\\app.use((error, _req, res, _next) => {") + "%", req.nexusUser.github_id]);
+    res.json({ users: result.rows.map(publicUser) });
+  } catch (error) { console.error("[NEXUS search]", error.message); res.status(500).json({ error: "Could not search users." }); }
+});
+app.get("/api/social/friends", requireSocialUser, async (req, res) => {
+  try {
+    const r = await pool.query("SELECT u.* FROM nexus_friendships f JOIN nexus_users u ON u.github_id=CASE WHEN f.requester_id=$1 THEN f.addressee_id ELSE f.requester_id END WHERE (f.requester_id=$1 OR f.addressee_id=$1) AND f.status='accepted' ORDER BY u.display_name", [req.nexusUser.github_id]);
+    res.json({ friends: r.rows.map(publicUser) });
+  } catch (error) { console.error("[NEXUS friends]", error.message); res.status(500).json({ error: "Could not load friends." }); }
+});
+app.get("/api/social/requests", requireSocialUser, async (req, res) => {
+  try {
+    const [incoming, outgoing] = await Promise.all([
+      pool.query("SELECT f.id AS request_id,f.created_at,u.* FROM nexus_friendships f JOIN nexus_users u ON u.github_id=f.requester_id WHERE f.addressee_id=$1 AND f.status='pending' ORDER BY f.created_at DESC", [req.nexusUser.github_id]),
+      pool.query("SELECT f.id AS request_id,f.created_at,u.* FROM nexus_friendships f JOIN nexus_users u ON u.github_id=f.addressee_id WHERE f.requester_id=$1 AND f.status='pending' ORDER BY f.created_at DESC", [req.nexusUser.github_id])
+    ]);
+    res.json({ incoming: incoming.rows.map(r => ({ requestId: r.request_id, createdAt: r.created_at, user: publicUser(r) })), outgoing: outgoing.rows.map(r => ({ requestId: r.request_id, createdAt: r.created_at, user: publicUser(r) })) });
+  } catch (error) { console.error("[NEXUS requests]", error.message); res.status(500).json({ error: "Could not load friend requests." }); }
+});
+app.post("/api/social/requests", requireSocialUser, async (req, res) => {
+  try {
+    const id = String((req.body || {}).targetId || "").trim().toUpperCase();
+    if (!/^NX-[A-F0-9]{10}$/.test(id)) return res.status(400).json({ error: "Enter a valid NEXUS user ID." });
+    const found = await pool.query("SELECT github_id FROM nexus_users WHERE public_id=$1", [id]);
+    if (!found.rows.length) return res.status(404).json({ error: "No NEXUS user found with that ID." });
+    const target = found.rows[0].github_id;
+    if (target === req.nexusUser.github_id) return res.status(400).json({ error: "You cannot add yourself." });
+    const existing = await pool.query("SELECT * FROM nexus_friendships WHERE (requester_id=$1 AND addressee_id=$2) OR (requester_id=$2 AND addressee_id=$1)", [req.nexusUser.github_id, target]);
+    if (existing.rows.length) {
+      const f = existing.rows[0];
+      if (f.status === "accepted") return res.status(409).json({ error: "You are already friends." });
+      if (f.status === "pending") return res.status(409).json({ error: f.requester_id === req.nexusUser.github_id ? "Friend request already sent." : "This user has already sent you a request. Check incoming requests." });
+      await pool.query("DELETE FROM nexus_friendships WHERE id=$1", [f.id]);
+    }
+    await pool.query("INSERT INTO nexus_friendships (requester_id,addressee_id,status) VALUES ($1,$2,'pending')", [req.nexusUser.github_id, target]);
+    res.status(201).json({ ok: true, message: "Friend request sent." });
+  } catch (error) { console.error("[NEXUS send request]", error.message); res.status(500).json({ error: "Could not send friend request." }); }
+});
+app.patch("/api/social/requests/:requestId", requireSocialUser, async (req, res) => {
+  try {
+    if (!/^\d+$/.test(req.params.requestId)) return res.status(400).json({ error: "Invalid friend request ID." });
+    const action = String((req.body || {}).action || "");
+    if (!["accept", "decline"].includes(action)) return res.status(400).json({ error: "Action must be accept or decline." });
+    const status = action === "accept" ? "accepted" : "declined";
+    const r = await pool.query("UPDATE nexus_friendships SET status=$3,updated_at=NOW() WHERE id=$1 AND addressee_id=$2 AND status='pending' RETURNING id", [req.params.requestId, req.nexusUser.github_id, status]);
+    if (!r.rows.length) return res.status(404).json({ error: "Incoming request not found or already handled." });
+    res.json({ ok: true, status });
+  } catch (error) { console.error("[NEXUS respond request]", error.message); res.status(500).json({ error: "Could not update friend request." }); }
+});
+app.delete("/api/social/friends/:publicId", requireSocialUser, async (req, res) => {
+  try {
+    const target = await pool.query("SELECT github_id FROM nexus_users WHERE public_id=$1", [String(req.params.publicId || "").toUpperCase()]);
+    if (!target.rows.length) return res.status(404).json({ error: "Friend not found." });
+    const r = await pool.query("DELETE FROM nexus_friendships WHERE status='accepted' AND ((requester_id=$1 AND addressee_id=$2) OR (requester_id=$2 AND addressee_id=$1)) RETURNING id", [req.nexusUser.github_id, target.rows[0].github_id]);
+    if (!r.rows.length) return res.status(404).json({ error: "Friendship not found." });
+    res.json({ ok: true });
+  } catch (error) { console.error("[NEXUS remove friend]", error.message); res.status(500).json({ error: "Could not remove friend." }); }
+});
+
 app.use((error, _req, res, _next) => {
   console.error("[NEXUS API]", error.message);
   res.status(500).json({ error: "Internal server error." });

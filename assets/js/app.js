@@ -1,7 +1,7 @@
 (() => {
  const currentScript=document.currentScript;
  const scriptBase=currentScript&&currentScript.src?currentScript.src:new URL('assets/js/app.js',document.baseURI).href;
- const moduleFiles={terminal:'terminal.js',storage:'storage.js',flow:'flow.js'};
+ const moduleFiles={terminal:'terminal.js',storage:'storage.js',flow:'flow.js',monitor:'monitor.js',network:'network.js',extensions:'extensions.js'};
  function ensureModule(name,file){
   window.NEXUSModules=window.NEXUSModules||{};
   if(window.NEXUSModules[name])return Promise.resolve();
@@ -25,6 +25,7 @@
    overview.hidden=!home;modulePage.hidden=home;
    if(!home){
     breadcrumb.textContent=info[page][0];
+    if(page!=='extensions'&&window.NEXUSExtensionEnabled&&!window.NEXUSExtensionEnabled(page)){modulePage.innerHTML='<div class="eyebrow">MODULE DISABLED</div><h1>'+info[page][0]+'</h1><p class="subtitle">This module is disabled in the Extension Manager.</p><button class="primary-button" id="openExtensions">OPEN EXTENSION MANAGER</button>';modulePage.querySelector('#openExtensions').onclick=()=>navigate('extensions');document.querySelectorAll('.nav-link').forEach(a=>a.classList.toggle('active',a.dataset.page===page));sidebar.classList.remove('open');return;}
     const mod=window.NEXUSModules&&window.NEXUSModules[page];
     if(mod){modulePage.innerHTML=mod.render();try{mod.mount(modulePage);}catch(error){console.error('[NEXUS] '+page+' mount failed:',error);modulePage.innerHTML='<div class="eyebrow">MODULE ERROR</div><h1>'+info[page][0]+'</h1><p class="subtitle">The module loaded, but could not start.</p><pre class="module-error"></pre>';modulePage.querySelector('.module-error').textContent=String(error);}}
     else{modulePage.innerHTML='<div class="eyebrow">MODULE UNAVAILABLE</div><h1>'+info[page][0]+'</h1><p class="subtitle">NEXUS could not load this module.</p><p class="module-error"></p>';modulePage.querySelector('.module-error').textContent=loadError?String(loadError):'Module registration is missing. Check the browser console and network requests.';}

@@ -6,7 +6,7 @@
 
 ### Terminal
 - Interactive command line with history (arrow keys).
-- Commands: `help`, `status`, `time`, `clear`, `modules`, `about`, `echo`, `calc`.
+- Commands: `help`, `status`, `time`, `clear`, `modules`, `about`, `echo`, `calc`, `install requirements.txt`, `install .gitignore`.
 - Runs inside the browser; it is not an operating-system shell.
 
 ### Storage
@@ -57,13 +57,13 @@
 - `assets/js/extensions.js`\n- `assets/js/editor.js`
 
 ## Run
-Open `index.html` in a modern browser. No build tools or dependencies are required. GitHub Pages can host the project from the main branch root.
+Open `index.html` in a modern browser. No local build step is required. GitHub Pages can host the project from the main branch root. The code editor loads Ace from a CDN and needs an internet connection; GitHub browsing and saving require an active NEXUS GitHub session.
 
 ## Limitations
 - Terminal is a browser command simulator, not a real OS shell.
 - Flow Studio simulates steps; it does not execute external code or connect to services.
 - Storage is local to the browser profile. Clearing site data may remove records.
-- Dashboard activity metrics are illustrative.
+- Dashboard activity metrics are illustrative.\n- The code editor currently supports text files up to 1 MB and uses GitHub as its file backend.
 
 ## Roadmap
 - [x] 0.1.0 Dashboard foundation
@@ -72,7 +72,7 @@ Open `index.html` in a modern browser. No build tools or dependencies are requir
 - [x] 0.4.0 Monitor
 - [x] 0.5.0 Network
 - [ ] 0.6.0 Advanced workflow engine
-- [x] 0.7.0 Extension system
+- [x] 0.7.0 Extension system\n- [x] 0.8.0 GitHub-connected Code Editor
 - [ ] 1.0.0 Integrated release
 
 ## Technology

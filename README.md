@@ -1,6 +1,6 @@
 # NEXUS — Digital Laboratory
 
-**Current release: 0.8.0 — GitHub-connected Code Editor.**
+**Current release: 0.9.0 — Nested Flow Studio.**
 
 ## Implemented
 
@@ -15,10 +15,14 @@
 - Data persists in browser localStorage, not on a server.
 
 ### Flow Studio
-- Add action, condition and output blocks.
-- Edit block titles and descriptions; reorder and delete blocks.
-- Run a step-by-step workflow simulation.
-- Saves the workflow draft in browser localStorage.
+- Scratch-style nested control blocks with editable body slots.
+- `if` and `if / else` support nested statement sequences and comparison operators (`>`, `<`, `>=`, `<=`, `=`, `!=`).
+- `repeat` runs its nested body; `forever` runs until STOP is pressed.
+- Variables support set, change and print operations.
+- Arithmetic blocks calculate and store results in a named variable; operands can reference another variable with `$name`.
+- Top-level blocks can still be connected with wires.
+- Runtime supports cancellation during waits, nested-depth and execution limits, and readable errors.
+- Projects save in browser localStorage. Existing manually wired repeat/if projects retain their previous execution behavior.
 
 ### Code Editor
 - GitHub repository explorer with directory navigation.
@@ -56,15 +60,19 @@
 - `assets/js/network.js`
 - `assets/js/extensions.js`
 - `assets/js/editor.js`
+- `server.js`
 
 ## Run
 Open `index.html` in a modern browser. No local build step is required. GitHub Pages can host the project from the main branch root. The code editor loads Ace from a CDN and needs an internet connection; GitHub browsing and saving require an active NEXUS GitHub session.
 
 ## Limitations
-- Terminal is a browser command simulator, not a real OS shell.
-- Flow Studio simulates steps; it does not execute external code or connect to services.
-- Storage is local to the browser profile. Clearing site data may remove records.
-- Dashboard activity metrics are illustrative.\n- The code editor currently supports text files up to 1 MB and uses GitHub as its file backend.
+- Terminal is a browser command simulator, not an operating-system shell.
+- Flow Studio runs visual commands in the browser; it does not execute arbitrary external code or connect to external services.
+- The key-pressed event block currently logs a manual-start event; it does not yet listen for physical keyboard input.
+- `forever` loops must be stopped manually. A 100,000-block safety limit prevents runaway execution.
+- Storage and Flow Studio projects are local to the browser profile. Clearing site data may remove them.
+- Dashboard activity metrics are illustrative.
+- The code editor currently supports text files up to 1 MB and uses GitHub as its file backend.
 
 ## Roadmap
 - [x] 0.1.0 Dashboard foundation
@@ -73,7 +81,9 @@ Open `index.html` in a modern browser. No local build step is required. GitHub P
 - [x] 0.4.0 Monitor
 - [x] 0.5.0 Network
 - [ ] 0.6.0 Advanced workflow engine
-- [x] 0.7.0 Extension system\n- [x] 0.8.0 GitHub-connected Code Editor
+- [x] 0.7.0 Extension system
+- [x] 0.8.0 GitHub-connected Code Editor
+- [x] 0.9.0 Nested Flow Studio runtime
 - [ ] 1.0.0 Integrated release
 
 ## Technology

@@ -1,6 +1,6 @@
 # NEXUS — Digital Laboratory
 
-**Current release: 0.2.0 — Core modules.**
+**Current release: 0.7.0 — Monitor, Network and Extensions.**
 
 ## Implemented
 
@@ -20,6 +20,20 @@
 - Run a step-by-step workflow simulation.
 - Saves the workflow draft in browser localStorage.
 
+### Monitor
+- Session uptime, browser memory when supported, online state and viewport.
+- Module health overview and browser error/event stream.
+
+### Network
+- Browser connectivity status.
+- Round-trip health check against the NEXUS GitHub API.
+- Local test history.
+
+### Extensions
+- Built-in module registry.
+- Enable/disable modules locally, with protected Extension Manager.
+- Third-party extension loading is not enabled.
+
 ## Structure
 
 - `index.html`
@@ -28,6 +42,9 @@
 - `assets/js/terminal.js`
 - `assets/js/storage.js`
 - `assets/js/flow.js`
+- `assets/js/monitor.js`
+- `assets/js/network.js`
+- `assets/js/extensions.js`
 
 ## Run
 Open `index.html` in a modern browser. No build tools or dependencies are required. GitHub Pages can host the project from the main branch root.
@@ -42,10 +59,10 @@ Open `index.html` in a modern browser. No build tools or dependencies are requir
 - [x] 0.1.0 Dashboard foundation
 - [x] 0.2.0 Terminal, Storage and Flow Studio
 - [ ] 0.3.0 Advanced data collections
-- [ ] 0.4.0 Monitor
-- [ ] 0.5.0 Network
+- [x] 0.4.0 Monitor
+- [x] 0.5.0 Network
 - [ ] 0.6.0 Advanced workflow engine
-- [ ] 0.7.0 Extension system
+- [x] 0.7.0 Extension system
 - [ ] 1.0.0 Integrated release
 
 ## Technology

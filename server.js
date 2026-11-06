@@ -314,7 +314,7 @@ app.get("/api/social/search", requireSocialUser, async (req, res) => {
   try {
     const q = String(req.query.q || "").trim().toUpperCase();
     if (q.length < 3 || q.length > 40) return res.status(400).json({ error: "Enter at least 3 characters of a NEXUS ID." });
-    const result = await pool.query("SELECT * FROM nexus_users WHERE public_id LIKE $1 AND github_id<>$2 ORDER BY public_id LIMIT 10", [q.replace(/[\\%_]/g, "\\app.use((error, _req, res, _next) => {") + "%", req.nexusUser.github_id]);
+    const result = await pool.query("SELECT * FROM nexus_users WHERE public_id LIKE $1 AND github_id<>$2 ORDER BY public_id LIMIT 10", [q.replace(/[\\%_]/g, "\\$&") + "%", req.nexusUser.github_id]);
     res.json({ users: result.rows.map(publicUser) });
   } catch (error) { console.error("[NEXUS search]", error.message); res.status(500).json({ error: "Could not search users." }); }
 });
@@ -373,8 +373,50 @@ app.delete("/api/social/friends/:publicId", requireSocialUser, async (req, res) 
   } catch (error) { console.error("[NEXUS remove friend]", error.message); res.status(500).json({ error: "Could not remove friend." }); }
 });
 
+
+async function migrateExistingDataToSupabase() {
+  if (!pool) throw new Error("Source DATABASE_URL is not configured.");
+  if (!process.env.SUPABASE_DATABASE_URL) throw new Error("SUPABASE_DATABASE_URL is not configured.");
+  const target = new Pool({ connectionString: process.env.SUPABASE_DATABASE_URL, ssl: process.env.SUPABASE_DATABASE_SSL === "false" ? false : { rejectUnauthorized: false }, max: 2, connectionTimeoutMillis: 10000 });
+  const client = await target.connect();
+  try {
+    await ensureSchema();
+    await client.query("BEGIN");
+    await client.query("CREATE TABLE IF NOT EXISTS nexus_users (github_id TEXT PRIMARY KEY, public_id TEXT NOT NULL UNIQUE, github_login TEXT NOT NULL, display_name VARCHAR(32) NOT NULL, bio VARCHAR(160) NOT NULL DEFAULT '', avatar_url TEXT NOT NULL DEFAULT '', avatar_data TEXT NOT NULL DEFAULT '', created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
+    await client.query("CREATE TABLE IF NOT EXISTS nexus_friendships (id BIGSERIAL PRIMARY KEY, requester_id TEXT NOT NULL REFERENCES nexus_users(github_id) ON DELETE CASCADE, addressee_id TEXT NOT NULL REFERENCES nexus_users(github_id) ON DELETE CASCADE, status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','accepted','declined')), created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), CHECK (requester_id <> addressee_id), UNIQUE (requester_id, addressee_id))");
+    await client.query("CREATE INDEX IF NOT EXISTS nexus_friendships_addressee_status_idx ON nexus_friendships(addressee_id,status)");
+    await client.query("CREATE INDEX IF NOT EXISTS nexus_friendships_requester_status_idx ON nexus_friendships(requester_id,status)");
+    const users = await pool.query("SELECT github_id,public_id,github_login,display_name,bio,avatar_url,avatar_data,created_at,updated_at FROM nexus_users ORDER BY github_id");
+    const friendships = await pool.query("SELECT id,requester_id,addressee_id,status,created_at,updated_at FROM nexus_friendships ORDER BY id");
+    for (const u of users.rows) await client.query("INSERT INTO nexus_users (github_id,public_id,github_login,display_name,bio,avatar_url,avatar_data,created_at,updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT (github_id) DO UPDATE SET public_id=EXCLUDED.public_id,github_login=EXCLUDED.github_login,display_name=EXCLUDED.display_name,bio=EXCLUDED.bio,avatar_url=EXCLUDED.avatar_url,avatar_data=EXCLUDED.avatar_data,created_at=EXCLUDED.created_at,updated_at=EXCLUDED.updated_at", [u.github_id,u.public_id,u.github_login,u.display_name,u.bio,u.avatar_url,u.avatar_data,u.created_at,u.updated_at]);
+    for (const f of friendships.rows) await client.query("INSERT INTO nexus_friendships (id,requester_id,addressee_id,status,created_at,updated_at) VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT (requester_id,addressee_id) DO UPDATE SET status=EXCLUDED.status,created_at=EXCLUDED.created_at,updated_at=EXCLUDED.updated_at", [f.id,f.requester_id,f.addressee_id,f.status,f.created_at,f.updated_at]);
+    await client.query("SELECT setval(pg_get_serial_sequence('nexus_friendships','id'), GREATEST(COALESCE((SELECT MAX(id) FROM nexus_friendships),1),1), EXISTS(SELECT 1 FROM nexus_friendships))");
+    const targetUsers = await client.query("SELECT COUNT(*)::int AS count FROM nexus_users");
+    const targetFriendships = await client.query("SELECT COUNT(*)::int AS count FROM nexus_friendships");
+    const counts = { sourceUsers: users.rowCount, targetUsers: targetUsers.rows[0].count, sourceFriendships: friendships.rowCount, targetFriendships: targetFriendships.rows[0].count };
+    if (counts.sourceUsers !== counts.targetUsers || counts.sourceFriendships !== counts.targetFriendships) throw new Error("Migration verification failed: source and target row counts differ.");
+    await client.query("COMMIT");
+    console.log("[NEXUS migration] verified", JSON.stringify(counts));
+    return counts;
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => {});
+    throw error;
+  } finally { client.release(); await target.end(); }
+}
+
 app.use((error, _req, res, _next) => {
   console.error("[NEXUS API]", error.message);
   res.status(500).json({ error: "Internal server error." });
 });
-app.listen(PORT, "0.0.0.0", () => console.log("NEXUS GitHub API listening on " + PORT));
+async function startServer() {
+  if (process.env.RUN_SUPABASE_MIGRATION === "true") {
+    try {
+      const counts = await migrateExistingDataToSupabase();
+      console.log("[NEXUS migration] COMPLETE", JSON.stringify(counts));
+    } catch (error) {
+      console.error("[NEXUS migration] FAILED", error.message);
+    }
+  }
+  app.listen(PORT, "0.0.0.0", () => console.log("NEXUS GitHub API listening on " + PORT));
+}
+startServer();

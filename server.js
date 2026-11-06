@@ -199,9 +199,10 @@ app.get("/api/file", requireSession, async (req, res) => {
     const branch = typeof req.query.branch === "string" && req.query.branch.trim() ? req.query.branch.trim() : repo.default_branch;
     const encodedPath = path.split("/").map(encodeURIComponent).join("/");
     const file = await githubRequest("/repos/" + repository + "/contents/" + encodedPath + "?ref=" + encodeURIComponent(branch), req.github.accessToken);
-    if (file.type !== "file" || !file.content) return res.status(400).json({ error: "The requested path is not a readable text file." });
-    const content = Buffer.from(file.content.replace(/\\n/g, ""), "base64").toString("utf8");
-    if (Buffer.byteLength(content, "utf8") > MAX_FILE_BYTES) return res.status(413).json({ error: "Files larger than 1 MB cannot be opened in the editor." });
+    if (file.type !== "file") return res.status(400).json({ error: "The requested path is not a file." });
+    if (file.size > MAX_FILE_BYTES) return res.status(413).json({ error: "Files larger than 1 MB cannot be opened in the editor." });
+    if (typeof file.content !== "string") return res.status(400).json({ error: "This file is not available as readable text." });
+    const content = Buffer.from(file.content, "base64").toString("utf8");
     res.json({ repository, branch, path: file.path, name: file.name, sha: file.sha, content, size: file.size });
   } catch (error) { safeError(res, error); }
 });

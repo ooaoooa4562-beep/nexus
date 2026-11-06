@@ -121,3 +121,32 @@
 #ideQuickResults button:hover{background:#263750;color:#fff}
 @media(max-width:900px){.code-ide{grid-template-columns:38px 185px minmax(0,1fr);height:calc(100vh - 190px)}.ide-statusbar{gap:8px;font-size:7px}}
 @media(max-width:650px){.editor-heading{align-items:flex-start}.editor-heading-actions{width:100%}.code-ide{height:calc(100vh - 215px);min-height:530px;grid-template-columns:32px 130px minmax(0,1fr)}.ide-activity-button{width:27px}.ide-explorer-title{padding:11px 7px}.ide-explorer-title b{font-size:8px}.ide-explorer-title span{font-size:7px}.ide-tree-item{font-size:8px;gap:4px;padding-left:calc(5px + var(--depth,0)*8px)}.ide-editor-toolbar{padding:0 6px}.ide-editor-actions button{font-size:7px;padding:6px}.ide-editor-actions button kbd{display:none}.ide-tab{min-width:90px;padding:0 7px;font-size:8px}.ide-statusbar{gap:6px;padding:0 5px;font-size:6px}.ide-connection{font-size:7px}.ide-notice{right:10px;bottom:12px}}
+
+
+/* Flow Studio — nested Scratch-style blocks */
+.graph-node.graph-container{width:260px;min-height:0;padding-bottom:16px}
+.graph-node.nested-node{position:relative;left:auto!important;top:auto!important;width:100%;min-width:0;min-height:0;margin:0;padding:11px 9px 13px;box-shadow:0 4px 13px #0004;touch-action:auto}
+.graph-node.nested-node .graph-node-title{cursor:grab;padding-right:20px}
+.graph-node.nested-node .graph-node-title:active{cursor:grabbing}
+.graph-field-row{display:flex;align-items:center;gap:7px;min-width:0;color:#aebbd0;font:8px var(--mono,monospace);text-transform:uppercase;letter-spacing:.35px}
+.graph-field-row>span{width:48px;flex:none;overflow:hidden;text-overflow:ellipsis}
+.graph-field-row .graph-field{flex:1;width:1px;min-width:0}
+.graph-field-row select.graph-field{cursor:pointer}
+.flow-container-body{display:flex;flex-direction:column;gap:5px;margin:7px -2px 0;padding:8px 7px 4px 10px;border-left:3px solid #d18b43;border-radius:0 0 7px 7px;background:#111a29}
+.flow-branch-label{font:700 8px var(--mono,monospace);letter-spacing:1px;color:#e8c27e;padding:1px 3px}
+.flow-else-label{color:#c49be9}
+.flow-drop-slot{display:flex;flex-direction:column;gap:6px;min-height:48px;padding:6px;border:1px dashed #53627c;border-radius:6px;background:#0c1421;transition:border-color .15s,background .15s}
+.flow-drop-slot.zone-over{border-color:#91a8ff;background:#1c2a43;box-shadow:inset 0 0 0 1px #91a8ff33}
+.flow-drop-hint{display:grid;place-items:center;min-height:32px;color:#71819a;font:8px var(--mono,monospace);text-align:center;pointer-events:none}
+.graph-node.nested-node.graph-container{width:100%;padding-bottom:12px}
+.graph-node.nested-node .flow-container-body{margin-left:2px;margin-right:0}
+.graph-node.nested-node .graph-node-controls{top:4px;right:4px}
+.graph-node.nested-node .graph-node-controls button{width:18px;height:18px}
+.graph-node.graph-container>.graph-node-title{padding-right:22px}
+@media(max-width:720px){
+ .graph-node.graph-container{width:230px}
+ .graph-node.nested-node{width:100%;min-width:0}
+ .flow-container-body{margin-left:0;padding:7px 5px 4px 7px}
+ .flow-drop-slot{padding:5px;min-height:42px}
+ .graph-field-row>span{width:42px}
+}

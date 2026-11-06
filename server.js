@@ -27,10 +27,10 @@ function parseCookies(req) {
   return out;
 }
 function cookieOptions(maxAge) {
-  return "Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=" + maxAge;
+  return "Path=/; HttpOnly; Secure; SameSite=None; Max-Age=" + maxAge;
 }
 function clearCookie(res, name) {
-  res.append("Set-Cookie", name + "=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0");
+  res.append("Set-Cookie", name + "=; Path=/; HttpOnly; Secure; SameSite=None; Max-Age=0");
 }
 function configReady() {
   return Boolean(process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET && process.env.SESSION_SECRET && process.env.API_BASE_URL);

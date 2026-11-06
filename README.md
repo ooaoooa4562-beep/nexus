@@ -54,7 +54,8 @@
 - `assets/js/flow.js`
 - `assets/js/monitor.js`
 - `assets/js/network.js`
-- `assets/js/extensions.js`\n- `assets/js/editor.js`
+- `assets/js/extensions.js`
+- `assets/js/editor.js`
 
 ## Run
 Open `index.html` in a modern browser. No local build step is required. GitHub Pages can host the project from the main branch root. The code editor loads Ace from a CDN and needs an internet connection; GitHub browsing and saving require an active NEXUS GitHub session.

@@ -6,6 +6,7 @@ const crypto = require("node:crypto");
 const app = express();
 const PORT = Number(process.env.PORT || 10000);
 const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || "https://ooaoooa4562-beep.github.io";
+const FRONTEND_URL = (process.env.FRONTEND_URL || FRONTEND_ORIGIN + "/nexus").replace(/\/+$/, "");
 const COOKIE_NAME = "nexus_github_session";
 const STATE_COOKIE = "nexus_oauth_state";
 const SESSION_TTL = 8 * 60 * 60;
@@ -146,7 +147,7 @@ app.get("/auth/github/callback", async (req, res) => {
     if (!configReady()) return res.status(503).send("GitHub OAuth is not configured yet.");
     const pair = saved.split(".");
     if (!req.query.state || !safeEqual(req.query.state, pair[0]) || !safeEqual(sign(pair[0]), pair[1])) return res.status(400).send("OAuth state validation failed. Return to NEXUS and try again.");
-    if (req.query.error) return res.redirect(FRONTEND_ORIGIN + "/?github=cancelled");
+    if (req.query.error) return res.redirect(FRONTEND_URL + "/?github=cancelled");
     if (typeof req.query.code !== "string") return res.status(400).send("Missing OAuth code.");
     const tokenResponse = await fetch("https://github.com/login/oauth/access_token", {
       method: "POST",
@@ -158,7 +159,7 @@ app.get("/auth/github/callback", async (req, res) => {
     const profile = await githubRequest("/user", tokenData.access_token);
     const session = seal({ accessToken: tokenData.access_token, login: profile.login, avatarUrl: profile.avatar_url, expiresAt: Date.now() + SESSION_TTL * 1000 });
     res.append("Set-Cookie", COOKIE_NAME + "=" + encodeURIComponent(session) + "; " + cookieOptions(SESSION_TTL));
-    res.redirect(FRONTEND_ORIGIN + "/?github=connected");
+    res.redirect(FRONTEND_URL + "/?github=connected");
   } catch (error) { res.status(400).send(error.message || "GitHub authorization failed."); }
 });
 app.post("/auth/logout", requireSession, (req, res) => {

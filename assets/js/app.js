@@ -1,7 +1,7 @@
 (() => {
  const currentScript=document.currentScript;
  const scriptBase=currentScript&&currentScript.src?currentScript.src:new URL('assets/js/app.js',document.baseURI).href;
- const moduleFiles={terminal:'terminal.js',storage:'storage.js',flow:'flow.js',monitor:'monitor.js',network:'network.js',extensions:'extensions.js'};
+ const moduleFiles={terminal:'terminal.js',storage:'storage.js',flow:'flow.js',monitor:'monitor.js',network:'network.js',extensions:'extensions.js',editor:'editor.js'};
  function ensureModule(name,file){
   window.NEXUSModules=window.NEXUSModules||{};
   if(window.NEXUSModules[name])return Promise.resolve();
@@ -18,7 +18,7 @@
  .catch(error=>{console.error('[NEXUS] Module startup failed:',error);startApp(error);});
  function startApp(loadError){
   const $=s=>document.querySelector(s),clock=$('#clock'),dateLabel=$('#dateLabel'),breadcrumb=$('#breadcrumb'),sidebar=$('#sidebar'),overview=$('#overview'),modulePage=$('#modulePage');
-  const info={flow:['Flow Studio','⌘','Design visual processes.'],storage:['Storage','▤','Manage local records.'],network:['Network','⌁','Explore connectivity.'],monitor:['Monitor','◷','Review system events.'],terminal:['Terminal','›_','Command interface.'],extensions:['Extensions','⊞','Manage extensions.']};
+  const info={flow:['Flow Studio','⌘','Design visual processes.'],storage:['Storage','▤','Manage local records.'],network:['Network','⌁','Explore connectivity.'],monitor:['Monitor','◷','Review system events.'],terminal:['Terminal','›_','Command interface.'],extensions:['Extensions','⊞','Manage extensions.'],editor:['Code Editor','</>','Edit GitHub repository files.']};
   function updateTime(){const n=new Date();if(clock)clock.textContent=n.toLocaleTimeString([],{hour12:false});if(dateLabel)dateLabel.textContent=n.toLocaleDateString([],{weekday:'short',day:'2-digit',month:'short',year:'numeric'}).toUpperCase();}
   function navigate(page){
    const home=page==='overview'||!info[page];

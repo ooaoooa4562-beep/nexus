@@ -93,7 +93,7 @@ app.use((req, res, next) => {
     res.setHeader("Vary", "Origin");
     res.setHeader("Access-Control-Allow-Credentials", "true");
     res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-    res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,OPTIONS");
+    res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
   }
   if (req.method === "OPTIONS") return res.sendStatus(204);
   if (["POST", "PUT", "PATCH", "DELETE"].includes(req.method) && !originAllowed(req)) return res.status(403).json({ error: "Origin not allowed." });
@@ -131,7 +131,7 @@ function safeError(res, error) {
   res.status(status).json({ error: error.message || "GitHub request failed." });
 }
 
-app.get("/health", (_req, res) => res.json({ ok: true, service: "NEXUS GitHub API", version: "0.1.0" }));
+app.get("/health", (_req, res) => res.json({ ok: true, service: "NEXUS GitHub API", version: "0.2.0", socialDatabaseConfigured: Boolean(pool) }));
 app.get("/auth/github", (req, res) => {
   if (!configReady()) return res.status(503).send("GitHub OAuth is not configured yet.");
   const state = crypto.randomBytes(24).toString("hex");

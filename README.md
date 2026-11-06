@@ -1,6 +1,6 @@
 # NEXUS — Digital Laboratory
 
-**Current release: 0.7.0 — Monitor, Network and Extensions.**
+**Current release: 0.8.0 — GitHub-connected Code Editor.**
 
 ## Implemented
 
@@ -19,6 +19,16 @@
 - Edit block titles and descriptions; reorder and delete blocks.
 - Run a step-by-step workflow simulation.
 - Saves the workflow draft in browser localStorage.
+
+### Code Editor
+- GitHub repository explorer with directory navigation.
+- Multi-file tabs, syntax highlighting, editor search, quick file open and keyboard shortcuts.
+- Save existing repository files directly through the NEXUS API.
+- New files and folders can be created from the editor.
+
+### Terminal additions
+- `install requirements.txt` creates a basic Python dependency file.
+- `install .gitignore` creates a standard Python ignore file.
 
 ### Monitor
 - Session uptime, browser memory when supported, online state and viewport.
@@ -44,7 +54,7 @@
 - `assets/js/flow.js`
 - `assets/js/monitor.js`
 - `assets/js/network.js`
-- `assets/js/extensions.js`
+- `assets/js/extensions.js`\n- `assets/js/editor.js`
 
 ## Run
 Open `index.html` in a modern browser. No build tools or dependencies are required. GitHub Pages can host the project from the main branch root.

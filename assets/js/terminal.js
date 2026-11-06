@@ -17,7 +17,7 @@
         status:async()=>{['NEXUS CORE ........ ONLINE','TERMINAL ........... ACTIVE','STORAGE ............ LOCAL BROWSER','FLOW STUDIO ........ READY'].forEach((x,i)=>write(x,i===0?'term-success':''));try{const health=await fetch(API_BASE+'/health');if(!health.ok)throw new Error('API unavailable');write('GITHUB API ........ ONLINE','term-success');const session=await apiRequest('/api/me');write(session.connected?'GITHUB ACCOUNT ..... @'+session.user.login:'GITHUB ACCOUNT ..... NOT CONNECTED',session.connected?'term-success':'term-muted');}catch(e){write('GITHUB API ........ OFFLINE','term-error');}},
         time:()=>write(new Date().toLocaleString()),
         clear:()=>out.replaceChildren(),
-        modules:()=>['Overview','Terminal','Flow Studio','Storage','Monitor','Network','Extensions'].forEach((x,i)=>write(String(i+1).padStart(2,'0')+'  '+x)),
+        modules:()=>['Overview','Terminal','Flow Studio','Storage','Monitor','Network','Extensions','Code Editor'].forEach((x,i)=>write(String(i+1).padStart(2,'0')+'  '+x)),
         about:()=>{write('NEXUS — Digital Laboratory');write('Version 0.2.0 | Modular browser workspace');},
         'connect':async a=>{if((a[0]||'').toLowerCase()!=='github'){write('Usage: connect github','term-error');return;}write('Redirecting to GitHub authorization...','term-muted');location.href=API_BASE+'/auth/github';},
         'github':async a=>{if((a[0]||'').toLowerCase()!=='status'){write('Usage: github status','term-error');return;}try{const d=await apiRequest('/api/me');if(d.connected)write('Connected as @'+d.user.login,'term-success');else write('GitHub is not connected. Run: connect github','term-muted');}catch(e){write(e.message,'term-error');}},

@@ -291,6 +291,7 @@
       e.dataTransfer.effectAllowed='copy';
      });
      el.addEventListener('click',()=>{
+      if(isReporter(d.id)){$('#graphStatus').textContent='Reporter blocks belong inside an expression slot. Drag this block into a slot.';return;}
       const n=make(d.id,60+Math.random()*120,70+Math.random()*100);
       nodes.push(n);save();render();
      });
@@ -345,7 +346,7 @@
      const movingId=e.dataTransfer.getData('application/x-nexus-block');
      if(movingId){
       const moving=findBlock(movingId);
-      if(!moving||containsBlock(moving,ownerId)){log('A block cannot be placed inside itself.');return;}
+      if(!moving||isReporter(moving.type)||containsBlock(moving,ownerId)){log('Only statement blocks can be placed in control slots.');return;}
       const wasTop=!!findTop(movingId),block=takeBlock(movingId);
       if(!block)return;
       if(wasTop)links=links.filter(l=>l.from!==movingId&&l.to!==movingId);
@@ -354,15 +355,54 @@
      }else{
       const type=e.dataTransfer.getData('application/x-nexus-type')||e.dataTransfer.getData('text/plain');
       if(!def(type))return;
+      if(isReporter(type)){$('#graphStatus').textContent='Reporter blocks must be dropped into an expression slot.';return;}
       target.push(make(type,20,20));
      }
      save();render();$('#graphStatus').textContent=branch==='else'?'Block added to ELSE body.':'Block added to nested body.';
     });
    }
+      function addExpressionDropHandlers(slot,ownerId,key){
+    slot.addEventListener('dragover',e=>{e.preventDefault();e.stopPropagation();slot.classList.add('zone-over');if(e.dataTransfer)e.dataTransfer.dropEffect='move';});
+    slot.addEventListener('dragleave',e=>{if(!slot.contains(e.relatedTarget))slot.classList.remove('zone-over');});
+    slot.addEventListener('drop',e=>{
+     e.preventDefault();e.stopPropagation();slot.classList.remove('zone-over');
+     const owner=findBlock(ownerId);if(!owner)return;
+     const movingId=e.dataTransfer.getData('application/x-nexus-block');let reporter=null;
+     if(movingId){
+      reporter=findBlock(movingId);
+      if(!reporter||!isReporter(reporter.type)){log('Only reporter blocks can be placed in an expression slot.');return;}
+      if(containsBlock(reporter,ownerId)){log('A reporter cannot contain its own parent.');return;}
+      if(owner.inputs?.[key]?.id===movingId)return;
+      if(owner.inputs?.[key]){$('#graphStatus').textContent='This expression slot is occupied. Clear it before replacing the reporter.';return;}
+      reporter=takeBlock(movingId);
+     }else{
+      const type=e.dataTransfer.getData('application/x-nexus-type')||e.dataTransfer.getData('text/plain');
+      if(!isReporter(type)){$('#graphStatus').textContent='Drop a reporter block into this slot.';return;}
+      if(owner.inputs?.[key]){$('#graphStatus').textContent='This expression slot is occupied. Clear it before replacing the reporter.';return;}
+      reporter=make(type,20,20);
+     }
+     if(!reporter)return;
+     owner.inputs=owner.inputs||{};owner.inputs[key]=reporter;
+     save();render();$('#graphStatus').textContent='Reporter connected to '+key+'.';
+    });
+   }
+   function renderExpressionSlot(owner,key){
+    const wrap=document.createElement('div');wrap.className='flow-expression-slot';
+    const label=document.createElement('span');label.className='flow-expression-label';label.textContent=key+' reporter (optional)';wrap.append(label);
+    const slot=document.createElement('div');slot.className='flow-reporter-drop';slot.dataset.owner=owner.id;slot.dataset.input=key;
+    const reporter=owner.inputs&&owner.inputs[key];
+    if(reporter){
+     const rendered=renderBlock(reporter,true);if(rendered)slot.append(rendered);
+     const clear=document.createElement('button');clear.type='button';clear.className='flow-clear-reporter';clear.textContent='CLEAR';clear.addEventListener('click',()=>{owner.inputs[key]=null;save();render();});slot.append(clear);
+    }else{
+     const hint=document.createElement('span');hint.className='flow-reporter-hint';hint.textContent='Drop a reporter here';slot.append(hint);
+    }
+    addExpressionDropHandlers(slot,owner.id,key);wrap.append(slot);return wrap;
+   }
    function renderBlock(n,nested=false){
     const d=def(n.type);if(!d)return null;
     const card=document.createElement('div');
-    card.className='graph-node '+d.cat+(nested?' nested-node':'')+(containerTypes.has(n.type)?' graph-container':'');
+    card.className='graph-node '+d.cat+(nested?' nested-node':'')+(isReporter(n.type)?' reporter-node':'')+(containerTypes.has(n.type)?' graph-container':'');
     card.dataset.id=n.id;
     if(!nested){card.style.left=n.x+'px';card.style.top=n.y+'px';}
     if(!nested){
@@ -381,13 +421,18 @@
      if(key==='operator'){
       field=document.createElement('select');
       ['>','<','>=','<=','=','!='].forEach(op=>{const option=document.createElement('option');option.value=op;option.textContent=op;field.append(option);});
+     }else if(n.type==='boolean'&&key==='value'){
+      field=document.createElement('select');
+      ['true','false'].forEach(value=>{const option=document.createElement('option');option.value=value;option.textContent=value;field.append(option);});
      }else{
       field=document.createElement('input');field.type='text';field.spellcheck=false;
+      if(key==='variable')field.setAttribute('list','flowVariableOptions');
      }
      field.className='graph-field';field.value=n.fields[key]??defaultValue;field.setAttribute('aria-label',key);field.title=key;field.dataset.field=key;
      field.addEventListener('change',()=>{n.fields[key]=field.value;save();});
      row.append(field);card.append(row);
     });
+    (expressionInputs[n.type]||[]).forEach(key=>card.append(renderExpressionSlot(n,key)));
     const controls=document.createElement('div');controls.className='graph-node-controls';
     const remove=document.createElement('button');remove.textContent='×';remove.title='Delete block';remove.setAttribute('aria-label','Delete block');remove.addEventListener('click',()=>removeBlock(n.id));controls.append(remove);card.append(controls);
     if(containerTypes.has(n.type)){
@@ -436,11 +481,13 @@
     const px=Math.max(8,e.clientX-rect.left+canvas.scrollLeft-105),py=Math.max(8,e.clientY-rect.top+canvas.scrollTop-25);
     if(blockId){
      const block=findBlock(blockId);if(!block)return;
+     if(isReporter(block.type)){$('#graphStatus').textContent='Reporter blocks must stay inside expression slots.';return;}
      const moving=takeBlock(blockId);if(!moving)return;
      moving.x=px;moving.y=py;nodes.push(moving);
     }else{
      const type=e.dataTransfer.getData('application/x-nexus-type')||e.dataTransfer.getData('text/plain');
      if(!def(type))return;
+     if(isReporter(type)){$('#graphStatus').textContent='Reporter blocks must be placed in an expression slot.';return;}
      nodes.push(make(type,px,py));
     }
     save();render();$('#graphStatus').textContent='Block placed on workspace.';

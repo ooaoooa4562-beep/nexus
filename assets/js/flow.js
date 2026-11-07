@@ -251,6 +251,7 @@
     if(!text||!Number.isFinite(number))throw Error('"'+label+'" must be a valid number.');
     return number;
    }
+   function ensureVariableCapacity(name){if(!Object.prototype.hasOwnProperty.call(vars,name)&&Object.keys(vars).length>=100)throw Error('A project can contain at most 100 variables.');}
    function readExpression(block,key,fallback,label){
     const value=block.inputs&&block.inputs[key]?evaluateReporter(block.inputs[key],vars):parseExpression(block.fields?.[key]??fallback,vars,label);
     if(typeof value!=='number'||!Number.isFinite(value))throw Error('"'+label+'" must produce a number.');
@@ -525,14 +526,14 @@
      case 'show':visible=true;updateSprite();break;
      case 'hide':visible=false;updateSprite();break;
      case 'wait':{const seconds=readNumber(f.seconds,'seconds');if(seconds<0||seconds>60)throw Error('Wait must be between 0 and 60 seconds.');await wait(seconds*1000);break;}
-     case 'set':vars[name]=readExpression(n,'value','0','value');updateVars();save();log(name+' = '+vars[name]);break;
-     case 'change':vars[name]=Number(vars[name]??0)+readExpression(n,'value','1','change amount');updateVars();save();log(name+' → '+vars[name]);break;
+     case 'set':ensureVariableCapacity(name);vars[name]=readExpression(n,'value','0','value');updateVars();save();log(name+' = '+vars[name]);break;
+     case 'change':ensureVariableCapacity(name);vars[name]=Number(vars[name]??0)+readExpression(n,'value','1','change amount');updateVars();save();log(name+' → '+vars[name]);break;
      case 'print':log(name+' = '+(vars[name]??0));break;
      case 'add':case 'subtract':case 'multiply':case 'divide':{
       const a=readExpression(n,'a','0','first operand'),b=readExpression(n,'b','0','second operand');
       if(n.type==='divide'&&b===0)throw Error('Division by zero.');
       const result=n.type==='add'?a+b:n.type==='subtract'?a-b:n.type==='multiply'?a*b:a/b;
-      const target=validVariableName(f.variable||'result');vars[target]=result;updateVars();save();
+      const target=validVariableName(f.variable||'result');ensureVariableCapacity(target);vars[target]=result;updateVars();save();
       const symbol={add:'+',subtract:'−',multiply:'×',divide:'÷'}[n.type];log(target+' = '+a+' '+symbol+' '+b+' = '+result);break;
      }
      case 'if':if(conditionFor(n))await executeSequence(n.children||[],depth+1);break;

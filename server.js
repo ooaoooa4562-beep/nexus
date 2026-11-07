@@ -374,13 +374,17 @@ app.delete("/api/social/friends/:publicId", requireSocialUser, async (req, res) 
 });
 
 
-async function migrateExistingDataToSupabase() {
+async function migrateExistingDataToNeon() {
   if (!pool) throw new Error("Source DATABASE_URL is not configured.");
-  if (!process.env.SUPABASE_DATABASE_URL) throw new Error("SUPABASE_DATABASE_URL is not configured.");
-  const target = new Pool({ connectionString: process.env.SUPABASE_DATABASE_URL, ssl: process.env.SUPABASE_DATABASE_SSL === "false" ? false : { rejectUnauthorized: false }, max: 2, connectionTimeoutMillis: 10000 });
+  if (!process.env.NEON_DATABASE_URL) throw new Error("NEON_DATABASE_URL is not configured.");
+  const target = new Pool({
+    connectionString: process.env.NEON_DATABASE_URL,
+    ssl: process.env.NEON_DATABASE_SSL === "false" ? false : { rejectUnauthorized: false },
+    max: 2,
+    connectionTimeoutMillis: 10000
+  });
   const client = await target.connect();
   try {
-    await ensureSchema();
     await client.query("BEGIN");
     await client.query("CREATE TABLE IF NOT EXISTS nexus_users (github_id TEXT PRIMARY KEY, public_id TEXT NOT NULL UNIQUE, github_login TEXT NOT NULL, display_name VARCHAR(32) NOT NULL, bio VARCHAR(160) NOT NULL DEFAULT '', avatar_url TEXT NOT NULL DEFAULT '', avatar_data TEXT NOT NULL DEFAULT '', created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
     await client.query("CREATE TABLE IF NOT EXISTS nexus_friendships (id BIGSERIAL PRIMARY KEY, requester_id TEXT NOT NULL REFERENCES nexus_users(github_id) ON DELETE CASCADE, addressee_id TEXT NOT NULL REFERENCES nexus_users(github_id) ON DELETE CASCADE, status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','accepted','declined')), created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), CHECK (requester_id <> addressee_id), UNIQUE (requester_id, addressee_id))");
@@ -401,7 +405,10 @@ async function migrateExistingDataToSupabase() {
   } catch (error) {
     await client.query("ROLLBACK").catch(() => {});
     throw error;
-  } finally { client.release(); await target.end(); }
+  } finally {
+    client.release();
+    await target.end();
+  }
 }
 
 app.use((error, _req, res, _next) => {
@@ -409,12 +416,14 @@ app.use((error, _req, res, _next) => {
   res.status(500).json({ error: "Internal server error." });
 });
 async function startServer() {
-  if (process.env.RUN_SUPABASE_MIGRATION === "true") {
+  if (process.env.RUN_NEON_MIGRATION === "true") {
     try {
-      const counts = await migrateExistingDataToSupabase();
+      const counts = await migrateExistingDataToNeon();
       console.log("[NEXUS migration] COMPLETE", JSON.stringify(counts));
     } catch (error) {
       console.error("[NEXUS migration] FAILED", error.message);
+      process.exitCode = 1;
+      throw error;
     }
   }
   app.listen(PORT, "0.0.0.0", () => console.log("NEXUS GitHub API listening on " + PORT));

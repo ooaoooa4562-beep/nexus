@@ -1,6 +1,6 @@
 # NEXUS — Digital Laboratory
 
-**Current release: 0.9.0. Flow Studio milestone: 1.0.0 — Expression Reporters.**
+**Current release: 0.9.0. Flow Studio milestone: 1.0.1 — Text Reporters.**
 
 ## Implemented
 
@@ -17,10 +17,13 @@
 ### Flow Studio
 - Scratch-style nested statement blocks with separate `DO` and `ELSE` bodies; blocks can be moved between containers and nested sequences.
 - `if`, `if / else`, `repeat` and `forever` execute their nested bodies with STOP cancellation and runtime safety limits.
-- Reporter blocks can be nested into expression slots: number, variable, arithmetic, comparison, boolean, AND, OR and NOT.
+- Reporter blocks can be nested into expression slots: number, variable, arithmetic, comparison, boolean, AND, OR, NOT, text, join, length and contains.
+- `say` and `think` accept text reporters, so nested expressions can generate stage messages without JavaScript code.
 - Numeric text fields also accept safe expressions such as `($score + 3) * 2`; no JavaScript `eval` is used.
+- Comparisons support numeric and text values; text equality and contains checks are case-insensitive, while mixed-type comparisons are rejected.
+- Arithmetic reporters reject non-finite results instead of allowing `Infinity` into the runtime.
 - `set`, `change`, repeat counts and arithmetic statement blocks accept reporter expressions.
-- A variable manager supports creating, deleting and browsing up to 100 numeric variables; variable values are saved with the local project and retained between runs.
+- A variable manager supports creating, deleting and browsing up to 100 numeric variables; variable values are saved with the local project and retained between runs. Prototype-inherited object properties are not treated as project variables.
 - Top-level statement blocks can still be connected with manual wires; reporters are restricted to expression slots.
 - Existing local projects and manually wired legacy repeat/if scripts are normalized for backward compatibility.
 
@@ -63,11 +66,12 @@
 - `server.js`
 
 ## Run
-Open `index.html` in a modern browser. No local build step is required. GitHub Pages can host the project from the main branch root. The code editor loads Ace from a CDN and needs an internet connection; GitHub browsing and saving require an active NEXUS GitHub session.
+Open `index.html` in a modern browser. Run Flow Studio unit tests with `npm run test:flow` in a Node.js 20+ environment. No local build step is required. GitHub Pages can host the project from the main branch root. The code editor loads Ace from a CDN and needs an internet connection; GitHub browsing and saving require an active NEXUS GitHub session.
 
 ## Limitations
 - Terminal is a browser command simulator, not an operating-system shell.
 - Flow Studio runs visual commands in the browser; it does not execute arbitrary external code or connect to external services.
+- Project variables are still numeric-only; text reporters currently produce values for messages and expressions, not persistent string variables.
 - The key-pressed event block currently logs a manual-start event; it does not yet listen for physical keyboard input.
 - `forever` loops must be stopped manually. A 100,000-block safety limit prevents runaway execution.
 - Storage and Flow Studio projects are local to the browser profile. Clearing site data may remove them.

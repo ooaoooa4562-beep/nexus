@@ -389,7 +389,7 @@
    }
    function renderExpressionSlot(owner,key){
     const wrap=document.createElement('div');wrap.className='flow-expression-slot';
-    const label=document.createElement('span');label.className='flow-expression-label';label.textContent=key+' reporter (optional)';wrap.append(label);
+    const label=document.createElement('span');label.className='flow-expression-label';label.textContent=key==='condition'?'condition reporter (overrides comparison fields)':key+' reporter (overrides text input)';wrap.append(label);
     const slot=document.createElement('div');slot.className='flow-reporter-drop';slot.dataset.owner=owner.id;slot.dataset.input=key;
     const reporter=owner.inputs&&owner.inputs[key];
     if(reporter){

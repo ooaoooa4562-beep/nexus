@@ -32,12 +32,16 @@
   {id:'boolean',cat:'operators',label:'boolean',kind:'reporter',fields:[['value','true']]},
   {id:'and',cat:'operators',label:'AND',kind:'reporter',fields:[]},
   {id:'or',cat:'operators',label:'OR',kind:'reporter',fields:[]},
-  {id:'not',cat:'operators',label:'NOT',kind:'reporter',fields:[]}
+  {id:'not',cat:'operators',label:'NOT',kind:'reporter',fields:[]},
+  {id:'text',cat:'operators',label:'text reporter',kind:'reporter',fields:[['value','Hello']]},
+  {id:'join',cat:'operators',label:'( ) join ( )',kind:'reporter',fields:[]},
+  {id:'length',cat:'operators',label:'length of ( )',kind:'reporter',fields:[]},
+  {id:'contains',cat:'operators',label:'( ) contains ( )',kind:'reporter',fields:[]}
  ];
  const cats=[['events','Events'],['motion','Motion'],['looks','Looks'],['control','Control'],['variables','Variables'],['operators','Operators']];
  const containerTypes=new Set(['repeat','forever','if','ifElse']);
  const reporterTypes=new Set(defs.filter(d=>d.kind==='reporter').map(d=>d.id));
- const expressionInputs={repeat:['times'],if:['condition'],ifElse:['condition'],set:['value'],change:['value'],add:['a','b'],subtract:['a','b'],multiply:['a','b'],divide:['a','b'],mathAdd:['a','b'],mathSubtract:['a','b'],mathMultiply:['a','b'],mathDivide:['a','b'],compare:['a','b'],and:['left','right'],or:['left','right'],not:['value']};
+ const expressionInputs={repeat:['times'],if:['condition'],ifElse:['condition'],say:['text'],think:['text'],set:['value'],change:['value'],add:['a','b'],subtract:['a','b'],multiply:['a','b'],divide:['a','b'],mathAdd:['a','b'],mathSubtract:['a','b'],mathMultiply:['a','b'],mathDivide:['a','b'],compare:['a','b'],and:['left','right'],or:['left','right'],not:['value'],join:['left','right'],length:['value'],contains:['text','search']};
  const isReporter=type=>reporterTypes.has(type);
  const uid=()=> 'n'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
  const def=t=>defs.find(d=>d.id===t);
@@ -89,7 +93,7 @@
   function primary(){
    const token=peek();if(!token)throw Error('Incomplete '+label+'.');
    if(token.type==='number'){cursor++;return token.value;}
-   if(token.type==='variable'){cursor++;const value=Number(variables[token.value]??0);if(!Number.isFinite(value))throw Error('Variable "'+token.value+'" is not numeric.');return value;}
+   if(token.type==='variable'){cursor++;const raw=Object.prototype.hasOwnProperty.call(variables,token.value)?variables[token.value]:0;const value=Number(raw);if(!Number.isFinite(value))throw Error('Variable "'+token.value+'" is not numeric.');return value;}
    if(token.value==='('){cursor++;const value=additive();if(peek()?.value!==')')throw Error('Missing closing parenthesis in '+label+'.');cursor++;return value;}
    throw Error('Expected a number or variable in '+label+'.');
   }
@@ -119,29 +123,47 @@
   return result;
  }
  function compareValues(left,operator,right){
-  switch(operator){case '>':return left>right;case '<':return left<right;case '>=':return left>=right;case '<=':return left<=right;case '=':case '==':return left===right;case '!=':return left!==right;default:throw Error('Unknown comparison operator "'+operator+'".');}
+  const leftType=typeof left,rightType=typeof right;
+  if(leftType!==rightType)throw Error('Cannot compare different value types ('+leftType+' and '+rightType+').');
+  const equal=leftType==='string'?left.toLocaleLowerCase()===right.toLocaleLowerCase():left===right;
+  switch(operator){
+   case '=':case '==':return equal;
+   case '!=':return !equal;
+   case '>':case '<':case '>=':case '<=':
+    if(leftType!=='number'&&leftType!=='string')throw Error('Relational comparison requires two numbers or two text values.');
+    return operator==='>'?left>right:operator==='<'?left<right:operator==='>='?left>=right:left<=right;
+   default:throw Error('Unknown comparison operator "'+operator+'".');
+  }
  }
  function evaluateReporter(node,variables={},depth=0){
   if(!node||depth>40)throw Error('Reporter expression depth limit reached.');
   const fields=node.fields||{},inputs=node.inputs||{};
   const read=(key,fallback='0')=>inputs[key]?evaluateReporter(inputs[key],variables,depth+1):parseExpression(fields[key]??fallback,variables,key);
+  const readText=(key,fallback='')=>inputs[key]?String(evaluateReporter(inputs[key],variables,depth+1)):String(fields[key]??fallback);
   const numeric=(value,label)=>{if(typeof value!=='number'||!Number.isFinite(value))throw Error(label+' reporter must return a finite number.');return value;};
+  const finite=(value,label)=>{if(!Number.isFinite(value))throw Error(label+' produced a non-finite number.');return value;};
   switch(node.type){
    case 'number':return parseExpression(fields.value??'0',variables,'number');
    case 'getVar':{
     const name=String(fields.variable||'score').trim();
     if(!/^[A-Za-z_][A-Za-z0-9_]{0,31}$/.test(name))throw Error('Invalid variable name "'+name+'".');
-    const value=Number(variables[name]??0);if(!Number.isFinite(value))throw Error('Variable "'+name+'" is not numeric.');return value;
+    const raw=Object.prototype.hasOwnProperty.call(variables,name)?variables[name]:0;
+    const value=Number(raw);if(!Number.isFinite(value))throw Error('Variable "'+name+'" is not numeric.');return value;
    }
    case 'boolean':return String(fields.value??'true')==='true';
-   case 'mathAdd':return numeric(read('a','0'),'Left')+numeric(read('b','0'),'Right');
-   case 'mathSubtract':return numeric(read('a','0'),'Left')-numeric(read('b','0'),'Right');
-   case 'mathMultiply':return numeric(read('a','0'),'Left')*numeric(read('b','0'),'Right');
+   case 'mathAdd':return finite(numeric(read('a','0'),'Left')+numeric(read('b','0'),'Right'),'Addition');
+   case 'mathSubtract':return finite(numeric(read('a','0'),'Left')-numeric(read('b','0'),'Right'),'Subtraction');
+   case 'mathMultiply':return finite(numeric(read('a','0'),'Left')*numeric(read('b','0'),'Right'),'Multiplication');
    case 'mathDivide':{
     const left=numeric(read('a','0'),'Left'),right=numeric(read('b','0'),'Right');
-    if(right===0)throw Error('Division by zero.');return left/right;
+    if(right===0)throw Error('Division by zero.');
+    return finite(left/right,'Division');
    }
-   case 'compare':return compareValues(numeric(read('a','0'),'Left'),fields.operator||'>',numeric(read('b','0'),'Right'));
+   case 'compare':return compareValues(read('a','0'),fields.operator||'>',read('b','0'));
+   case 'text':return String(fields.value??'');
+   case 'join':return readText('left')+readText('right');
+   case 'length':return Array.from(readText('value')).length;
+   case 'contains':return readText('text').toLocaleLowerCase().includes(readText('search').toLocaleLowerCase());
    case 'and':return Boolean(read('left','0'))&&Boolean(read('right','0'));
    case 'or':return Boolean(read('left','0'))||Boolean(read('right','0'));
    case 'not':return !Boolean(read('value','0'));
@@ -150,7 +172,7 @@
  }
  function normalizeVariables(raw){
   if(!raw||typeof raw!=='object'||Array.isArray(raw))return {score:0};
-  const result={};Object.entries(raw).forEach(([name,value])=>{if(/^[A-Za-z_][A-Za-z0-9_]{0,31}$/.test(name)&&typeof value==='number'&&Number.isFinite(value))result[name]=value;});
+  const result=Object.create(null);Object.entries(raw).forEach(([name,value])=>{if(/^[A-Za-z_][A-Za-z0-9_]{0,31}$/.test(name)&&typeof value==='number'&&Number.isFinite(value))result[name]=value;});
   return result;
  }
  const load=()=>{
@@ -256,6 +278,9 @@
     const value=block.inputs&&block.inputs[key]?evaluateReporter(block.inputs[key],vars):parseExpression(block.fields?.[key]??fallback,vars,label);
     if(typeof value!=='number'||!Number.isFinite(value))throw Error('"'+label+'" must produce a number.');
     return value;
+   }
+   function readValue(block,key,fallback=''){
+    return block.inputs&&block.inputs[key]?evaluateReporter(block.inputs[key],vars):String(block.fields?.[key]??fallback);
    }
    function compare(left,operator,right){return compareValues(left,operator,right);}
    function conditionFor(n){
@@ -522,7 +547,10 @@
      case 'move':{const steps=readNumber(f.steps,'steps');x+=Math.cos(angle*Math.PI/180)*steps;y+=Math.sin(angle*Math.PI/180)*steps;updateSprite();break;}
      case 'turn':angle+=readNumber(f.degrees,'degrees');updateSprite();break;
      case 'goto':x=readNumber(f.x,'x');y=readNumber(f.y,'y');updateSprite();break;
-     case 'say':case 'think':bubble.textContent=(n.type==='think'?'💭 ':'')+(f.text||'');bubble.hidden=false;log(f.text||'');break;
+     case 'say':case 'think':{
+      const message=String(readValue(n,'text',f.text||''));
+      bubble.textContent=(n.type==='think'?'💭 ':'')+message;bubble.hidden=false;log(message);break;
+     }
      case 'show':visible=true;updateSprite();break;
      case 'hide':visible=false;updateSprite();break;
      case 'wait':{const seconds=readNumber(f.seconds,'seconds');if(seconds<0||seconds>60)throw Error('Wait must be between 0 and 60 seconds.');await wait(seconds*1000);break;}
@@ -610,7 +638,7 @@
    });
    $('#flowSave').addEventListener('click',()=>{save();log('✓ Project saved locally');});
    $('#flowNew').addEventListener('click',()=>{
-    if(confirm('Create a new empty project?')){nodes=[];links=[];vars={score:0};pending=null;updateVars();save();render();out.textContent='New project created.';}
+    if(confirm('Create a new empty project?')){nodes=[];links=[];vars=Object.assign(Object.create(null),{score:0});pending=null;updateVars();save();render();out.textContent='New project created.';}
    });
    $('#stageReset').addEventListener('click',resetSprite);
    $('#addVariable').addEventListener('click',()=>{

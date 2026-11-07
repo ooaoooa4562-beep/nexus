@@ -21,16 +21,31 @@
   {id:'add',cat:'operators',label:'add numbers',fields:[['a','2'],['b','3'],['variable','result']]},
   {id:'subtract',cat:'operators',label:'subtract numbers',fields:[['a','5'],['b','2'],['variable','result']]},
   {id:'multiply',cat:'operators',label:'multiply numbers',fields:[['a','3'],['b','4'],['variable','result']]},
-  {id:'divide',cat:'operators',label:'divide numbers',fields:[['a','8'],['b','2'],['variable','result']]}
+  {id:'divide',cat:'operators',label:'divide numbers',fields:[['a','8'],['b','2'],['variable','result']]},
+  {id:'number',cat:'operators',label:'number reporter',kind:'reporter',fields:[['value','5']]},
+  {id:'getVar',cat:'variables',label:'variable reporter',kind:'reporter',fields:[['variable','score']]},
+  {id:'mathAdd',cat:'operators',label:'( ) + ( )',kind:'reporter',fields:[]},
+  {id:'mathSubtract',cat:'operators',label:'( ) − ( )',kind:'reporter',fields:[]},
+  {id:'mathMultiply',cat:'operators',label:'( ) × ( )',kind:'reporter',fields:[]},
+  {id:'mathDivide',cat:'operators',label:'( ) ÷ ( )',kind:'reporter',fields:[]},
+  {id:'compare',cat:'operators',label:'compare ( ) with ( )',kind:'reporter',fields:[['operator','>']]},
+  {id:'boolean',cat:'operators',label:'boolean',kind:'reporter',fields:[['value','true']]},
+  {id:'and',cat:'operators',label:'AND',kind:'reporter',fields:[]},
+  {id:'or',cat:'operators',label:'OR',kind:'reporter',fields:[]},
+  {id:'not',cat:'operators',label:'NOT',kind:'reporter',fields:[]}
  ];
  const cats=[['events','Events'],['motion','Motion'],['looks','Looks'],['control','Control'],['variables','Variables'],['operators','Operators']];
  const containerTypes=new Set(['repeat','forever','if','ifElse']);
+ const reporterTypes=new Set(defs.filter(d=>d.kind==='reporter').map(d=>d.id));
+ const expressionInputs={repeat:['times'],if:['condition'],ifElse:['condition'],set:['value'],change:['value'],add:['a','b'],subtract:['a','b'],multiply:['a','b'],divide:['a','b'],mathAdd:['a','b'],mathSubtract:['a','b'],mathMultiply:['a','b'],mathDivide:['a','b'],compare:['a','b'],and:['left','right'],or:['left','right'],not:['value']};
+ const isReporter=type=>reporterTypes.has(type);
  const uid=()=> 'n'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
  const def=t=>defs.find(d=>d.id===t);
  const make=(type,x=80,y=70)=>{
-  const d=def(type),fields={};
+  const d=def(type),fields={},inputs={};
   (d?.fields||[]).forEach(([k,v])=>fields[k]=v);
-  return {id:uid(),type,fields,x,y,children:[],elseChildren:[]};
+  (expressionInputs[type]||[]).forEach(key=>inputs[key]=null);
+  return {id:uid(),type,fields,inputs,x,y,children:[],elseChildren:[]};
  };
  const starter=()=>{
   const a=make('flag',80,80),b=make('move',80,245),c=make('say',80,410);
@@ -38,7 +53,9 @@
  };
  function normalizeBlock(raw,x=60,y=60){
   const n=raw||{},legacyControl=(n._legacyControl===true)||((n.type==='repeat'||n.type==='if')&&!Array.isArray(n.children));
-  const block={...n,id:n.id||uid(),type:n.type,fields:n.fields&&typeof n.fields==='object'?{...n.fields}:{},x:Number.isFinite(Number(n.x))?Number(n.x):x,y:Number.isFinite(Number(n.y))?Number(n.y):y,children:Array.isArray(n.children)?n.children.map((c,i)=>normalizeBlock(c,20,20+i*80)):[],elseChildren:Array.isArray(n.elseChildren)?n.elseChildren.map((c,i)=>normalizeBlock(c,20,20+i*80)):[]};
+  const inputs={};
+  (expressionInputs[n.type]||[]).forEach(key=>{const value=n.inputs&&n.inputs[key];inputs[key]=value&&typeof value==='object'?normalizeBlock(value,20,20):null;});
+  const block={...n,id:n.id||uid(),type:n.type,fields:n.fields&&typeof n.fields==='object'?{...n.fields}:{},inputs,x:Number.isFinite(Number(n.x))?Number(n.x):x,y:Number.isFinite(Number(n.y))?Number(n.y):y,children:Array.isArray(n.children)?n.children.map((c,i)=>normalizeBlock(c,20,20+i*80)):[],elseChildren:Array.isArray(n.elseChildren)?n.elseChildren.map((c,i)=>normalizeBlock(c,20,20+i*80)):[]};
   if(legacyControl)block._legacyControl=true;else delete block._legacyControl;
   return block;
  }
@@ -52,15 +69,102 @@
   }
   return starter();
  }
+
+ function parseExpression(source,variables={},label='expression'){
+  const input=String(source??'').trim();
+  if(!input)throw Error(label+' is empty.');
+  const tokens=[];let index=0;
+  while(index<input.length){
+   const rest=input.slice(index),space=/^\s+/.exec(rest);
+   if(space){index+=space[0].length;continue;}
+   const number=/^(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?/i.exec(rest);
+   if(number){tokens.push({type:'number',value:Number(number[0])});index+=number[0].length;continue;}
+   const variable=/^\$([A-Za-z_][A-Za-z0-9_]{0,31})/.exec(rest);
+   if(variable){tokens.push({type:'variable',value:variable[1]});index+=variable[0].length;continue;}
+   const symbol=rest[0];
+   if('+-*/%()'.includes(symbol)){tokens.push({type:'symbol',value:symbol});index++;continue;}
+   throw Error('Unexpected token "'+symbol+'" in '+label+'.');
+  }
+  let cursor=0;const peek=()=>tokens[cursor];
+  function primary(){
+   const token=peek();if(!token)throw Error('Incomplete '+label+'.');
+   if(token.type==='number'){cursor++;return token.value;}
+   if(token.type==='variable'){cursor++;const value=Number(variables[token.value]??0);if(!Number.isFinite(value))throw Error('Variable "'+token.value+'" is not numeric.');return value;}
+   if(token.value==='('){cursor++;const value=additive();if(peek()?.value!==')')throw Error('Missing closing parenthesis in '+label+'.');cursor++;return value;}
+   throw Error('Expected a number or variable in '+label+'.');
+  }
+  function unary(){if(peek()?.value==='+'){cursor++;return unary();}if(peek()?.value==='-'){cursor++;return -unary();}return primary();}
+  function multiplicative(){
+   let value=unary();
+   while(['*','/','%'].includes(peek()?.value)){
+    const operator=tokens[cursor++].value,right=unary();
+    if((operator==='/'||operator==='%')&&right===0)throw Error('Division by zero in '+label+'.');
+    value=operator==='*'?value*right:operator==='/'?value/right:value%right;
+    if(!Number.isFinite(value))throw Error(label+' produced a non-finite number.');
+   }
+   return value;
+  }
+  function additive(){
+   let value=multiplicative();
+   while(peek()?.value==='+'||peek()?.value==='-'){
+    const operator=tokens[cursor++].value,right=multiplicative();
+    value=operator==='+'?value+right:value-right;
+    if(!Number.isFinite(value))throw Error(label+' produced a non-finite number.');
+   }
+   return value;
+  }
+  const result=additive();
+  if(cursor!==tokens.length)throw Error('Unexpected token "'+tokens[cursor].value+'" in '+label+'.');
+  if(!Number.isFinite(result))throw Error(label+' must produce a finite number.');
+  return result;
+ }
+ function compareValues(left,operator,right){
+  switch(operator){case '>':return left>right;case '<':return left<right;case '>=':return left>=right;case '<=':return left<=right;case '=':case '==':return left===right;case '!=':return left!==right;default:throw Error('Unknown comparison operator "'+operator+'".');}
+ }
+ function evaluateReporter(node,variables={},depth=0){
+  if(!node||depth>40)throw Error('Reporter expression depth limit reached.');
+  const fields=node.fields||{},inputs=node.inputs||{};
+  const read=(key,fallback='0')=>inputs[key]?evaluateReporter(inputs[key],variables,depth+1):parseExpression(fields[key]??fallback,variables,key);
+  const numeric=(value,label)=>{if(typeof value!=='number'||!Number.isFinite(value))throw Error(label+' reporter must return a finite number.');return value;};
+  switch(node.type){
+   case 'number':return parseExpression(fields.value??'0',variables,'number');
+   case 'getVar':{
+    const name=String(fields.variable||'score').trim();
+    if(!/^[A-Za-z_][A-Za-z0-9_]{0,31}$/.test(name))throw Error('Invalid variable name "'+name+'".');
+    const value=Number(variables[name]??0);if(!Number.isFinite(value))throw Error('Variable "'+name+'" is not numeric.');return value;
+   }
+   case 'boolean':return String(fields.value??'true')==='true';
+   case 'mathAdd':return numeric(read('a','0'),'Left')+numeric(read('b','0'),'Right');
+   case 'mathSubtract':return numeric(read('a','0'),'Left')-numeric(read('b','0'),'Right');
+   case 'mathMultiply':return numeric(read('a','0'),'Left')*numeric(read('b','0'),'Right');
+   case 'mathDivide':{
+    const left=numeric(read('a','0'),'Left'),right=numeric(read('b','0'),'Right');
+    if(right===0)throw Error('Division by zero.');return left/right;
+   }
+   case 'compare':return compareValues(numeric(read('a','0'),'Left'),fields.operator||'>',numeric(read('b','0'),'Right'));
+   case 'and':return Boolean(read('left','0'))&&Boolean(read('right','0'));
+   case 'or':return Boolean(read('left','0'))||Boolean(read('right','0'));
+   case 'not':return !Boolean(read('value','0'));
+   default:throw Error('Unsupported reporter block "'+node.type+'".');
+  }
+ }
+ function normalizeVariables(raw){
+  if(!raw||typeof raw!=='object'||Array.isArray(raw))return {score:0};
+  const result={};Object.entries(raw).forEach(([name,value])=>{if(/^[A-Za-z_][A-Za-z0-9_]{0,31}$/.test(name)&&typeof value==='number'&&Number.isFinite(value))result[name]=value;});
+  return result;
+ }
  const load=()=>{
   try{
    const current=localStorage.getItem(KEY);
-   if(current)return normalize(JSON.parse(current));
+   if(current){const parsed=JSON.parse(current);return {...normalize(parsed),variables:normalizeVariables(parsed.variables)};}
    const old=localStorage.getItem('nexus.flow.scratch.v2');
-   return old?normalize(JSON.parse(old)):starter();
-  }catch{return starter();}
+   if(old){const parsed=JSON.parse(old);return {...normalize(parsed),variables:normalizeVariables(parsed.variables)};}
+   return {...starter(),variables:{score:0}};
+  }catch{return {...starter(),variables:{score:0}};}
  };
  api.flow={
+  evaluateExpression:(expression,variables={})=>parseExpression(expression,variables),
+  evaluateReporter:(reporter,variables={})=>evaluateReporter(reporter,variables),
   render:()=>'<div class="eyebrow">NEXUS MODULE / 006</div><div class="module-title-row"><div><h1>Flow <span>Studio.</span></h1><p class="subtitle">Build programs with nested control blocks, variables and a live stage.</p></div><span class="flow-badge">● BLOCK EDITOR</span></div><div class="scratch-toolbar graph-toolbar"><div class="scratch-project"><span class="scratch-project-icon">✳</span><input id="projectName" value="My first project" aria-label="Project name"></div><div class="graph-tools"><button class="secondary-button" id="wireMode">⌁ WIRE: OFF</button><button class="secondary-button" id="deleteLinks">CLEAR WIRES</button><button class="secondary-button" id="flowNew">NEW</button><button class="secondary-button" id="flowSave">SAVE</button><button class="run-button" id="flowRun">▶ RUN</button><button class="stop-button" id="flowStop" disabled>■ STOP</button></div></div><div class="graph-workbench"><aside class="graph-library"><div class="graph-library-head"><b>BLOCK LIBRARY</b><small>DRAG BLOCKS TO CANVAS OR INTO SLOTS</small></div><div class="graph-categories" id="scratchCategories"></div><div class="graph-palette" id="scratchPalette"></div></aside><section class="graph-editor"><div class="graph-editor-head"><b>WORKSPACE</b><span id="blockCount">0 BLOCKS</span><span class="graph-help">Drag blocks · drop into orange control slots · WIRE links top-level scripts</span></div><div class="graph-canvas" id="graphCanvas"><svg class="graph-wires" id="graphWires"></svg><div id="graphNodes"></div><div class="graph-empty" id="graphEmpty">Drag blocks here from the library</div></div><div class="graph-status" id="graphStatus">Drop blocks into a control slot to build a nested body.</div></section><aside class="graph-side"><div class="scratch-panel-title"><b>STAGE</b><small>360 × 260</small></div><div class="scratch-stage" id="scratchStage"><div class="stage-grid"></div><div class="stage-sprite" id="stageSprite">🐱</div><div class="stage-bubble" id="stageBubble" hidden></div></div><div class="stage-controls"><button id="stageReset">↺ RESET SPRITE</button><span id="stagePosition">x: 0 y: 0</span></div><div class="scratch-console"><div class="scratch-panel-title"><b>OUTPUT</b><button id="clearOutput">CLEAR</button></div><div id="scratchOutput" class="scratch-output">Ready. Press RUN to execute the script.</div><div id="variableReadout" class="variable-readout">Variables: score = 0</div></div></aside></div><div class="scratch-footer"><span><i></i> LOCAL PROJECT</span><span>Nested blocks · Variables · Runtime stop control</span></div>',
   mount(root){
    let data=load(),nodes=data.nodes,links=data.links,category='events',wireMode=false,pending=null,running=false,stopFlag=false,runAbort=null,x=0,y=0,angle=0,visible=true,vars={score:0},runtimeSteps=0;

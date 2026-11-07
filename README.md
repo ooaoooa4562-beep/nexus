@@ -1,6 +1,6 @@
 # NEXUS — Digital Laboratory
 
-**Current release: 0.9.0 — Nested Flow Studio.**
+**Current release: 0.9.0. Flow Studio milestone: 1.0.0 — Expression Reporters.**
 
 ## Implemented
 
@@ -15,14 +15,14 @@
 - Data persists in browser localStorage, not on a server.
 
 ### Flow Studio
-- Scratch-style nested control blocks with editable body slots.
-- `if` and `if / else` support nested statement sequences and comparison operators (`>`, `<`, `>=`, `<=`, `=`, `!=`).
-- `repeat` runs its nested body; `forever` runs until STOP is pressed.
-- Variables support set, change and print operations.
-- Arithmetic blocks calculate and store results in a named variable; operands can reference another variable with `$name`.
-- Top-level blocks can still be connected with wires.
-- Runtime supports cancellation during waits, nested-depth and execution limits, and readable errors.
-- Projects save in browser localStorage. Existing manually wired repeat/if projects retain their previous execution behavior.
+- Scratch-style nested statement blocks with separate `DO` and `ELSE` bodies; blocks can be moved between containers and nested sequences.
+- `if`, `if / else`, `repeat` and `forever` execute their nested bodies with STOP cancellation and runtime safety limits.
+- Reporter blocks can be nested into expression slots: number, variable, arithmetic, comparison, boolean, AND, OR and NOT.
+- Numeric text fields also accept safe expressions such as `($score + 3) * 2`; no JavaScript `eval` is used.
+- `set`, `change`, repeat counts and arithmetic statement blocks accept reporter expressions.
+- A variable manager supports creating, deleting and browsing up to 100 numeric variables; variable values are saved with the local project and retained between runs.
+- Top-level statement blocks can still be connected with manual wires; reporters are restricted to expression slots.
+- Existing local projects and manually wired legacy repeat/if scripts are normalized for backward compatibility.
 
 ### Code Editor
 - GitHub repository explorer with directory navigation.

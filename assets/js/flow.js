@@ -508,7 +508,7 @@
     $('#stagePosition').textContent='x: '+Math.round(x)+' y: '+Math.round(y);
    }
    function resetSprite(){
-    x=0;y=0;angle=0;visible=true;vars={score:0};bubble.hidden=true;updateSprite();updateVars();
+    x=0;y=0;angle=0;visible=true;bubble.hidden=true;updateSprite();updateVars();
    }
    async function runBlock(n,depth=0){
     if(stopFlag)return;
@@ -525,20 +525,20 @@
      case 'show':visible=true;updateSprite();break;
      case 'hide':visible=false;updateSprite();break;
      case 'wait':{const seconds=readNumber(f.seconds,'seconds');if(seconds<0||seconds>60)throw Error('Wait must be between 0 and 60 seconds.');await wait(seconds*1000);break;}
-     case 'set':vars[name]=readOperand(f.value??'0','value');updateVars();log(name+' = '+vars[name]);break;
-     case 'change':vars[name]=Number(vars[name]??0)+readOperand(f.value??'1','change amount');updateVars();log(name+' → '+vars[name]);break;
+     case 'set':vars[name]=readExpression(n,'value','0','value');updateVars();save();log(name+' = '+vars[name]);break;
+     case 'change':vars[name]=Number(vars[name]??0)+readExpression(n,'value','1','change amount');updateVars();save();log(name+' → '+vars[name]);break;
      case 'print':log(name+' = '+(vars[name]??0));break;
      case 'add':case 'subtract':case 'multiply':case 'divide':{
-      const a=readOperand(f.a,'first operand'),b=readOperand(f.b,'second operand');
+      const a=readExpression(n,'a','0','first operand'),b=readExpression(n,'b','0','second operand');
       if(n.type==='divide'&&b===0)throw Error('Division by zero.');
       const result=n.type==='add'?a+b:n.type==='subtract'?a-b:n.type==='multiply'?a*b:a/b;
-      const target=validVariableName(f.variable||'result');vars[target]=result;updateVars();
+      const target=validVariableName(f.variable||'result');vars[target]=result;updateVars();save();
       const symbol={add:'+',subtract:'−',multiply:'×',divide:'÷'}[n.type];log(target+' = '+a+' '+symbol+' '+b+' = '+result);break;
      }
      case 'if':if(conditionFor(n))await executeSequence(n.children||[],depth+1);break;
      case 'ifElse':await executeSequence(conditionFor(n)?(n.children||[]):(n.elseChildren||[]),depth+1);break;
      case 'repeat':{
-      const times=readNumber(f.times,'repeat count');
+      const times=readExpression(n,'times','3','repeat count');
       if(times<0||times>1000)throw Error('Repeat count must be between 0 and 1000.');
       for(let i=0;i<Math.floor(times)&&!stopFlag;i++)await executeSequence(n.children||[],depth+1);
       break;
@@ -563,7 +563,7 @@
      const n=findTop(current);if(!n)break;
      if(n._legacyControl&&n.type==='repeat'){
       tick();
-      const times=readNumber(n.fields?.times??'0','repeat count');
+      const times=readExpression(n,'times','0','repeat count');
       if(times<0||times>1000)throw Error('Repeat count must be between 0 and 1000.');
       const next=outgoing(n.id);
       if(next)for(let i=0;i<Math.floor(times)&&!stopFlag;i++)await executeLinked(next.to,depth+1);
@@ -609,9 +609,18 @@
    });
    $('#flowSave').addEventListener('click',()=>{save();log('✓ Project saved locally');});
    $('#flowNew').addEventListener('click',()=>{
-    if(confirm('Create a new empty project?')){nodes=[];links=[];pending=null;save();render();out.textContent='New project created.';}
+    if(confirm('Create a new empty project?')){nodes=[];links=[];vars={score:0};pending=null;updateVars();save();render();out.textContent='New project created.';}
    });
    $('#stageReset').addEventListener('click',resetSprite);
+   $('#addVariable').addEventListener('click',()=>{
+    try{
+     const name=validVariableName($('#newVariableName').value);
+     if(Object.prototype.hasOwnProperty.call(vars,name))throw Error('Variable "'+name+'" already exists.');
+     if(Object.keys(vars).length>=100)throw Error('A project can contain at most 100 variables.');
+     vars[name]=0;$('#newVariableName').value='';updateVars();save();log('Variable created: '+name);
+    }catch(error){$('#graphStatus').textContent='Variable error: '+error.message;}
+   });
+   $('#newVariableName').addEventListener('keydown',event=>{if(event.key==='Enter')$('#addVariable').click();});
    $('#clearOutput').addEventListener('click',()=>out.replaceChildren());
    $('#projectName').value=localStorage.getItem(KEY+'.name')||'My first project';
    $('#projectName').addEventListener('change',()=>localStorage.setItem(KEY+'.name',$('#projectName').value));

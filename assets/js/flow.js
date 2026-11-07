@@ -165,36 +165,68 @@
  api.flow={
   evaluateExpression:(expression,variables={})=>parseExpression(expression,variables),
   evaluateReporter:(reporter,variables={})=>evaluateReporter(reporter,variables),
-  render:()=>'<div class="eyebrow">NEXUS MODULE / 006</div><div class="module-title-row"><div><h1>Flow <span>Studio.</span></h1><p class="subtitle">Build programs with nested control blocks, variables and a live stage.</p></div><span class="flow-badge">● BLOCK EDITOR</span></div><div class="scratch-toolbar graph-toolbar"><div class="scratch-project"><span class="scratch-project-icon">✳</span><input id="projectName" value="My first project" aria-label="Project name"></div><div class="graph-tools"><button class="secondary-button" id="wireMode">⌁ WIRE: OFF</button><button class="secondary-button" id="deleteLinks">CLEAR WIRES</button><button class="secondary-button" id="flowNew">NEW</button><button class="secondary-button" id="flowSave">SAVE</button><button class="run-button" id="flowRun">▶ RUN</button><button class="stop-button" id="flowStop" disabled>■ STOP</button></div></div><div class="graph-workbench"><aside class="graph-library"><div class="graph-library-head"><b>BLOCK LIBRARY</b><small>DRAG BLOCKS TO CANVAS OR INTO SLOTS</small></div><div class="graph-categories" id="scratchCategories"></div><div class="graph-palette" id="scratchPalette"></div></aside><section class="graph-editor"><div class="graph-editor-head"><b>WORKSPACE</b><span id="blockCount">0 BLOCKS</span><span class="graph-help">Drag blocks · drop into orange control slots · WIRE links top-level scripts</span></div><div class="graph-canvas" id="graphCanvas"><svg class="graph-wires" id="graphWires"></svg><div id="graphNodes"></div><div class="graph-empty" id="graphEmpty">Drag blocks here from the library</div></div><div class="graph-status" id="graphStatus">Drop blocks into a control slot to build a nested body.</div></section><aside class="graph-side"><div class="scratch-panel-title"><b>STAGE</b><small>360 × 260</small></div><div class="scratch-stage" id="scratchStage"><div class="stage-grid"></div><div class="stage-sprite" id="stageSprite">🐱</div><div class="stage-bubble" id="stageBubble" hidden></div></div><div class="stage-controls"><button id="stageReset">↺ RESET SPRITE</button><span id="stagePosition">x: 0 y: 0</span></div><div class="scratch-console"><div class="scratch-panel-title"><b>OUTPUT</b><button id="clearOutput">CLEAR</button></div><div id="scratchOutput" class="scratch-output">Ready. Press RUN to execute the script.</div><div id="variableReadout" class="variable-readout">Variables: score = 0</div></div></aside></div><div class="scratch-footer"><span><i></i> LOCAL PROJECT</span><span>Nested blocks · Variables · Runtime stop control</span></div>',
+  render:()=>'<div class="eyebrow">NEXUS MODULE / 006</div><div class="module-title-row"><div><h1>Flow <span>Studio.</span></h1><p class="subtitle">Build programs with nested control blocks, variables and a live stage.</p></div><span class="flow-badge">● BLOCK EDITOR</span></div><div class="scratch-toolbar graph-toolbar"><div class="scratch-project"><span class="scratch-project-icon">✳</span><input id="projectName" value="My first project" aria-label="Project name"></div><div class="graph-tools"><button class="secondary-button" id="wireMode">⌁ WIRE: OFF</button><button class="secondary-button" id="deleteLinks">CLEAR WIRES</button><button class="secondary-button" id="flowNew">NEW</button><button class="secondary-button" id="flowSave">SAVE</button><button class="run-button" id="flowRun">▶ RUN</button><button class="stop-button" id="flowStop" disabled>■ STOP</button></div></div><div class="graph-workbench"><aside class="graph-library"><div class="graph-library-head"><b>BLOCK LIBRARY</b><small>DRAG BLOCKS TO CANVAS OR INTO SLOTS</small></div><div class="graph-categories" id="scratchCategories"></div><div class="graph-palette" id="scratchPalette"></div></aside><section class="graph-editor"><div class="graph-editor-head"><b>WORKSPACE</b><span id="blockCount">0 BLOCKS</span><span class="graph-help">Drag blocks · drop into orange control slots · WIRE links top-level scripts</span></div><div class="graph-canvas" id="graphCanvas"><svg class="graph-wires" id="graphWires"></svg><div id="graphNodes"></div><div class="graph-empty" id="graphEmpty">Drag blocks here from the library</div></div><div class="graph-status" id="graphStatus">Drop blocks into a control slot to build a nested body.</div></section><aside class="graph-side"><div class="scratch-panel-title"><b>STAGE</b><small>360 × 260</small></div><div class="scratch-stage" id="scratchStage"><div class="stage-grid"></div><div class="stage-sprite" id="stageSprite">🐱</div><div class="stage-bubble" id="stageBubble" hidden></div></div><div class="stage-controls"><button id="stageReset">↺ RESET SPRITE</button><span id="stagePosition">x: 0 y: 0</span></div><div class="scratch-console"><div class="scratch-panel-title"><b>OUTPUT</b><button id="clearOutput">CLEAR</button></div><div id="scratchOutput" class="scratch-output">Ready. Press RUN to execute the script.</div><div class="flow-variable-manager"><div class="flow-variable-tools"><input id="newVariableName" placeholder="new variable" maxlength="32" aria-label="New variable name"><button id="addVariable" type="button">+ ADD</button></div><div id="flowVariableList" class="flow-variable-list"></div><datalist id="flowVariableOptions"></datalist></div><div id="variableReadout" class="variable-readout">Variables: score = 0</div></div></aside></div><div class="scratch-footer"><span><i></i> LOCAL PROJECT</span><span>Nested blocks · Variables · Runtime stop control</span></div>',
   mount(root){
-   let data=load(),nodes=data.nodes,links=data.links,category='events',wireMode=false,pending=null,running=false,stopFlag=false,runAbort=null,x=0,y=0,angle=0,visible=true,vars={score:0},runtimeSteps=0;
+   let data=load(),nodes=data.nodes,links=data.links,category='events',wireMode=false,pending=null,running=false,stopFlag=false,runAbort=null,x=0,y=0,angle=0,visible=true,vars=data.variables||{score:0},runtimeSteps=0;
    const MAX_STEPS=100000,MAX_DEPTH=40;
    const $=s=>root.querySelector(s),canvas=$('#graphCanvas'),nodeLayer=$('#graphNodes'),wireSvg=$('#graphWires'),palette=$('#scratchPalette'),out=$('#scratchOutput'),sprite=$('#stageSprite'),bubble=$('#stageBubble');
    const log=s=>{const d=document.createElement('div');d.textContent=String(s);out.append(d);out.scrollTop=out.scrollHeight;};
-   const countBlocks=list=>list.reduce((sum,n)=>sum+1+countBlocks(n.children||[])+countBlocks(n.elseChildren||[]),0);
+   const countBlock=n=>1+countBlocks(n.children||[])+countBlocks(n.elseChildren||[])+Object.values(n.inputs||{}).filter(Boolean).reduce((sum,child)=>sum+countBlock(child),0);
+   const countBlocks=list=>list.reduce((sum,n)=>sum+countBlock(n),0);
    const save=()=>{
     try{
-     localStorage.setItem(KEY,JSON.stringify({version:2,nodes,links}));
+     localStorage.setItem(KEY,JSON.stringify({version:3,nodes,links,variables:vars}));
      $('#blockCount').textContent=countBlocks(nodes)+' BLOCKS · '+links.length+' WIRES';
     }catch(e){log('Save error: '+e.message);}
    };
-   const updateVars=()=>$('#variableReadout').textContent='Variables: '+Object.entries(vars).sort(([a],[b])=>a.localeCompare(b)).map(([k,v])=>k+' = '+v).join(' · ');
+   function renderVariableManager(){
+    const list=$('#flowVariableList'),options=$('#flowVariableOptions');
+    if(!list||!options)return;
+    list.replaceChildren();options.replaceChildren();
+    Object.entries(vars).sort(([a],[b])=>a.localeCompare(b)).forEach(([name,value])=>{
+     const option=document.createElement('option');option.value=name;options.append(option);
+     const row=document.createElement('div');row.className='flow-variable-row';
+     const label=document.createElement('span');label.textContent=name;
+     const current=document.createElement('small');current.textContent=String(value);
+     const remove=document.createElement('button');remove.type='button';remove.textContent='×';remove.title='Delete variable '+name;
+     remove.addEventListener('click',()=>{if(running)return;delete vars[name];updateVars();save();log('Variable deleted: '+name);});
+     row.append(label,current,remove);list.append(row);
+    });
+   }
+   const updateVars=()=>{
+    $('#variableReadout').textContent='Variables: '+Object.entries(vars).sort(([a],[b])=>a.localeCompare(b)).map(([k,v])=>k+' = '+v).join(' · ');
+    renderVariableManager();
+   };
    const findBlock=(id,list=nodes)=>{
-    for(const n of list){if(n.id===id)return n;const a=findBlock(id,n.children||[]);if(a)return a;const b=findBlock(id,n.elseChildren||[]);if(b)return b;}
+    for(const n of list){
+     if(n.id===id)return n;
+     const a=findBlock(id,n.children||[]);if(a)return a;
+     const b=findBlock(id,n.elseChildren||[]);if(b)return b;
+     for(const child of Object.values(n.inputs||{})){if(child){if(child.id===id)return child;const nested=findBlock(id,[child]);if(nested)return nested;}}
+    }
     return null;
    };
    const findTop=id=>nodes.find(n=>n.id===id);
    const outgoing=id=>links.find(l=>l.from===id);
    const incoming=id=>links.some(l=>l.to===id);
    const linked=(a,b)=>links.some(l=>l.from===a&&l.to===b);
-   const containsBlock=(block,id)=>block.id===id||(block.children||[]).some(c=>containsBlock(c,id))||(block.elseChildren||[]).some(c=>containsBlock(c,id));
-   function takeBlock(id,list=nodes){
-    for(let i=0;i<list.length;i++){
-     const n=list[i];
-     if(n.id===id)return list.splice(i,1)[0];
-     const a=takeBlock(id,n.children||[]);if(a)return a;
-     const b=takeBlock(id,n.elseChildren||[]);if(b)return b;
+   function containsBlock(block,id){
+    if(!block)return false;
+    return block.id===id||(block.children||[]).some(c=>containsBlock(c,id))||(block.elseChildren||[]).some(c=>containsBlock(c,id))||Object.values(block.inputs||{}).some(c=>containsBlock(c,id));
+   }
+   function takeInside(node,id){
+    const a=takeBlock(id,node.children||[]);if(a)return a;
+    const b=takeBlock(id,node.elseChildren||[]);if(b)return b;
+    for(const key of Object.keys(node.inputs||{})){
+     const child=node.inputs[key];if(!child)continue;
+     if(child.id===id){node.inputs[key]=null;return child;}
+     const found=takeInside(child,id);if(found)return found;
     }
+    return null;
+   }
+   function takeBlock(id,list=nodes){
+    for(let i=0;i<list.length;i++)if(list[i].id===id)return list.splice(i,1)[0];
+    for(const node of list){const found=takeInside(node,id);if(found)return found;}
     return null;
    }
    function removeBlock(id){
@@ -219,28 +251,16 @@
     if(!text||!Number.isFinite(number))throw Error('"'+label+'" must be a valid number.');
     return number;
    }
-   function readOperand(value,label){
-    const text=String(value??'').trim();
-    if(text.startsWith('$')){
-     const name=validVariableName(text.slice(1));
-     return Number(vars[name]??0);
-    }
-    return readNumber(text,label);
+   function readExpression(block,key,fallback,label){
+    const value=block.inputs&&block.inputs[key]?evaluateReporter(block.inputs[key],vars):parseExpression(block.fields?.[key]??fallback,vars,label);
+    if(typeof value!=='number'||!Number.isFinite(value))throw Error('"'+label+'" must produce a number.');
+    return value;
    }
-   function compare(left,operator,right){
-    switch(operator){
-     case '>':return left>right;
-     case '<':return left<right;
-     case '>=':return left>=right;
-     case '<=':return left<=right;
-     case '=':case '==':return left===right;
-     case '!=':return left!==right;
-     default:throw Error('Unknown comparison operator "'+operator+'".');
-    }
-   }
+   function compare(left,operator,right){return compareValues(left,operator,right);}
    function conditionFor(n){
+    if(n.inputs&&n.inputs.condition)return Boolean(evaluateReporter(n.inputs.condition,vars));
     const f=n.fields||{},name=validVariableName(f.variable||'score');
-    return compare(Number(vars[name]??0),f.operator||'>',readOperand(f.value??'0','condition value'));
+    return compare(Number(vars[name]??0),f.operator||'>',readExpression(n,'value','0','condition value'));
    }
    function tick(){
     runtimeSteps++;

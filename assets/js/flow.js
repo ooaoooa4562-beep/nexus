@@ -74,6 +74,32 @@
   return starter();
  }
 
+ function normalizeVariableEntry(raw){
+  if(raw&&typeof raw==='object'&&!Array.isArray(raw)&&Object.prototype.hasOwnProperty.call(raw,'type')&&Object.prototype.hasOwnProperty.call(raw,'value')){
+   const type=raw.type,value=raw.value;
+   if(type==='number'&&typeof value==='number'&&Number.isFinite(value))return {type,value};
+   if(type==='text'&&typeof value==='string')return {type,value};
+   if(type==='boolean'&&typeof value==='boolean')return {type,value};
+   return null;
+  }
+  if(typeof raw==='number'&&Number.isFinite(raw))return {type:'number',value:raw};
+  if(typeof raw==='string')return {type:'text',value:raw};
+  if(typeof raw==='boolean')return {type:'boolean',value:raw};
+  return null;
+ }
+ function readVariableRecord(variables,name){
+  const raw=variables&&typeof variables==='object'&&Object.prototype.hasOwnProperty.call(variables,name)?variables[name]:0;
+  return normalizeVariableEntry(raw)||{type:'number',value:0};
+ }
+ function assignVariableValue(variables,name,value){
+  const type=typeof value==='number'&&Number.isFinite(value)?'number':typeof value==='string'?'text':typeof value==='boolean'?'boolean':null;
+  if(!type)throw Error('Variables can only store finite numbers, text or booleans.');
+  const exists=Object.prototype.hasOwnProperty.call(variables,name),current=exists?readVariableRecord(variables,name):null;
+  if(current&&current.type!==type)throw Error('Type mismatch for variable "'+name+'": expected '+current.type+', received '+type+'.');
+  if(!current&&Object.keys(variables).length>=100)throw Error('A project can contain at most 100 variables.');
+  variables[name]={type,value};
+  return variables[name];
+ }
  function parseExpression(source,variables={},label='expression'){
   const input=String(source??'').trim();
   if(!input)throw Error(label+' is empty.');
@@ -93,7 +119,7 @@
   function primary(){
    const token=peek();if(!token)throw Error('Incomplete '+label+'.');
    if(token.type==='number'){cursor++;return token.value;}
-   if(token.type==='variable'){cursor++;const raw=Object.prototype.hasOwnProperty.call(variables,token.value)?variables[token.value]:0;const value=Number(raw);if(!Number.isFinite(value))throw Error('Variable "'+token.value+'" is not numeric.');return value;}
+   if(token.type==='variable'){cursor++;const entry=readVariableRecord(variables,token.value);if(entry.type!=='number')throw Error('Variable "'+token.value+'" is '+entry.type+', not numeric.');return entry.value;}
    if(token.value==='('){cursor++;const value=additive();if(peek()?.value!==')')throw Error('Missing closing parenthesis in '+label+'.');cursor++;return value;}
    throw Error('Expected a number or variable in '+label+'.');
   }
@@ -141,14 +167,14 @@
   const read=(key,fallback='0')=>inputs[key]?evaluateReporter(inputs[key],variables,depth+1):parseExpression(fields[key]??fallback,variables,key);
   const readText=(key,fallback='')=>inputs[key]?String(evaluateReporter(inputs[key],variables,depth+1)):String(fields[key]??fallback);
   const numeric=(value,label)=>{if(typeof value!=='number'||!Number.isFinite(value))throw Error(label+' reporter must return a finite number.');return value;};
+  const boolean=(value,label)=>{if(typeof value!=='boolean')throw Error(label+' reporter must return a Boolean value.');return value;};
   const finite=(value,label)=>{if(!Number.isFinite(value))throw Error(label+' produced a non-finite number.');return value;};
   switch(node.type){
    case 'number':return parseExpression(fields.value??'0',variables,'number');
    case 'getVar':{
     const name=String(fields.variable||'score').trim();
     if(!/^[A-Za-z_][A-Za-z0-9_]{0,31}$/.test(name))throw Error('Invalid variable name "'+name+'".');
-    const raw=Object.prototype.hasOwnProperty.call(variables,name)?variables[name]:0;
-    const value=Number(raw);if(!Number.isFinite(value))throw Error('Variable "'+name+'" is not numeric.');return value;
+    return readVariableRecord(variables,name).value;
    }
    case 'boolean':return String(fields.value??'true')==='true';
    case 'mathAdd':return finite(numeric(read('a','0'),'Left')+numeric(read('b','0'),'Right'),'Addition');
@@ -164,16 +190,21 @@
    case 'join':return readText('left')+readText('right');
    case 'length':return Array.from(readText('value')).length;
    case 'contains':return readText('text').toLocaleLowerCase().includes(readText('search').toLocaleLowerCase());
-   case 'and':return Boolean(read('left','0'))&&Boolean(read('right','0'));
-   case 'or':return Boolean(read('left','0'))||Boolean(read('right','0'));
-   case 'not':return !Boolean(read('value','0'));
+   case 'and':{const left=boolean(read('left','0'),'Left operand'),right=boolean(read('right','0'),'Right operand');return left&&right;}
+   case 'or':{const left=boolean(read('left','0'),'Left operand'),right=boolean(read('right','0'),'Right operand');return left||right;}
+   case 'not':return !boolean(read('value','0'),'NOT operand');
    default:throw Error('Unsupported reporter block "'+node.type+'".');
   }
  }
- const defaultVariables=()=>Object.assign(Object.create(null),{score:0});
+ const defaultVariables=()=>Object.assign(Object.create(null),{score:{type:'number',value:0}});
  function normalizeVariables(raw){
   if(!raw||typeof raw!=='object'||Array.isArray(raw))return defaultVariables();
-  const result=Object.create(null);Object.entries(raw).forEach(([name,value])=>{if(/^[A-Za-z_][A-Za-z0-9_]{0,31}$/.test(name)&&typeof value==='number'&&Number.isFinite(value))result[name]=value;});
+  const result=Object.create(null);
+  Object.entries(raw).forEach(([name,value])=>{
+   if(!/^[A-Za-z_][A-Za-z0-9_]{0,31}$/.test(name))return;
+   const entry=normalizeVariableEntry(value);if(entry&&Object.keys(result).length<100)result[name]=entry;
+  });
+  if(!Object.prototype.hasOwnProperty.call(result,'score')&&Object.keys(result).length<100)result.score={type:'number',value:0};
   return result;
  }
  const load=()=>{
@@ -188,7 +219,9 @@
  api.flow={
   evaluateExpression:(expression,variables={})=>parseExpression(expression,variables),
   evaluateReporter:(reporter,variables={})=>evaluateReporter(reporter,variables),
-  render:()=>'<div class="eyebrow">NEXUS MODULE / 006</div><div class="module-title-row"><div><h1>Flow <span>Studio.</span></h1><p class="subtitle">Build programs with nested control blocks, variables and a live stage.</p></div><span class="flow-badge">● BLOCK EDITOR</span></div><div class="scratch-toolbar graph-toolbar"><div class="scratch-project"><span class="scratch-project-icon">✳</span><input id="projectName" value="My first project" aria-label="Project name"></div><div class="graph-tools"><button class="secondary-button" id="wireMode">⌁ WIRE: OFF</button><button class="secondary-button" id="deleteLinks">CLEAR WIRES</button><button class="secondary-button" id="flowNew">NEW</button><button class="secondary-button" id="flowSave">SAVE</button><button class="run-button" id="flowRun">▶ RUN</button><button class="stop-button" id="flowStop" disabled>■ STOP</button></div></div><div class="graph-workbench"><aside class="graph-library"><div class="graph-library-head"><b>BLOCK LIBRARY</b><small>DRAG BLOCKS TO CANVAS OR INTO SLOTS</small></div><div class="graph-categories" id="scratchCategories"></div><div class="graph-palette" id="scratchPalette"></div></aside><section class="graph-editor"><div class="graph-editor-head"><b>WORKSPACE</b><span id="blockCount">0 BLOCKS</span><span class="graph-help">Drag blocks · drop into orange control slots · WIRE links top-level scripts</span></div><div class="graph-canvas" id="graphCanvas"><svg class="graph-wires" id="graphWires"></svg><div id="graphNodes"></div><div class="graph-empty" id="graphEmpty">Drag blocks here from the library</div></div><div class="graph-status" id="graphStatus">Drop blocks into a control slot to build a nested body.</div></section><aside class="graph-side"><div class="scratch-panel-title"><b>STAGE</b><small>360 × 260</small></div><div class="scratch-stage" id="scratchStage"><div class="stage-grid"></div><div class="stage-sprite" id="stageSprite">🐱</div><div class="stage-bubble" id="stageBubble" hidden></div></div><div class="stage-controls"><button id="stageReset">↺ RESET SPRITE</button><span id="stagePosition">x: 0 y: 0</span></div><div class="scratch-console"><div class="scratch-panel-title"><b>OUTPUT</b><button id="clearOutput">CLEAR</button></div><div id="scratchOutput" class="scratch-output">Ready. Press RUN to execute the script.</div><div class="flow-variable-manager"><div class="flow-variable-tools"><input id="newVariableName" placeholder="new variable" maxlength="32" aria-label="New variable name"><button id="addVariable" type="button">+ ADD</button></div><div id="flowVariableList" class="flow-variable-list"></div><datalist id="flowVariableOptions"></datalist></div><div id="variableReadout" class="variable-readout">Variables: score = 0</div></div></aside></div><div class="scratch-footer"><span><i></i> LOCAL PROJECT</span><span>Nested blocks · Variables · Runtime stop control</span></div>',
+  normalizeVariables,
+  assignVariable:(variables,name,value)=>assignVariableValue(variables,name,value),
+  render:()=>'<div class="eyebrow">NEXUS MODULE / 006</div><div class="module-title-row"><div><h1>Flow <span>Studio.</span></h1><p class="subtitle">Build programs with nested control blocks, variables and a live stage.</p></div><span class="flow-badge">● BLOCK EDITOR</span></div><div class="scratch-toolbar graph-toolbar"><div class="scratch-project"><span class="scratch-project-icon">✳</span><input id="projectName" value="My first project" aria-label="Project name"></div><div class="graph-tools"><button class="secondary-button" id="wireMode">⌁ WIRE: OFF</button><button class="secondary-button" id="deleteLinks">CLEAR WIRES</button><button class="secondary-button" id="flowNew">NEW</button><button class="secondary-button" id="flowSave">SAVE</button><button class="run-button" id="flowRun">▶ RUN</button><button class="stop-button" id="flowStop" disabled>■ STOP</button></div></div><div class="graph-workbench"><aside class="graph-library"><div class="graph-library-head"><b>BLOCK LIBRARY</b><small>DRAG BLOCKS TO CANVAS OR INTO SLOTS</small></div><div class="graph-categories" id="scratchCategories"></div><div class="graph-palette" id="scratchPalette"></div></aside><section class="graph-editor"><div class="graph-editor-head"><b>WORKSPACE</b><span id="blockCount">0 BLOCKS</span><span class="graph-help">Drag blocks · drop into orange control slots · WIRE links top-level scripts</span></div><div class="graph-canvas" id="graphCanvas"><svg class="graph-wires" id="graphWires"></svg><div id="graphNodes"></div><div class="graph-empty" id="graphEmpty">Drag blocks here from the library</div></div><div class="graph-status" id="graphStatus">Drop blocks into a control slot to build a nested body.</div></section><aside class="graph-side"><div class="scratch-panel-title"><b>STAGE</b><small>360 × 260</small></div><div class="scratch-stage" id="scratchStage"><div class="stage-grid"></div><div class="stage-sprite" id="stageSprite">🐱</div><div class="stage-bubble" id="stageBubble" hidden></div></div><div class="stage-controls"><button id="stageReset">↺ RESET SPRITE</button><span id="stagePosition">x: 0 y: 0</span></div><div class="scratch-console"><div class="scratch-panel-title"><b>OUTPUT</b><button id="clearOutput">CLEAR</button></div><div id="scratchOutput" class="scratch-output">Ready. Press RUN to execute the script.</div><div class="flow-variable-manager"><div class="flow-variable-tools"><input id="newVariableName" placeholder="new variable" maxlength="32" aria-label="New variable name"><select id="newVariableType" aria-label="New variable type" title="Variable type"><option value="number">Number</option><option value="text">Text</option><option value="boolean">Boolean</option></select><button id="addVariable" type="button">+ ADD</button></div><div id="flowVariableList" class="flow-variable-list"></div><datalist id="flowVariableOptions"></datalist></div><div id="variableReadout" class="variable-readout">Variables: score = 0</div></div></aside></div><div class="scratch-footer"><span><i></i> LOCAL PROJECT</span><span>Nested blocks · Variables · Runtime stop control</span></div>',
   mount(root){
    let data=load(),nodes=data.nodes,links=data.links,category='events',wireMode=false,pending=null,running=false,stopFlag=false,runAbort=null,x=0,y=0,angle=0,visible=true,vars=data.variables||defaultVariables(),runtimeSteps=0;
    const MAX_STEPS=100000,MAX_DEPTH=40;
@@ -210,14 +243,14 @@
      const option=document.createElement('option');option.value=name;options.append(option);
      const row=document.createElement('div');row.className='flow-variable-row';
      const label=document.createElement('span');label.textContent=name;
-     const current=document.createElement('small');current.textContent=String(value);
+     const current=document.createElement('small');current.textContent=value.type.toUpperCase()+' · '+String(value.value);
      const remove=document.createElement('button');remove.type='button';remove.textContent='×';remove.title='Delete variable '+name;
      remove.addEventListener('click',()=>{if(running)return;delete vars[name];updateVars();save();log('Variable deleted: '+name);});
      row.append(label,current,remove);list.append(row);
     });
    }
    const updateVars=()=>{
-    $('#variableReadout').textContent='Variables: '+Object.entries(vars).sort(([a],[b])=>a.localeCompare(b)).map(([k,v])=>k+' = '+v).join(' · ');
+    $('#variableReadout').textContent='Variables: '+Object.entries(vars).sort(([a],[b])=>a.localeCompare(b)).map(([k,v])=>k+' ('+v.type+') = '+String(v.value)).join(' · ');
     renderVariableManager();
    };
    const findBlock=(id,list=nodes)=>{
@@ -280,14 +313,35 @@
     if(typeof value!=='number'||!Number.isFinite(value))throw Error('"'+label+'" must produce a number.');
     return value;
    }
+   function readAssignedValue(block,key,name,fallback='0'){
+    if(block.inputs&&block.inputs[key])return evaluateReporter(block.inputs[key],vars);
+    const current=Object.prototype.hasOwnProperty.call(vars,name)?readVariableRecord(vars,name):null;
+    const raw=String(block.fields?.[key]??fallback);
+    if(current?.type==='text')return raw;
+    if(current?.type==='boolean'){
+     const normalized=raw.trim().toLowerCase();
+     if(normalized!=='true'&&normalized!=='false')throw Error('Boolean value for "'+name+'" must be true or false.');
+     return normalized==='true';
+    }
+    return parseExpression(raw,vars,key);
+   }
+   function readNumericVariable(name){
+    const entry=readVariableRecord(vars,name);
+    if(entry.type!=='number')throw Error('Variable "'+name+'" is '+entry.type+', not numeric.');
+    return entry.value;
+   }
    function readValue(block,key,fallback=''){
     return block.inputs&&block.inputs[key]?evaluateReporter(block.inputs[key],vars):String(block.fields?.[key]??fallback);
    }
    function compare(left,operator,right){return compareValues(left,operator,right);}
    function conditionFor(n){
-    if(n.inputs&&n.inputs.condition)return Boolean(evaluateReporter(n.inputs.condition,vars));
+    if(n.inputs&&n.inputs.condition){
+     const condition=evaluateReporter(n.inputs.condition,vars);
+     if(typeof condition!=='boolean')throw Error('IF condition reporter must return a Boolean value.');
+     return condition;
+    }
     const f=n.fields||{},name=validVariableName(f.variable||'score');
-    return compare(Number(vars[name]??0),f.operator||'>',readExpression(n,'value','0','condition value'));
+    return compare(readVariableRecord(vars,name).value,f.operator||'>',readExpression(n,'value','0','condition value'));
    }
    function tick(){
     runtimeSteps++;
@@ -555,14 +609,26 @@
      case 'show':visible=true;updateSprite();break;
      case 'hide':visible=false;updateSprite();break;
      case 'wait':{const seconds=readNumber(f.seconds,'seconds');if(seconds<0||seconds>60)throw Error('Wait must be between 0 and 60 seconds.');await wait(seconds*1000);break;}
-     case 'set':ensureVariableCapacity(name);vars[name]=readExpression(n,'value','0','value');updateVars();save();log(name+' = '+vars[name]);break;
-     case 'change':ensureVariableCapacity(name);vars[name]=Number(vars[name]??0)+readExpression(n,'value','1','change amount');updateVars();save();log(name+' → '+vars[name]);break;
-     case 'print':log(name+' = '+(vars[name]??0));break;
+     case 'set':{
+      ensureVariableCapacity(name);
+      const value=readAssignedValue(n,'value',name,'0');
+      assignVariableValue(vars,name,value);updateVars();save();log(name+' = '+String(value));break;
+     }
+     case 'change':{
+      ensureVariableCapacity(name);
+      const next=readNumericVariable(name)+readExpression(n,'value','1','change amount');
+      if(!Number.isFinite(next))throw Error('Variable "'+name+'" change produced a non-finite number.');
+      assignVariableValue(vars,name,next);updateVars();save();log(name+' → '+next);break;
+     }
+     case 'print':{
+      const entry=readVariableRecord(vars,name);log(name+' = '+String(entry.value)+' ('+entry.type+')');break;
+     }
      case 'add':case 'subtract':case 'multiply':case 'divide':{
       const a=readExpression(n,'a','0','first operand'),b=readExpression(n,'b','0','second operand');
       if(n.type==='divide'&&b===0)throw Error('Division by zero.');
       const result=n.type==='add'?a+b:n.type==='subtract'?a-b:n.type==='multiply'?a*b:a/b;
-      const target=validVariableName(f.variable||'result');ensureVariableCapacity(target);vars[target]=result;updateVars();save();
+      if(!Number.isFinite(result))throw Error('Arithmetic result is not finite.');
+      const target=validVariableName(f.variable||'result');ensureVariableCapacity(target);assignVariableValue(vars,target,result);updateVars();save();
       const symbol={add:'+',subtract:'−',multiply:'×',divide:'÷'}[n.type];log(target+' = '+a+' '+symbol+' '+b+' = '+result);break;
      }
      case 'if':if(conditionFor(n))await executeSequence(n.children||[],depth+1);break;
@@ -639,7 +705,7 @@
    });
    $('#flowSave').addEventListener('click',()=>{save();log('✓ Project saved locally');});
    $('#flowNew').addEventListener('click',()=>{
-    if(confirm('Create a new empty project?')){nodes=[];links=[];vars=Object.assign(Object.create(null),{score:0});pending=null;updateVars();save();render();out.textContent='New project created.';}
+    if(confirm('Create a new empty project?')){nodes=[];links=[];vars=defaultVariables();pending=null;updateVars();save();render();out.textContent='New project created.';}
    });
    $('#stageReset').addEventListener('click',resetSprite);
    $('#addVariable').addEventListener('click',()=>{
@@ -647,7 +713,9 @@
      const name=validVariableName($('#newVariableName').value);
      if(Object.prototype.hasOwnProperty.call(vars,name))throw Error('Variable "'+name+'" already exists.');
      if(Object.keys(vars).length>=100)throw Error('A project can contain at most 100 variables.');
-     vars[name]=0;$('#newVariableName').value='';updateVars();save();log('Variable created: '+name);
+     const type=$('#newVariableType').value;
+     const initial=type==='text'?'':type==='boolean'?false:0;
+     vars[name]={type,value:initial};$('#newVariableName').value='';updateVars();save();log('Variable created: '+name+' ('+type+').');
     }catch(error){$('#graphStatus').textContent='Variable error: '+error.message;}
    });
    $('#newVariableName').addEventListener('keydown',event=>{if(event.key==='Enter')$('#addVariable').click();});

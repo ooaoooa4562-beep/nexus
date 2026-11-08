@@ -231,7 +231,7 @@
    const countBlocks=list=>list.reduce((sum,n)=>sum+countBlock(n),0);
    const save=()=>{
     try{
-     localStorage.setItem(KEY,JSON.stringify({version:3,nodes,links,variables:vars}));
+     localStorage.setItem(KEY,JSON.stringify({version:4,nodes,links,variables:vars}));
      $('#blockCount').textContent=countBlocks(nodes)+' BLOCKS · '+links.length+' WIRES';
     }catch(e){log('Save error: '+e.message);}
    };

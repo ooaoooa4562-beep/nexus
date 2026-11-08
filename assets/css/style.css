@@ -106,6 +106,7 @@ body.light-mode{color-scheme:light;--bg:#f2f4f8;--surface:#fff;--surface-2:#f0f2
 .flow-variable-manager{margin-top:8px;padding:8px;border:1px solid var(--line);border-radius:6px;background:var(--surface-2)}
 .flow-variable-tools{display:flex;gap:5px}
 .flow-variable-tools input{flex:1;min-width:0;width:0;border:1px solid var(--line);border-radius:4px;background:var(--surface);color:var(--text);padding:6px 7px;font:8px var(--mono)}
+.flow-variable-tools select{max-width:82px;min-width:70px;border:1px solid var(--line);border-radius:4px;background:var(--surface);color:var(--text);padding:6px 5px;font:8px var(--mono)}
 .flow-variable-tools button{border:1px solid var(--line);border-radius:4px;background:var(--surface-3);color:var(--green);padding:5px 7px;font:8px var(--mono);cursor:pointer}
 .flow-variable-list{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}
 .flow-variable-row{display:flex;align-items:center;gap:6px;padding:4px 6px;border:1px solid var(--line);border-radius:4px;background:var(--surface);font:8px var(--mono)}

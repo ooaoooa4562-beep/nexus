@@ -10,6 +10,7 @@ const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || "https://ooaoooa4562-beep
 const FRONTEND_URL = (process.env.FRONTEND_URL || FRONTEND_ORIGIN + "/nexus").replace(/\/+$/, "");
 const COOKIE_NAME = "nexus_github_session";
 const STATE_COOKIE = "nexus_oauth_state";
+const oauthHandoffs = new Map();
 const SESSION_TTL = 8 * 60 * 60;
 const MAX_FILE_BYTES = 1024 * 1024;
 const MAX_AVATAR_BYTES = 1024 * 1024;
@@ -71,7 +72,9 @@ function unseal(value) {
   } catch { return null; }
 }
 function getSession(req) {
-  const value = parseCookies(req)[COOKIE_NAME];
+  const authorization = String(req.headers.authorization || "");
+  const bearer = authorization.startsWith("Bearer ") ? authorization.slice(7).trim() : "";
+  const value = bearer || parseCookies(req)[COOKIE_NAME];
   return value ? unseal(value) : null;
 }
 function requireSession(req, res, next) {
@@ -93,7 +96,7 @@ app.use((req, res, next) => {
     res.setHeader("Access-Control-Allow-Origin", origin);
     res.setHeader("Vary", "Origin");
     res.setHeader("Access-Control-Allow-Credentials", "true");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
     res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
   }
   if (req.method === "OPTIONS") return res.sendStatus(204);
@@ -260,8 +263,21 @@ app.get("/auth/github/callback", async (req, res) => {
     const profile = await githubRequest("/user", tokenData.access_token);
     const session = seal({ accessToken: tokenData.access_token, githubId: String(profile.id), login: profile.login, avatarUrl: profile.avatar_url, expiresAt: Date.now() + SESSION_TTL * 1000 });
     res.append("Set-Cookie", COOKIE_NAME + "=" + encodeURIComponent(session) + "; " + cookieOptions(SESSION_TTL));
-    res.redirect(FRONTEND_URL + "/?github=connected");
+    const handoffCode = crypto.randomBytes(32).toString("hex");
+    oauthHandoffs.set(handoffCode, { session, expiresAt: Date.now() + 60_000 });
+    res.redirect(FRONTEND_URL + "/?github=handoff&code=" + handoffCode);
   } catch (error) { res.status(400).send(error.message || "GitHub authorization failed."); }
+});
+app.post("/auth/exchange", (req, res) => {
+  const code = String(req.body && req.body.code || "");
+  const handoff = oauthHandoffs.get(code);
+  if (!/^[a-f0-9]{64}$/.test(code) || !handoff || handoff.expiresAt < Date.now()) {
+    oauthHandoffs.delete(code);
+    return res.status(400).json({ error: "GitHub sign-in link expired. Connect again." });
+  }
+  oauthHandoffs.delete(code);
+  res.setHeader("Cache-Control", "no-store");
+  res.json({ session: handoff.session, expiresIn: SESSION_TTL });
 });
 app.post("/auth/logout", (req, res) => {
   clearCookie(res, COOKIE_NAME);

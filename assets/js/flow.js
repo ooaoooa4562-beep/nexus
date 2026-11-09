@@ -33,6 +33,8 @@
   {id:'wait',cat:'control',label:'wait seconds',fields:[['seconds','1']]},
   {id:'repeat',cat:'control',label:'repeat',fields:[['times','3']]},
   {id:'forever',cat:'control',label:'forever',fields:[]},
+  {id:'repeatUntil',cat:'control',label:'repeat until condition',fields:[['variable','score'],['operator','>='],['value','10']]},
+  {id:'stopAll',cat:'control',label:'stop all scripts',fields:[]},
   {id:'if',cat:'control',label:'if condition',fields:[['variable','score'],['operator','>'],['value','0']]},
   {id:'ifElse',cat:'control',label:'if / else',fields:[['variable','score'],['operator','>'],['value','0']]},
   {id:'set',cat:'variables',label:'set variable to',fields:[['variable','score'],['value','0']]},
@@ -59,9 +61,9 @@
   {id:'contains',cat:'operators',label:'( ) contains ( )',kind:'reporter',fields:[]}
  ];
  const cats=[['events','Events'],['motion','Motion'],['looks','Looks'],['animation','Animation'],['effects','Effects'],['control','Control'],['variables','Variables'],['operators','Operators'],['sensing','Sensing'],['data','Data']];
- const containerTypes=new Set(['repeat','forever','if','ifElse']);
+ const containerTypes=new Set(['repeat','forever','if','ifElse','repeatUntil']);
  const reporterTypes=new Set(defs.filter(d=>d.kind==='reporter').map(d=>d.id));
- const expressionInputs={repeat:['times'],if:['condition'],ifElse:['condition'],say:['text'],think:['text'],set:['value'],change:['value'],add:['a','b'],subtract:['a','b'],multiply:['a','b'],divide:['a','b'],mathAdd:['a','b'],mathSubtract:['a','b'],mathMultiply:['a','b'],mathDivide:['a','b'],compare:['a','b'],and:['left','right'],or:['left','right'],not:['value'],join:['left','right'],length:['value'],contains:['text','search'],round:['value'],absolute:['value'],modulo:['a','b']};
+ const expressionInputs={repeat:['times'],if:['condition'],ifElse:['condition'],repeatUntil:['condition'],say:['text'],think:['text'],set:['value'],change:['value'],add:['a','b'],subtract:['a','b'],multiply:['a','b'],divide:['a','b'],mathAdd:['a','b'],mathSubtract:['a','b'],mathMultiply:['a','b'],mathDivide:['a','b'],compare:['a','b'],and:['left','right'],or:['left','right'],not:['value'],join:['left','right'],length:['value'],contains:['text','search'],round:['value'],absolute:['value'],modulo:['a','b']};
  const isReporter=type=>reporterTypes.has(type);
  const uid=()=> 'n'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
  const def=t=>defs.find(d=>d.id===t);
@@ -692,6 +694,8 @@
      }
      case 'if':if(conditionFor(n))await executeSequence(n.children||[],depth+1);break;
      case 'ifElse':await executeSequence(conditionFor(n)?(n.children||[]):(n.elseChildren||[]),depth+1);break;
+     case 'repeatUntil':{let guard=0;while(!conditionFor(n)&&!stopFlag){if(++guard>MAX_STEPS)throw Error('Repeat-until safety limit reached.');tick();if((n.children||[]).length)await executeSequence(n.children,depth+1);else await wait(100);}break;}
+     case 'stopAll':stopFlag=true;log('Stop all scripts requested.');break;
      case 'repeat':{
       const times=readExpression(n,'times','3','repeat count');
       if(times<0||times>1000)throw Error('Repeat count must be between 0 and 1000.');

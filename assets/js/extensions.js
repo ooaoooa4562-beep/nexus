@@ -4,7 +4,7 @@
  {id:'terminal',name:'Terminal',version:'0.6',description:'Command interface and GitHub repository tools.',icon:'›_',group:'SYSTEM TOOLS'},
  {id:'storage',name:'Storage',version:'0.5',description:'Local records with JSON import and export.',icon:'▤',group:'WORKSPACE'},
  {id:'flow',name:'Flow Studio',version:'0.5',description:'Visual node editor for reusable workflows.',icon:'⌘',group:'WORKSPACE'},
- {id:'threeD',name:'NEXUS 3D',version:'1.0',description:'Browser 3D editor with a local Blender bridge and model export.',icon:'◇',group:'WORKSPACE'},
+ {id:'threeD',name:'NEXUS 3D',version:'1.0',description:'Standalone browser 3D editor with GLB, OBJ and STL export.',icon:'◇',group:'WORKSPACE'},
  {id:'monitor',name:'Monitor',version:'0.1',description:'Browser session diagnostics and event stream.',icon:'◷',group:'SYSTEM TOOLS'},
  {id:'network',name:'Network',version:'0.1',description:'Connectivity checks for the NEXUS API.',icon:'⌁',group:'SYSTEM TOOLS'},
  {id:'extensions',name:'Extensions',version:'0.1',description:'Manage built-in NEXUS modules.',icon:'⊞',group:'SYSTEM TOOLS',locked:true},

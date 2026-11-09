@@ -171,7 +171,7 @@ async function ensureEmailAuthSchema() {
 }
 function normalizeEmail(value) {
   const email = String(value || "").trim().toLowerCase();
-  if (email.length > 254 || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) throw Object.assign(new Error("Enter a valid email address."), { status: 400 });
+  if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw Object.assign(new Error("Enter a valid email address."), { status: 400 });
   return email;
 }
 function passwordHash(password, salt = crypto.randomBytes(16).toString("hex")) {

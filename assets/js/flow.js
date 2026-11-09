@@ -17,7 +17,7 @@
   {id:'jump',cat:'animation',label:'jump',fields:[['height','55'],['duration','0.55']]},
   {id:'colorTo',cat:'effects',label:'set color hue',fields:[['hue','210'],['duration','0.5']]},
   {id:'flash',cat:'effects',label:'flash effect',fields:[['times','3'],['duration','0.18']]},
-  {id:'trail',cat:'effects',label:'toggle motion trail',fields:[['enabled','true']]},
+  {id:'trail',cat:'effects',label:'toggle glow effect',fields:[['enabled','true']]},
   {id:'random',cat:'operators',label:'random number reporter',kind:'reporter',fields:[['min','1'],['max','10']]},
   {id:'round',cat:'operators',label:'round number',kind:'reporter',fields:[]},
   {id:'absolute',cat:'operators',label:'absolute value',kind:'reporter',fields:[]},
@@ -659,7 +659,7 @@
      case 'jump':{const h=Math.max(0,Math.min(220,readNumber(f.height,'height'))),d=Math.max(.1,Math.min(5,Number(f.duration)||.55));if(window.gsap){await new Promise(resolve=>window.gsap.timeline({onComplete:resolve}).to(sprite,{y:'-='+h,duration:d*.45,ease:'power2.out'}).to(sprite,{y:'+='+h,duration:d*.55,ease:'bounce.out'}));}else await wait(d*1000);break;}
      case 'colorTo':{const hue=((readNumber(f.hue,'hue')%360)+360)%360;const duration=Math.max(.05,Math.min(5,Number(f.duration)||.5));if(window.gsap)await new Promise(resolve=>window.gsap.to(sprite,{filter:'hue-rotate('+hue+'deg)',duration,ease:'power1.inOut',onComplete:resolve}));else sprite.style.filter='hue-rotate('+hue+'deg)';break;}
      case 'flash':{const times=Math.max(1,Math.min(10,Math.floor(readNumber(f.times,'times')))),duration=Math.max(.05,Math.min(1,Number(f.duration)||.18));if(window.gsap)await new Promise(resolve=>window.gsap.to(sprite,{opacity:.12,repeat:times*2-1,yoyo:true,duration,ease:'none',onComplete:resolve}));else for(let i=0;i<times*2;i++){sprite.style.opacity=i%2?'1':'.12';await wait(duration*1000);}spriteOpacity=1;updateSprite();break;}
-     case 'trail':{const enabled=String(f.enabled)!=='false';sprite.style.filter=enabled?'drop-shadow(0 0 8px currentColor)':'';log('Motion trail '+(enabled?'enabled':'disabled'));break;}
+     case 'trail':{const enabled=String(f.enabled)!=='false';sprite.style.filter=enabled?'drop-shadow(0 0 8px currentColor)':'';log('Glow effect '+(enabled?'enabled':'disabled'));break;}
      case 'resetTimer':window.__nexusFlowTimer=Date.now();log('Timer reset');break;
      case 'log':log(String(readValue(n,'text',f.text||'')));break;
      case 'clearBubble':bubble.hidden=true;break;

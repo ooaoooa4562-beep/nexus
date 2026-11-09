@@ -1,11 +1,11 @@
 (() => {
  const script=document.currentScript,base=script&&script.src?script.src:new URL('assets/js/app.js',document.baseURI).href;
- const files={terminal:'terminal.js',storage:'storage.js',flow:'flow.js',monitor:'monitor.js',network:'network.js',extensions:'extensions.js',editor:'editor.js'};
+ const files={terminal:'terminal.js',storage:'storage.js',flow:'flow.js',threeD:'3d.js',monitor:'monitor.js',network:'network.js',extensions:'extensions.js',editor:'editor.js'};
  const ensure=(id,file)=>{window.NEXUSModules=window.NEXUSModules||{};if(window.NEXUSModules[id])return Promise.resolve();return new Promise((ok,no)=>{const s=document.createElement('script');s.src=new URL(file,base).href;s.onload=()=>window.NEXUSModules&&window.NEXUSModules[id]?ok():no(Error(id+' did not register'));s.onerror=()=>no(Error('Could not load '+file));document.head.append(s);});};
  Promise.all(Object.entries(files).map(([id,file])=>ensure(id,file))).then(start).catch(e=>{console.error('[NEXUS]',e);start(e);});
  function start(loadError){
   const $=s=>document.querySelector(s),sidebar=$('#sidebar'),home=$('#overview'),page=$('#modulePage'),crumb=$('#breadcrumb');
-  const info={editor:['Code Editor'],terminal:['Terminal'],flow:['Flow Studio'],storage:['Storage'],monitor:['Monitor'],network:['Network'],extensions:['Extensions'],profile:['My profile'],settings:['Settings']};
+  const info={editor:['Code Editor'],terminal:['Terminal'],flow:['Flow Studio'],threeD:['NEXUS 3D'],storage:['Storage'],monitor:['Monitor'],network:['Network'],extensions:['Extensions'],profile:['My profile'],settings:['Settings']};
   const read=(k,f)=>{try{return JSON.parse(localStorage.getItem(k)||'null')||f;}catch{return f;}};
   const profile=read('nexus.profile.v1',{name:'Operator',bio:'Building things with NEXUS.',avatar:'',id:'NX-'+Math.random().toString(36).slice(2,8).toUpperCase()});
   const prefs=read('nexus.settings.v1',{theme:'dark',accent:'multi',motion:'advanced'});

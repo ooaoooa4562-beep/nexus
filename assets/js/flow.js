@@ -273,6 +273,7 @@
    if(lifecycleObserver){root._flowLifecycleObserver=lifecycleObserver;lifecycleObserver.observe(root,{attributes:true,attributeFilter:['hidden'],childList:true});}
 
    const log=s=>{const d=document.createElement('div');d.textContent=String(s);out.append(d);out.scrollTop=out.scrollHeight;};
+   const setStatus=s=>{const el=$('#graphStatus');if(el)el.textContent=s;};
    const countBlock=n=>1+countBlocks(n.children||[])+countBlocks(n.elseChildren||[])+Object.values(n.inputs||{}).filter(Boolean).reduce((sum,child)=>sum+countBlock(child),0);
    const countBlocks=list=>list.reduce((sum,n)=>sum+countBlock(n),0);
    const save=()=>{
@@ -787,13 +788,13 @@
    }
    function requestStop(message='Stop requested'){
     if(!running)return;
-    stopFlag=true;if(runAbort)runAbort.abort();log(message);$('#graphStatus').textContent='Stopping runtime…';
+    stopFlag=true;if(runAbort)runAbort.abort();log(message);setStatus('Stopping runtime…');
    }
    async function run(){
     if(running)return;
     running=true;stopFlag=false;runtimeSteps=0;runtimeFailure=null;activeKeyTasks.clear();window.__nexusFlowTimer=Date.now();runAbort=new AbortController();
     out.replaceChildren();resetSprite();$('#flowRun').disabled=true;$('#flowStop').disabled=false;
-    $('#graphStatus').textContent='Runtime is executing.';
+    setStatus('Runtime is executing.');
     log('NEXUS block runtime started');
     const starts=nodes.filter(n=>n.type==='flag'),keyScripts=nodes.filter(n=>n.type==='key');
     try{
@@ -805,7 +806,7 @@
      if(keyScripts.length&&!stopFlag){
       const names=[...new Set(keyScripts.map(n=>normalizeKeyName(n.fields?.key||'space')))].join(', ');
       log('⌨ Listening for keys: '+names+'. Press STOP to finish.');
-      $('#graphStatus').textContent='Listening for keyboard events. Press STOP to finish.';
+      setStatus('Listening for keyboard events. Press STOP to finish.');
       await new Promise(resolve=>{
        if(stopFlag){resolve();return;}
        runAbort.signal.addEventListener('abort',resolve,{once:true});
@@ -813,15 +814,15 @@
      }
      if(runtimeFailure)throw runtimeFailure;
      log(stopFlag?'■ Stopped':'✓ Execution finished');
-     $('#graphStatus').textContent=stopFlag?'Execution stopped.':'Execution finished successfully.';
+     setStatus(stopFlag?'Execution stopped.':'Execution finished successfully.');
     }catch(error){
      stopFlag=true;if(runAbort)runAbort.abort();
      log('RUNTIME ERROR: '+(error?.message||String(error)));
-     $('#graphStatus').textContent='Runtime error: '+(error?.message||String(error));
+     setStatus('Runtime error: '+(error?.message||String(error)));
     }finally{
      if(keyHandler){document.removeEventListener('keydown',keyHandler);keyHandler=null;}
      if(activeKeyTasks.size)await Promise.allSettled(Array.from(activeKeyTasks));
-     running=false;runAbort=null;$('#flowRun').disabled=false;$('#flowStop').disabled=true;
+     running=false;runAbort=null;const runButton=$('#flowRun'),stopButton=$('#flowStop');if(runButton)runButton.disabled=false;if(stopButton)stopButton.disabled=true;if((root.hidden||!runButton)&&lifecycleObserver){lifecycleObserver.disconnect();if(root._flowLifecycleObserver===lifecycleObserver)delete root._flowLifecycleObserver;}
     }
    }
    $('#wireMode').addEventListener('click',()=>{

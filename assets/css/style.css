@@ -133,3 +133,22 @@ body.light-mode{color-scheme:light;--bg:#f2f4f8;--surface:#fff;--surface-2:#f0f2
 .scratch-stage{isolation:isolate;overflow:hidden}
 .stage-sprite{will-change:left,top,transform,opacity;transform-origin:center center}
 @media(prefers-reduced-motion:reduce){.stage-sprite{transition:none!important}}
+
+/* NEXUS 1.1 workspace refinement */
+.graph-workbench{grid-template-columns:220px minmax(420px,1fr) 320px;gap:14px}
+.graph-library{max-height:820px}
+.graph-categories{gap:6px}
+.graph-categories .category-button{padding:8px 9px;font-size:9px}
+.graph-palette{max-height:680px;padding:12px;gap:10px}
+.graph-library-block{min-height:42px;padding:10px 12px;font-size:10px}
+.graph-node{width:218px;min-height:124px;padding:22px 12px 23px;gap:9px;border-radius:11px}
+.graph-node-title{font-size:11px}
+.graph-field-row{font-size:9px}
+.graph-field{min-height:26px;font-size:10px}
+.graph-editor-head{min-height:52px;padding:14px 16px}
+.graph-categories .category-button.animation{background:#a65d2d}
+.code-block.animation{background:#a65d2d}
+.graph-node.animation{border-color:#e39a62;background:#452b20}
+.graph-node.animation .graph-node-title{color:#fff2e8}
+@media(max-width:1150px){.graph-workbench{grid-template-columns:190px minmax(320px,1fr)}.graph-side{grid-column:1/-1;display:grid;grid-template-columns:minmax(250px,1fr) minmax(250px,1fr);gap:12px;padding:12px}.graph-side>.scratch-panel-title,.graph-side>.stage-controls{grid-column:1/-1}}
+@media(max-width:760px){.graph-workbench{grid-template-columns:1fr}.graph-library{max-height:340px}.graph-side{display:block}.graph-node{width:205px}}

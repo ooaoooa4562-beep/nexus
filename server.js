@@ -185,14 +185,14 @@ function passwordMatches(password, stored) {
   return actual.length === wanted.length && crypto.timingSafeEqual(actual, wanted);
 }
 async function sendVerificationEmail(email, token) {
-  if (!emailConfigReady()) throw Object.assign(new Error("Add RESEND_API_KEY, EMAIL_FROM and DATABASE_URL to Render to enable email sign-in."), { status: 503 });
+  if (!emailConfigReady()) throw Object.assign(new Error("Add RESEND_API_KEY, EMAIL_FROM and a working Neon database URL to Render to enable email sign-in."), { status: 503 });
   const verifyUrl = process.env.API_BASE_URL + "/auth/email/verify?token=" + encodeURIComponent(token);
   const response = await fetch("https://api.resend.com/emails", { method: "POST", headers: { Authorization: "Bearer " + process.env.RESEND_API_KEY, "Content-Type": "application/json" }, body: JSON.stringify({ from: process.env.EMAIL_FROM, to: [email], subject: "Verify your NEXUS account", html: "<p>Welcome to NEXUS.</p><p><a href=\"" + verifyUrl + "\">Verify your email address</a></p><p>If you did not request this, ignore this message.</p>" }) });
   if (!response.ok) throw Object.assign(new Error("Could not send verification email. Check the Resend configuration."), { status: 502 });
 }
 app.post("/auth/email/register", async (req, res) => {
   try {
-    if (!emailConfigReady()) return res.status(503).json({ error: "Email sign-in is not configured. Add DATABASE_URL, RESEND_API_KEY and EMAIL_FROM in Render." });
+    if (!emailConfigReady()) return res.status(503).json({ error: "Email sign-in is not configured. Add NEON_DATABASE_URL, RESEND_API_KEY and EMAIL_FROM in Render." });
     await ensureEmailAuthSchema();
     const email = normalizeEmail(req.body && req.body.email), password = String(req.body && req.body.password || "");
     if (password.length < 10 || password.length > 200) return res.status(400).json({ error: "Password must contain 10–200 characters." });

@@ -6,6 +6,12 @@
   {id:'move',cat:'motion',label:'move steps',fields:[['steps','10']]},
   {id:'turn',cat:'motion',label:'turn degrees ↻',fields:[['degrees','15']]},
   {id:'goto',cat:'motion',label:'go to x / y',fields:[['x','0'],['y','0']]},
+  {id:'glide',cat:'animation',label:'glide to x / y',fields:[['x','120'],['y','60'],['duration','1']]},
+  {id:'rotateTo',cat:'animation',label:'animate rotation to',fields:[['degrees','360'],['duration','1']]},
+  {id:'scaleTo',cat:'animation',label:'animate size to %',fields:[['scale','150'],['duration','0.5']]},
+  {id:'fadeTo',cat:'animation',label:'fade opacity to %',fields:[['opacity','50'],['duration','0.5']]},
+  {id:'bounce',cat:'animation',label:'bounce',fields:[['height','35'],['duration','0.6']]},
+  {id:'pulse',cat:'animation',label:'pulse size',fields:[['scale','125'],['duration','0.4']]},
   {id:'say',cat:'looks',label:'say',fields:[['text','Hello!']]},
   {id:'think',cat:'looks',label:'think',fields:[['text','Hmm...']]},
   {id:'show',cat:'looks',label:'show',fields:[]},
@@ -38,7 +44,7 @@
   {id:'length',cat:'operators',label:'length of ( )',kind:'reporter',fields:[]},
   {id:'contains',cat:'operators',label:'( ) contains ( )',kind:'reporter',fields:[]}
  ];
- const cats=[['events','Events'],['motion','Motion'],['looks','Looks'],['control','Control'],['variables','Variables'],['operators','Operators']];
+ const cats=[['events','Events'],['motion','Motion'],['looks','Looks'],['animation','Animation'],['control','Control'],['variables','Variables'],['operators','Operators']];
  const containerTypes=new Set(['repeat','forever','if','ifElse']);
  const reporterTypes=new Set(defs.filter(d=>d.kind==='reporter').map(d=>d.id));
  const expressionInputs={repeat:['times'],if:['condition'],ifElse:['condition'],say:['text'],think:['text'],set:['value'],change:['value'],add:['a','b'],subtract:['a','b'],multiply:['a','b'],divide:['a','b'],mathAdd:['a','b'],mathSubtract:['a','b'],mathMultiply:['a','b'],mathDivide:['a','b'],compare:['a','b'],and:['left','right'],or:['left','right'],not:['value'],join:['left','right'],length:['value'],contains:['text','search']};
@@ -582,14 +588,33 @@
     });
     $('#scratchCategories').append(b);
    });
+   let spriteScale=1,spriteOpacity=1;
    function updateSprite(){
     sprite.style.left='calc(50% + '+x+'px)';sprite.style.top='calc(50% - '+y+'px)';
-    sprite.style.transform='translate(-50%,-50%) rotate('+angle+'deg)';
+    sprite.style.transform='translate(-50%,-50%) rotate('+angle+'deg) scale('+spriteScale+')';
+    sprite.style.opacity=String(spriteOpacity);
     sprite.style.display=visible?'grid':'none';
     $('#stagePosition').textContent='x: '+Math.round(x)+' y: '+Math.round(y);
    }
+   function animateSprite(target,duration){
+    const seconds=Math.max(0.05,Math.min(30,Number(duration)||1));
+    if(window.gsap){
+     return new Promise(resolve=>{
+      const state={x,y,angle,scale:spriteScale,opacity:spriteOpacity};
+      window.gsap.to(state,{...target,duration:seconds,ease:'power2.inOut',onUpdate:()=>{
+       x=state.x;y=state.y;angle=state.angle;spriteScale=state.scale;spriteOpacity=state.opacity;updateSprite();
+      },onComplete:resolve});
+      if(runAbort)runAbort.signal.addEventListener('abort',()=>{window.gsap.killTweensOf(state);resolve();},{once:true});
+     });
+    }
+    Object.assign({x,y,angle,scale:spriteScale,opacity:spriteOpacity},target);
+    if(target.x!==undefined)x=target.x;if(target.y!==undefined)y=target.y;
+    if(target.angle!==undefined)angle=target.angle;if(target.scale!==undefined)spriteScale=target.scale;
+    if(target.opacity!==undefined)spriteOpacity=target.opacity;updateSprite();
+    return wait(seconds*1000);
+   }
    function resetSprite(){
-    x=0;y=0;angle=0;visible=true;bubble.hidden=true;updateSprite();updateVars();
+    x=0;y=0;angle=0;spriteScale=1;spriteOpacity=1;visible=true;if(window.gsap)window.gsap.killTweensOf(sprite);bubble.hidden=true;updateSprite();updateVars();
    }
    async function runBlock(n,depth=0){
     if(stopFlag)return;
@@ -602,6 +627,12 @@
      case 'move':{const steps=readNumber(f.steps,'steps');x+=Math.cos(angle*Math.PI/180)*steps;y+=Math.sin(angle*Math.PI/180)*steps;updateSprite();break;}
      case 'turn':angle+=readNumber(f.degrees,'degrees');updateSprite();break;
      case 'goto':x=readNumber(f.x,'x');y=readNumber(f.y,'y');updateSprite();break;
+     case 'glide':await animateSprite({x:readNumber(f.x,'x'),y:readNumber(f.y,'y')},f.duration);break;
+     case 'rotateTo':await animateSprite({angle:readNumber(f.degrees,'degrees')},f.duration);break;
+     case 'scaleTo':await animateSprite({scale:Math.max(0.05,Math.min(5,readNumber(f.scale,'scale')/100))},f.duration);break;
+     case 'fadeTo':await animateSprite({opacity:Math.max(0,Math.min(100,readNumber(f.opacity,'opacity')))/100},f.duration);break;
+     case 'bounce':{const h=Math.max(0,Math.min(180,readNumber(f.height,'height'))),d=Math.max(0.1,Math.min(5,Number(f.duration)||0.6));if(window.gsap){await new Promise(resolve=>window.gsap.timeline({onComplete:resolve}).to(sprite,{y:'-='+h,duration:d/2,ease:'power2.out'}).to(sprite,{y:'+='+h,duration:d/2,ease:'bounce.out'}));}else{await animateSprite({y:y+h},d/2);await animateSprite({y:y-h},d/2);}break;}
+     case 'pulse':{const original=spriteScale,target=Math.max(0.05,Math.min(5,readNumber(f.scale,'scale')/100));await animateSprite({scale:target},Number(f.duration)||0.4);await animateSprite({scale:original},Number(f.duration)||0.4);break;}
      case 'say':case 'think':{
       const message=String(readValue(n,'text',f.text||''));
       bubble.textContent=(n.type==='think'?'💭 ':'')+message;bubble.hidden=false;log(message);break;

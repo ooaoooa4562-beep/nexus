@@ -7,7 +7,14 @@ const { Pool } = require("pg");
 const app = express();
 const PORT = Number(process.env.PORT || 10000);
 const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || "https://ooaoooa4562-beep.github.io";
-const FRONTEND_URL = (process.env.FRONTEND_URL || FRONTEND_ORIGIN + "/nexus").replace(/\/+$/, "");
+const FRONTEND_URL = (() => {
+  const configured = process.env.FRONTEND_URL || FRONTEND_ORIGIN + "/nexus";
+  try {
+    const parsed = new URL(configured);
+    if (parsed.hostname === "ooaoooa4562-beep.github.io" && parsed.pathname === "/") parsed.pathname = "/nexus";
+    return parsed.toString().replace(/\/+$/, "");
+  } catch { return FRONTEND_ORIGIN + "/nexus"; }
+})();
 const COOKIE_NAME = "nexus_github_session";
 const STATE_COOKIE = "nexus_oauth_state";
 const oauthHandoffs = new Map();

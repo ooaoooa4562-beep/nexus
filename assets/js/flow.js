@@ -59,7 +59,49 @@
   {id:'join',cat:'operators',label:'( ) join ( )',kind:'reporter',fields:[]},
   {id:'length',cat:'operators',label:'length of ( )',kind:'reporter',fields:[]},
   {id:'contains',cat:'operators',label:'( ) contains ( )',kind:'reporter',fields:[]}
+  {id:'startOnLoad',cat:'events',label:'when project starts',fields:[]},
+  {id:'whenClicked',cat:'events',label:'when stage is clicked',fields:[]},
+  {id:'whenSpace',cat:'events',label:'when SPACE is pressed',fields:[['key','space']},
+  {id:'whenEnter',cat:'events',label:'when ENTER is pressed',fields:[['key','space']},
+  {id:'moveBack',cat:'motion',label:'move backward',fields:[['steps','10']},
+  {id:'moveFast',cat:'motion',label:'move quickly',fields:[['steps','10']},
+  {id:'turnLeft',cat:'motion',label:'turn left',fields:[['degrees','15']},
+  {id:'turnRight',cat:'motion',label:'turn right',fields:[['degrees','15']},
+  {id:'goCenter',cat:'motion',label:'go to center',fields:[['x','0']},
+  {id:'setX',cat:'motion',label:'set horizontal position',fields:[['x','0']},
+  {id:'setY',cat:'motion',label:'set vertical position',fields:[['x','0']},
+  {id:'glideCenter',cat:'motion',label:'glide to center',fields:[['x','120']},
+  {id:'rotateLeft',cat:'motion',label:'rotate left smoothly',fields:[['degrees','360']},
+  {id:'rotateRight',cat:'motion',label:'rotate right smoothly',fields:[['degrees','360']},
+  {id:'grow',cat:'looks',label:'grow sprite',fields:[['scale','150']},
+  {id:'shrink',cat:'looks',label:'shrink sprite',fields:[['scale','150']},
+  {id:'setSize',cat:'looks',label:'set sprite size',fields:[['scale','150']},
+  {id:'showMessage',cat:'looks',label:'show message bubble',fields:[['text','Hello!']},
+  {id:'thinkMessage',cat:'looks',label:'show thought bubble',fields:[['text','Hmm...']},
+  {id:'clearMessage',cat:'looks',label:'clear message',fields:[]},
+  {id:'fadeIn',cat:'animation',label:'fade in',fields:[['opacity','50']},
+  {id:'fadeOut',cat:'animation',label:'fade out',fields:[['opacity','50']},
+  {id:'zoomIn',cat:'animation',label:'zoom in',fields:[['scale','150']},
+  {id:'zoomOut',cat:'animation',label:'zoom out',fields:[['scale','150']},
+  {id:'wobble',cat:'animation',label:'wobble animation',fields:[['strength','12']},
+  {id:'quickSpin',cat:'animation',label:'quick spin',fields:[['turns','2']},
+  {id:'slowSpin',cat:'animation',label:'slow spin',fields:[['turns','2']},
+  {id:'glowOn',cat:'effects',label:'enable glow',fields:[['enabled','true']},
+  {id:'glowOff',cat:'effects',label:'disable glow',fields:[['enabled','true']},
+  {id:'flashTwice',cat:'effects',label:'flash twice',fields:[['times','3']},
+  {id:'hueShift',cat:'effects',label:'shift hue',fields:[['hue','210']},
+  {id:'waitShort',cat:'control',label:'wait briefly',fields:[['seconds','1']},
+  {id:'repeatTen',cat:'control',label:'repeat 10 times',fields:[['times','3']},
+  {id:'loopForever',cat:'control',label:'loop forever',fields:[]},
+  {id:'stopScripts',cat:'control',label:'stop all scripts now',fields:[]},
+  {id:'setScore',cat:'variables',label:'set score',fields:[['variable','score']},
+  {id:'addScore',cat:'variables',label:'increase score',fields:[['variable','score']},
+  {id:'subtractScore',cat:'variables',label:'decrease score',fields:[['variable','score']},
+  {id:'showScore',cat:'variables',label:'display score',fields:[['variable','score']},
+  {id:'writeOutput',cat:'data',label:'write to output',fields:[['text','NEXUS ready']},
+  {id:'resetClock',cat:'sensing',label:'reset stopwatch',fields:[]},
  ];
+ const typeAliases={startOnLoad:'flag',whenClicked:'flag',whenSpace:'key',whenEnter:'key',moveBack:'move',moveFast:'move',turnLeft:'turn',turnRight:'turn',goCenter:'goto',setX:'goto',setY:'goto',glideCenter:'glide',rotateLeft:'rotateTo',rotateRight:'rotateTo',grow:'scaleTo',shrink:'scaleTo',setSize:'scaleTo',showMessage:'say',thinkMessage:'think',clearMessage:'clearBubble',fadeIn:'fadeTo',fadeOut:'fadeTo',zoomIn:'scaleTo',zoomOut:'scaleTo',wobble:'shake',quickSpin:'spin',slowSpin:'spin',glowOn:'trail',glowOff:'trail',flashTwice:'flash',hueShift:'colorTo',waitShort:'wait',repeatTen:'repeat',loopForever:'forever',stopScripts:'stopAll',setScore:'set',addScore:'change',subtractScore:'change',showScore:'print',writeOutput:'log',resetClock:'resetTimer'};
  const cats=[['events','Events'],['motion','Motion'],['looks','Looks'],['animation','Animation'],['effects','Effects'],['control','Control'],['variables','Variables'],['operators','Operators'],['sensing','Sensing'],['data','Data']];
  const containerTypes=new Set(['repeat','forever','if','ifElse','repeatUntil']);
  const eventTypes=new Set(['flag','key']);
@@ -203,7 +245,7 @@
   const numeric=(value,label)=>{if(typeof value!=='number'||!Number.isFinite(value))throw Error(label+' reporter must return a finite number.');return value;};
   const boolean=(value,label)=>{if(typeof value!=='boolean')throw Error(label+' reporter must return a Boolean value.');return value;};
   const finite=(value,label)=>{if(!Number.isFinite(value))throw Error(label+' produced a non-finite number.');return value;};
-  switch(node.type){
+  switch(typeAliases[node.type]||node.type){
    case 'number':return parseExpression(fields.value??'0',variables,'number');
    case 'random':{const min=parseExpression(fields.min??'1',variables,'random minimum'),max=parseExpression(fields.max??'10',variables,'random maximum');if(max<min)throw Error('Random maximum must be greater than or equal to minimum.');return Math.floor(Math.random()*(max-min+1))+min;}
    case 'round':return Math.round(numeric(read('value','0'),'Round'));
@@ -677,7 +719,7 @@
     if(depth>MAX_DEPTH)throw Error('Nested block depth limit reached.');
     tick();
     const f=n.fields||{},name=validVariableName(f.variable||'score');
-    switch(n.type){
+    switch(typeAliases[n.type]||n.type){
      case 'flag':log('🚩 Start');break;
      case 'key':log('⌨ Key handler: '+normalizeKeyName(f.key||'space'));break;
      case 'move':{const steps=readNumber(f.steps,'steps');x+=Math.cos(angle*Math.PI/180)*steps;y+=Math.sin(angle*Math.PI/180)*steps;updateSprite();break;}

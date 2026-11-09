@@ -180,6 +180,41 @@ app.get("/api/repos", requireSession, async (req, res) => {
     res.json({ repositories: repos.map(repo => ({ fullName: repo.full_name, name: repo.name, private: repo.private, defaultBranch: repo.default_branch, htmlUrl: repo.html_url, permissions: repo.permissions || {} })) });
   } catch (error) { safeError(res, error); }
 });
+function validBranchName(value) {
+  return typeof value === "string" && value.length <= 240 && !value.startsWith("/") && !value.endsWith("/") && !value.includes("..") && !value.includes("\\\\") && !/[\\s~^:?*\\[\\]\\x00-\\x20]/.test(value) && !value.endsWith(".lock");
+}
+app.get("/api/branches", requireSession, async (req, res) => {
+  try {
+    const repository = req.query.repository;
+    if (!validRepoName(repository)) return res.status(400).json({ error: "Repository must use owner/name format." });
+    const branches = await githubRequest("/repos/" + repository + "/branches?per_page=100", req.github.accessToken);
+    res.json({ repository, branches: branches.map(item => ({ name: item.name, protected: item.protected, sha: item.commit && item.commit.sha })) });
+  } catch (error) { safeError(res, error); }
+});
+app.post("/api/branches", requireSession, async (req, res) => {
+  try {
+    const body = req.body || {}, repository = body.repository, name = body.name, from = body.from;
+    if (!validRepoName(repository)) return res.status(400).json({ error: "Repository must use owner/name format." });
+    if (!validBranchName(name)) return res.status(400).json({ error: "Invalid branch name." });
+    const repo = await githubRequest("/repos/" + repository, req.github.accessToken);
+    const source = validBranchName(from) ? from : repo.default_branch;
+    const base = await githubRequest("/repos/" + repository + "/branches/" + encodeURIComponent(source), req.github.accessToken);
+    const result = await githubRequest("/repos/" + repository + "/git/refs", req.github.accessToken, {
+      method: "POST", body: JSON.stringify({ ref: "refs/heads/" + name, sha: base.commit.sha })
+    });
+    res.status(201).json({ ok: true, repository, branch: name, sha: result.object.sha });
+  } catch (error) { safeError(res, error); }
+});
+app.delete("/api/branches", requireSession, async (req, res) => {
+  try {
+    const repository = req.query.repository, name = req.query.name;
+    if (!validRepoName(repository) || !validBranchName(name)) return res.status(400).json({ error: "Repository and valid branch name are required." });
+    const repo = await githubRequest("/repos/" + repository, req.github.accessToken);
+    if (name === repo.default_branch) return res.status(400).json({ error: "The default branch cannot be deleted." });
+    await githubRequest("/repos/" + repository + "/git/refs/heads/" + name.split("/").map(encodeURIComponent).join("/"), req.github.accessToken, { method: "DELETE" });
+    res.json({ ok: true, deleted: name });
+  } catch (error) { safeError(res, error); }
+});
 app.get("/api/tree", requireSession, async (req, res) => {
   try {
     const repository = req.query.repository;

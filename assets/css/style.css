@@ -152,3 +152,11 @@ body.light-mode{color-scheme:light;--bg:#f2f4f8;--surface:#fff;--surface-2:#f0f2
 .graph-node.animation .graph-node-title{color:#fff2e8}
 @media(max-width:1150px){.graph-workbench{grid-template-columns:190px minmax(320px,1fr)}.graph-side{grid-column:1/-1;display:grid;grid-template-columns:minmax(250px,1fr) minmax(250px,1fr);gap:12px;padding:12px}.graph-side>.scratch-panel-title,.graph-side>.stage-controls{grid-column:1/-1}}
 @media(max-width:760px){.graph-workbench{grid-template-columns:1fr}.graph-library{max-height:340px}.graph-side{display:block}.graph-node{width:205px}}
+
+/* NEXUS multi-provider authentication */
+.auth-email-panel{display:grid;gap:8px;margin:16px 0;padding:14px;border:1px solid var(--border-color,#303746);border-radius:12px;background:var(--panel-soft,rgba(120,140,180,.06))}
+.auth-email-panel label{font-size:10px;letter-spacing:.1em;color:var(--muted,#929bad);font-weight:700}
+.auth-email-panel input{width:100%;min-width:0;padding:11px 12px;border:1px solid var(--border-color,#303746);border-radius:8px;background:var(--input-bg,#171c27);color:var(--text,#eef2fa);font:inherit}
+.auth-email-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.auth-email-actions button{flex:1 1 140px}
+#profileLogout{margin-top:8px}

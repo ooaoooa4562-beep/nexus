@@ -124,3 +124,12 @@ body.light-mode{color-scheme:light;--bg:#f2f4f8;--surface:#fff;--surface-2:#f0f2
 @media(max-width:1150px){.graph-workbench{grid-template-columns:170px minmax(320px,1fr)}.graph-side{grid-column:1/-1;display:grid;grid-template-columns:minmax(250px,360px) 1fr;align-items:start}.graph-side>.scratch-panel-title{grid-column:1/-1}}
 @media(max-width:760px){.graph-toolbar{align-items:flex-start;flex-direction:column}.graph-tools{width:100%}.graph-workbench{grid-template-columns:1fr}.graph-library{max-height:360px}.graph-palette{max-height:190px}.graph-editor{min-height:560px}.graph-canvas{min-height:520px}.graph-side{grid-template-columns:1fr}.graph-editor-head .graph-help{margin-left:0}.graph-side>.scratch-panel-title{grid-column:1}.scratch-footer{flex-direction:column}}
 @media(max-width:440px){.graph-tools button{font-size:8px;padding:7px}.graph-categories .category-button{font-size:7px;padding:6px}.graph-node{width:172px}.graph-canvas{min-height:480px}.flow-variable-tools input{font-size:7px}}
+
+/* Flow Studio — animation category and polished workspace */
+.category-button.animation{color:#ffc58d;border-color:#8d5b32;background:#4a3025}
+.code-block.animation,.graph-node.animation{background:#9a5b2d;border-color:#c27a43;color:#fff1e5}
+.graph-node.animation .graph-node-title{color:#fff7ef}
+.graph-library-block.animation{box-shadow:0 5px 18px #d8873a20}
+.scratch-stage{isolation:isolate;overflow:hidden}
+.stage-sprite{will-change:left,top,transform,opacity;transform-origin:center center}
+@media(prefers-reduced-motion:reduce){.stage-sprite{transition:none!important}}

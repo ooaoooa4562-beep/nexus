@@ -267,9 +267,6 @@ app.post("/auth/logout", (req, res) => {
   res.json({ ok: true });
 });
 app.get("/api/me", (req, res) => { const session = getSession(req); res.json({ connected: Boolean(session), provider: session ? (session.provider || "github") : null, user: session ? { login: session.login, email: session.email || null, avatarUrl: session.avatarUrl || "" } : null }); });
-  const session = getSession(req);
-  res.json({ connected: Boolean(session), user: session ? { login: session.login, avatarUrl: session.avatarUrl } : null });
-});
 app.get("/api/repos", requireSession, async (req, res) => {
   try {
     const repos = await githubRequest("/user/repos?per_page=100&sort=updated&affiliation=owner,collaborator,organization_member", req.github.accessToken);

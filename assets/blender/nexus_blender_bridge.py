@@ -73,7 +73,15 @@ class Handler(BaseHTTPRequestHandler):
     def _headers(self, status=200):
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
-        self.send_header("Access-Control-Allow-Origin", "*")
+        origin = self.headers.get("Origin", "")
+        allowed = {
+            "https://ooaoooa4562-beep.github.io",
+            "http://127.0.0.1:5500",
+            "http://localhost:5500",
+        }
+        if origin in allowed:
+            self.send_header("Access-Control-Allow-Origin", origin)
+            self.send_header("Vary", "Origin")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self.end_headers()

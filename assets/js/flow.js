@@ -61,7 +61,7 @@
  const cats=[['events','Events'],['motion','Motion'],['looks','Looks'],['animation','Animation'],['effects','Effects'],['control','Control'],['variables','Variables'],['operators','Operators'],['sensing','Sensing'],['data','Data']];
  const containerTypes=new Set(['repeat','forever','if','ifElse']);
  const reporterTypes=new Set(defs.filter(d=>d.kind==='reporter').map(d=>d.id));
- const expressionInputs={repeat:['times'],if:['condition'],ifElse:['condition'],say:['text'],think:['text'],set:['value'],change:['value'],add:['a','b'],subtract:['a','b'],multiply:['a','b'],divide:['a','b'],mathAdd:['a','b'],mathSubtract:['a','b'],mathMultiply:['a','b'],mathDivide:['a','b'],compare:['a','b'],and:['left','right'],or:['left','right'],not:['value'],join:['left','right'],length:['value'],contains:['text','search']};
+ const expressionInputs={repeat:['times'],if:['condition'],ifElse:['condition'],say:['text'],think:['text'],set:['value'],change:['value'],add:['a','b'],subtract:['a','b'],multiply:['a','b'],divide:['a','b'],mathAdd:['a','b'],mathSubtract:['a','b'],mathMultiply:['a','b'],mathDivide:['a','b'],compare:['a','b'],and:['left','right'],or:['left','right'],not:['value'],join:['left','right'],length:['value'],contains:['text','search'],round:['value'],absolute:['value'],modulo:['a','b']};
  const isReporter=type=>reporterTypes.has(type);
  const uid=()=> 'n'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
  const def=t=>defs.find(d=>d.id===t);

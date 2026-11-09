@@ -183,6 +183,17 @@
    default:throw Error('Unknown comparison operator "'+operator+'".');
   }
  }
+ function normalizeKeyName(value){
+  const raw=String(value??'');
+  if(raw===' ')return 'space';
+  const key=raw.trim().toLowerCase();
+  const aliases={spacebar:'space','space bar':'space',arrowup:'up','up arrow':'up',arrowdown:'down','down arrow':'down',arrowleft:'left','left arrow':'left',arrowright:'right','right arrow':'right',esc:'escape',return:'enter','any key':'any'};
+  return aliases[key]||key;
+ }
+ function keyMatches(configured,pressed){
+  const wanted=normalizeKeyName(configured||'space'),actual=normalizeKeyName(pressed);
+  return wanted==='any'||wanted==='*'||wanted===actual;
+ }
  function evaluateReporter(node,variables={},depth=0){
   if(!node||depth>40)throw Error('Reporter expression depth limit reached.');
   const fields=node.fields||{},inputs=node.inputs||{};
@@ -244,15 +255,23 @@
   }catch{return {...starter(),variables:defaultVariables()};}
  };
  api.flow={
+  normalizeKey:normalizeKeyName,
+  keyMatches,
   evaluateExpression:(expression,variables={})=>parseExpression(expression,variables),
   evaluateReporter:(reporter,variables={})=>evaluateReporter(reporter,variables),
   normalizeVariables,
   assignVariable:(variables,name,value)=>assignVariableValue(variables,name,value),
   render:()=>'<div class="eyebrow">NEXUS MODULE / 006</div><div class="module-title-row"><div><h1>Flow <span>Studio.</span></h1><p class="subtitle">Build programs with nested control blocks, variables and a live stage.</p></div><span class="flow-badge">● BLOCK EDITOR</span></div><div class="scratch-toolbar graph-toolbar"><div class="scratch-project"><span class="scratch-project-icon">✳</span><input id="projectName" value="My first project" aria-label="Project name"></div><div class="graph-tools"><button class="secondary-button" id="wireMode">⌁ WIRE: OFF</button><button class="secondary-button" id="deleteLinks">CLEAR WIRES</button><button class="secondary-button" id="flowNew">NEW</button><button class="secondary-button" id="flowSave">SAVE</button><button class="run-button" id="flowRun">▶ RUN</button><button class="stop-button" id="flowStop" disabled>■ STOP</button></div></div><div class="graph-workbench"><aside class="graph-library"><div class="graph-library-head"><b>BLOCK LIBRARY</b><small>DRAG BLOCKS TO CANVAS OR INTO SLOTS</small></div><div class="graph-categories" id="scratchCategories"></div><div class="graph-palette" id="scratchPalette"></div></aside><section class="graph-editor"><div class="graph-editor-head"><b>WORKSPACE</b><span id="blockCount">0 BLOCKS</span><span class="graph-help">Drag blocks · drop into orange control slots · WIRE links top-level scripts</span></div><div class="graph-canvas" id="graphCanvas"><svg class="graph-wires" id="graphWires"></svg><div id="graphNodes"></div><div class="graph-empty" id="graphEmpty">Drag blocks here from the library</div></div><div class="graph-status" id="graphStatus">Drop blocks into a control slot to build a nested body.</div></section><aside class="graph-side"><div class="scratch-panel-title"><b>STAGE</b><small>360 × 260</small></div><div class="scratch-stage" id="scratchStage"><div class="stage-grid"></div><div class="stage-sprite" id="stageSprite">🐱</div><div class="stage-bubble" id="stageBubble" hidden></div></div><div class="stage-controls"><button id="stageReset">↺ RESET SPRITE</button><span id="stagePosition">x: 0 y: 0</span></div><div class="scratch-console"><div class="scratch-panel-title"><b>OUTPUT</b><button id="clearOutput">CLEAR</button></div><div id="scratchOutput" class="scratch-output">Ready. Press RUN to execute the script.</div><div class="flow-variable-manager"><div class="flow-variable-tools"><input id="newVariableName" placeholder="new variable" maxlength="32" aria-label="New variable name"><select id="newVariableType" aria-label="New variable type" title="Variable type"><option value="number">Number</option><option value="text">Text</option><option value="boolean">Boolean</option></select><button id="addVariable" type="button">+ ADD</button></div><div id="flowVariableList" class="flow-variable-list"></div><datalist id="flowVariableOptions"></datalist></div><div id="variableReadout" class="variable-readout">Variables: score = 0</div></div></aside></div><div class="scratch-footer"><span><i></i> LOCAL PROJECT</span><span>Nested blocks · Variables · Runtime stop control</span></div>',
   mount(root){
-   let data=load(),nodes=data.nodes,links=data.links,category='events',wireMode=false,pending=null,running=false,stopFlag=false,runAbort=null,x=0,y=0,angle=0,visible=true,vars=data.variables||defaultVariables(),runtimeSteps=0;
+   let data=load(),nodes=data.nodes,links=data.links,category='events',wireMode=false,pending=null,running=false,stopFlag=false,runAbort=null,x=0,y=0,angle=0,visible=true,vars=data.variables||defaultVariables(),runtimeSteps=0,runtimeFailure=null,activeKeyTasks=new Set(),keyHandler=null;
    const MAX_STEPS=100000,MAX_DEPTH=40;
    const $=s=>root.querySelector(s),canvas=$('#graphCanvas'),nodeLayer=$('#graphNodes'),wireSvg=$('#graphWires'),palette=$('#scratchPalette'),out=$('#scratchOutput'),sprite=$('#stageSprite'),bubble=$('#stageBubble');
+   if(root._flowLifecycleObserver)root._flowLifecycleObserver.disconnect();
+   const lifecycleObserver=typeof MutationObserver==='function'?new MutationObserver(()=>{
+    if(running&&(root.hidden||!$('#flowRun'))){stopFlag=true;if(runAbort)runAbort.abort();}
+   }):null;
+   if(lifecycleObserver){root._flowLifecycleObserver=lifecycleObserver;lifecycleObserver.observe(root,{attributes:true,attributeFilter:['hidden'],childList:true});}
+
    const log=s=>{const d=document.createElement('div');d.textContent=String(s);out.append(d);out.scrollTop=out.scrollHeight;};
    const countBlock=n=>1+countBlocks(n.children||[])+countBlocks(n.elseChildren||[])+Object.values(n.inputs||{}).filter(Boolean).reduce((sum,child)=>sum+countBlock(child),0);
    const countBlocks=list=>list.reduce((sum,n)=>sum+countBlock(n),0);
@@ -617,18 +636,30 @@
     sprite.style.display=visible?'grid':'none';
     $('#stagePosition').textContent='x: '+Math.round(x)+' y: '+Math.round(y);
    }
+   function gsapPromise(factory){
+    return new Promise(resolve=>{
+     let animation=null,settled=false;
+     const finish=()=>{
+      if(settled)return;settled=true;
+      if(runAbort)runAbort.signal.removeEventListener('abort',abort);
+      resolve();
+     };
+     const abort=()=>{if(animation&&typeof animation.kill==='function')animation.kill();finish();};
+     animation=factory(finish);
+     if(runAbort&&!settled){
+      runAbort.signal.addEventListener('abort',abort,{once:true});
+      if(runAbort.signal.aborted)abort();
+     }
+    });
+   }
    function animateSprite(target,duration){
     const seconds=Math.max(0.05,Math.min(30,Number(duration)||1));
     if(window.gsap){
-     return new Promise(resolve=>{
-      const state={x,y,angle,scale:spriteScale,opacity:spriteOpacity};
-      window.gsap.to(state,{...target,duration:seconds,ease:'power2.inOut',onUpdate:()=>{
-       x=state.x;y=state.y;angle=state.angle;spriteScale=state.scale;spriteOpacity=state.opacity;updateSprite();
-      },onComplete:resolve});
-      if(runAbort)runAbort.signal.addEventListener('abort',()=>{window.gsap.killTweensOf(state);resolve();},{once:true});
-     });
+     const state={x,y,angle,scale:spriteScale,opacity:spriteOpacity};
+     return gsapPromise(finish=>window.gsap.to(state,{...target,duration:seconds,ease:'power2.inOut',onUpdate:()=>{
+      x=state.x;y=state.y;angle=state.angle;spriteScale=state.scale;spriteOpacity=state.opacity;updateSprite();
+     },onComplete:finish}));
     }
-    Object.assign({x,y,angle,scale:spriteScale,opacity:spriteOpacity},target);
     if(target.x!==undefined)x=target.x;if(target.y!==undefined)y=target.y;
     if(target.angle!==undefined)angle=target.angle;if(target.scale!==undefined)spriteScale=target.scale;
     if(target.opacity!==undefined)spriteOpacity=target.opacity;updateSprite();
@@ -644,7 +675,7 @@
     const f=n.fields||{},name=validVariableName(f.variable||'score');
     switch(n.type){
      case 'flag':log('🚩 Start');break;
-     case 'key':log('Key event: '+(f.key||'space')+' (manual start)');break;
+     case 'key':log('⌨ Key handler: '+normalizeKeyName(f.key||'space'));break;
      case 'move':{const steps=readNumber(f.steps,'steps');x+=Math.cos(angle*Math.PI/180)*steps;y+=Math.sin(angle*Math.PI/180)*steps;updateSprite();break;}
      case 'turn':angle+=readNumber(f.degrees,'degrees');updateSprite();break;
      case 'goto':x=readNumber(f.x,'x');y=readNumber(f.y,'y');updateSprite();break;
@@ -652,13 +683,13 @@
      case 'rotateTo':await animateSprite({angle:readNumber(f.degrees,'degrees')},f.duration);break;
      case 'scaleTo':await animateSprite({scale:Math.max(0.05,Math.min(5,readNumber(f.scale,'scale')/100))},f.duration);break;
      case 'fadeTo':await animateSprite({opacity:Math.max(0,Math.min(100,readNumber(f.opacity,'opacity')))/100},f.duration);break;
-     case 'bounce':{const h=Math.max(0,Math.min(180,readNumber(f.height,'height'))),d=Math.max(0.1,Math.min(5,Number(f.duration)||0.6));if(window.gsap){await new Promise(resolve=>window.gsap.timeline({onComplete:resolve}).to(sprite,{y:'-='+h,duration:d/2,ease:'power2.out'}).to(sprite,{y:'+='+h,duration:d/2,ease:'bounce.out'}));}else{await animateSprite({y:y+h},d/2);await animateSprite({y:y-h},d/2);}break;}
-     case 'pulse':{const original=spriteScale,target=Math.max(0.05,Math.min(5,readNumber(f.scale,'scale')/100));await animateSprite({scale:target},Number(f.duration)||0.4);await animateSprite({scale:original},Number(f.duration)||0.4);break;}
-     case 'shake':{const strength=Math.max(1,Math.min(40,readNumber(f.strength,'strength'))),duration=Math.max(.1,Math.min(3,Number(f.duration)||.45));if(window.gsap){await new Promise(resolve=>window.gsap.to(sprite,{x:'+='+strength,repeat:5,yoyo:true,duration:duration/6,ease:'sine.inOut',onComplete:resolve}));}else await wait(duration*1000);break;}
+     case 'bounce':{const h=Math.max(0,Math.min(180,readNumber(f.height,'height'))),d=Math.max(0.1,Math.min(5,Number(f.duration)||0.6)),origin=y;if(window.gsap){await gsapPromise(finish=>window.gsap.timeline({onComplete:finish}).to(sprite,{y:'-='+h,duration:d/2,ease:'power2.out'}).to(sprite,{y:'+='+h,duration:d/2,ease:'bounce.out'}));}else{await animateSprite({y:origin+h},d/2);if(!stopFlag)await animateSprite({y:origin},d/2);}break;}
+     case 'pulse':{const original=spriteScale,target=Math.max(0.05,Math.min(5,readNumber(f.scale,'scale')/100)),duration=Number(f.duration)||0.4;await animateSprite({scale:target},duration);if(!stopFlag)await animateSprite({scale:original},duration);break;}
+     case 'shake':{const strength=Math.max(1,Math.min(40,readNumber(f.strength,'strength'))),duration=Math.max(.1,Math.min(3,Number(f.duration)||.45));if(window.gsap)await gsapPromise(finish=>window.gsap.to(sprite,{x:'+='+strength,repeat:5,yoyo:true,duration:duration/6,ease:'sine.inOut',onComplete:finish}));else await wait(duration*1000);break;}
      case 'spin':await animateSprite({angle:angle+readNumber(f.turns,'turns')*360},f.duration);break;
-     case 'jump':{const h=Math.max(0,Math.min(220,readNumber(f.height,'height'))),d=Math.max(.1,Math.min(5,Number(f.duration)||.55));if(window.gsap){await new Promise(resolve=>window.gsap.timeline({onComplete:resolve}).to(sprite,{y:'-='+h,duration:d*.45,ease:'power2.out'}).to(sprite,{y:'+='+h,duration:d*.55,ease:'bounce.out'}));}else await wait(d*1000);break;}
-     case 'colorTo':{const hue=((readNumber(f.hue,'hue')%360)+360)%360;const duration=Math.max(.05,Math.min(5,Number(f.duration)||.5));if(window.gsap)await new Promise(resolve=>window.gsap.to(sprite,{filter:'hue-rotate('+hue+'deg)',duration,ease:'power1.inOut',onComplete:resolve}));else sprite.style.filter='hue-rotate('+hue+'deg)';break;}
-     case 'flash':{const times=Math.max(1,Math.min(10,Math.floor(readNumber(f.times,'times')))),duration=Math.max(.05,Math.min(1,Number(f.duration)||.18));if(window.gsap)await new Promise(resolve=>window.gsap.to(sprite,{opacity:.12,repeat:times*2-1,yoyo:true,duration,ease:'none',onComplete:resolve}));else for(let i=0;i<times*2;i++){sprite.style.opacity=i%2?'1':'.12';await wait(duration*1000);}spriteOpacity=1;updateSprite();break;}
+     case 'jump':{const h=Math.max(0,Math.min(220,readNumber(f.height,'height'))),d=Math.max(.1,Math.min(5,Number(f.duration)||.55));if(window.gsap)await gsapPromise(finish=>window.gsap.timeline({onComplete:finish}).to(sprite,{y:'-='+h,duration:d*.45,ease:'power2.out'}).to(sprite,{y:'+='+h,duration:d*.55,ease:'bounce.out'}));else await wait(d*1000);break;}
+     case 'colorTo':{const hue=((readNumber(f.hue,'hue')%360)+360)%360;const duration=Math.max(.05,Math.min(5,Number(f.duration)||.5));if(window.gsap)await gsapPromise(finish=>window.gsap.to(sprite,{filter:'hue-rotate('+hue+'deg)',duration,ease:'power1.inOut',onComplete:finish}));else sprite.style.filter='hue-rotate('+hue+'deg)';break;}
+     case 'flash':{const times=Math.max(1,Math.min(10,Math.floor(readNumber(f.times,'times')))),duration=Math.max(.05,Math.min(1,Number(f.duration)||.18));if(window.gsap)await gsapPromise(finish=>window.gsap.to(sprite,{opacity:.12,repeat:times*2-1,yoyo:true,duration,ease:'none',onComplete:finish}));else for(let i=0;i<times*2&&!stopFlag;i++){sprite.style.opacity=i%2?'1':'.12';await wait(duration*1000);}spriteOpacity=1;updateSprite();break;}
      case 'trail':{const enabled=String(f.enabled)!=='false';sprite.style.filter=enabled?'drop-shadow(0 0 8px currentColor)':'';log('Glow effect '+(enabled?'enabled':'disabled'));break;}
      case 'resetTimer':window.__nexusFlowTimer=Date.now();log('Timer reset');break;
      case 'log':log(String(readValue(n,'text',f.text||'')));break;
@@ -695,7 +726,7 @@
      case 'if':if(conditionFor(n))await executeSequence(n.children||[],depth+1);break;
      case 'ifElse':await executeSequence(conditionFor(n)?(n.children||[]):(n.elseChildren||[]),depth+1);break;
      case 'repeatUntil':{let guard=0;while(!conditionFor(n)&&!stopFlag){if(++guard>MAX_STEPS)throw Error('Repeat-until safety limit reached.');tick();if((n.children||[]).length)await executeSequence(n.children,depth+1);else await wait(100);}break;}
-     case 'stopAll':stopFlag=true;log('Stop all scripts requested.');break;
+     case 'stopAll':requestStop('Stop all scripts requested.');break;
      case 'repeat':{
       const times=readExpression(n,'times','3','repeat count');
       if(times<0||times>1000)throw Error('Repeat count must be between 0 and 1000.');
@@ -735,22 +766,61 @@
      current=outgoing(n.id)?.to||null;
     }
    }
+   function handleKeyDown(event){
+    if(!running||stopFlag||root.hidden||!$('#flowRun'))return;
+    const target=event.target;
+    if(target&&target.closest&&target.closest('input,textarea,select,[contenteditable="true"],[contenteditable=""]'))return;
+    const pressed=normalizeKeyName(event.key);
+    if(!pressed||event.repeat)return;
+    const matches=nodes.filter(n=>n.type==='key'&&keyMatches(n.fields?.key||'space',pressed));
+    if(!matches.length)return;
+    if(['space','up','down','left','right'].includes(pressed))event.preventDefault();
+    log('⌨ Key pressed: '+pressed);
+    matches.forEach(block=>{
+     if(activeKeyTasks.size>=8){log('Key event concurrency limit reached (8 scripts).');return;}
+     let task;
+     task=executeLinked(block.id).catch(error=>{
+      if(!stopFlag){runtimeFailure=error;stopFlag=true;if(runAbort)runAbort.abort();}
+     }).finally(()=>activeKeyTasks.delete(task));
+     activeKeyTasks.add(task);
+    });
+   }
+   function requestStop(message='Stop requested'){
+    if(!running)return;
+    stopFlag=true;if(runAbort)runAbort.abort();log(message);$('#graphStatus').textContent='Stopping runtime…';
+   }
    async function run(){
     if(running)return;
-    running=true;stopFlag=false;runtimeSteps=0;window.__nexusFlowTimer=Date.now();runAbort=new AbortController();
+    running=true;stopFlag=false;runtimeSteps=0;runtimeFailure=null;activeKeyTasks.clear();window.__nexusFlowTimer=Date.now();runAbort=new AbortController();
     out.replaceChildren();resetSprite();$('#flowRun').disabled=true;$('#flowStop').disabled=false;
     $('#graphStatus').textContent='Runtime is executing.';
     log('NEXUS block runtime started');
+    const starts=nodes.filter(n=>n.type==='flag'),keyScripts=nodes.filter(n=>n.type==='key');
     try{
-     const starts=nodes.filter(n=>n.type==='flag'||n.type==='key');
-     if(!starts.length)log('No start block found. Add “when clicked” first.');
+     if(keyScripts.length){keyHandler=handleKeyDown;document.addEventListener('keydown',keyHandler);}
+     if(!starts.length&&!keyScripts.length)log('No start block found. Add “when clicked” or “when key pressed”.');
+     if(!starts.length&&keyScripts.length)log('No green-flag script found. Waiting for keyboard events.');
      for(const n of starts){if(!stopFlag)await executeLinked(n.id);}
+     if(runtimeFailure)throw runtimeFailure;
+     if(keyScripts.length&&!stopFlag){
+      const names=[...new Set(keyScripts.map(n=>normalizeKeyName(n.fields?.key||'space')))].join(', ');
+      log('⌨ Listening for keys: '+names+'. Press STOP to finish.');
+      $('#graphStatus').textContent='Listening for keyboard events. Press STOP to finish.';
+      await new Promise(resolve=>{
+       if(stopFlag){resolve();return;}
+       runAbort.signal.addEventListener('abort',resolve,{once:true});
+      });
+     }
+     if(runtimeFailure)throw runtimeFailure;
      log(stopFlag?'■ Stopped':'✓ Execution finished');
      $('#graphStatus').textContent=stopFlag?'Execution stopped.':'Execution finished successfully.';
-    }catch(e){
-     log('RUNTIME ERROR: '+(e?.message||String(e)));
-     $('#graphStatus').textContent='Runtime error: '+(e?.message||String(e));
+    }catch(error){
+     stopFlag=true;if(runAbort)runAbort.abort();
+     log('RUNTIME ERROR: '+(error?.message||String(error)));
+     $('#graphStatus').textContent='Runtime error: '+(error?.message||String(error));
     }finally{
+     if(keyHandler){document.removeEventListener('keydown',keyHandler);keyHandler=null;}
+     if(activeKeyTasks.size)await Promise.allSettled(Array.from(activeKeyTasks));
      running=false;runAbort=null;$('#flowRun').disabled=false;$('#flowStop').disabled=true;
     }
    }
@@ -762,10 +832,7 @@
    });
    $('#deleteLinks').addEventListener('click',()=>{links=[];pending=null;save();render();$('#graphStatus').textContent='All top-level wires removed.';});
    $('#flowRun').addEventListener('click',run);
-   $('#flowStop').addEventListener('click',()=>{
-    if(!running)return;
-    stopFlag=true;if(runAbort)runAbort.abort();log('Stop requested');$('#graphStatus').textContent='Stopping runtime…';
-   });
+   $('#flowStop').addEventListener('click',requestStop);
    $('#flowSave').addEventListener('click',()=>{save();log('✓ Project saved locally');});
    $('#flowNew').addEventListener('click',()=>{
     if(confirm('Create a new empty project?')){nodes=[];links=[];vars=defaultVariables();pending=null;updateVars();save();render();out.textContent='New project created.';}

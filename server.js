@@ -132,6 +132,102 @@ function safeError(res, error) {
 }
 
 app.get("/health", (_req, res) => res.json({ ok: true, service: "NEXUS GitHub API", version: "0.2.0", socialDatabaseConfigured: Boolean(pool) }));
+app.get("/auth/google", (req, res) => {
+  if (!process.env.GOOGLE_CLIENT_ID || !process.env.API_BASE_URL) return res.status(503).send("Google OAuth is not configured.");
+  const state = crypto.randomBytes(24).toString("hex");
+  res.setHeader("Set-Cookie", STATE_COOKIE + "=" + encodeURIComponent(state + "." + sign(state)) + "; " + cookieOptions(600));
+  const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
+  url.searchParams.set("client_id", process.env.GOOGLE_CLIENT_ID);
+  url.searchParams.set("redirect_uri", process.env.API_BASE_URL + "/auth/google/callback");
+  url.searchParams.set("response_type", "code");
+  url.searchParams.set("scope", "openid email profile");
+  url.searchParams.set("state", state);
+  url.searchParams.set("prompt", "select_account");
+  res.redirect(url.toString());
+});
+app.get("/auth/google/callback", async (req, res) => {
+  const saved = parseCookies(req)[STATE_COOKIE] || "";
+  clearCookie(res, STATE_COOKIE);
+  try {
+    const pair = saved.split(".");
+    if (!req.query.state || !safeEqual(req.query.state, pair[0]) || !safeEqual(sign(pair[0]), pair[1])) return res.status(400).send("OAuth state validation failed.");
+    if (req.query.error) return res.redirect(FRONTEND_URL + "/?auth=google-cancelled");
+    if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET || !process.env.API_BASE_URL || typeof req.query.code !== "string") return res.status(503).send("Google OAuth is not fully configured.");
+    const tokenResponse = await fetch("https://oauth2.googleapis.com/token", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ code: req.query.code, client_id: process.env.GOOGLE_CLIENT_ID, client_secret: process.env.GOOGLE_CLIENT_SECRET, redirect_uri: process.env.API_BASE_URL + "/auth/google/callback", grant_type: "authorization_code" }) });
+    const tokens = await tokenResponse.json();
+    if (!tokenResponse.ok || !tokens.access_token) throw new Error("Google authorization failed.");
+    const profileResponse = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", { headers: { Authorization: "Bearer " + tokens.access_token } });
+    const profile = await profileResponse.json();
+    if (!profileResponse.ok || !profile.email || profile.verified_email !== true) throw new Error("Google did not return a verified email address.");
+    const session = seal({ provider: "google", googleId: String(profile.id), email: profile.email, login: profile.name || profile.email, avatarUrl: profile.picture || "", expiresAt: Date.now() + SESSION_TTL * 1000 });
+    res.append("Set-Cookie", COOKIE_NAME + "=" + encodeURIComponent(session) + "; " + cookieOptions(SESSION_TTL));
+    res.redirect(FRONTEND_URL + "/?auth=google-connected");
+  } catch (error) { res.status(400).send(error.message || "Google authorization failed."); }
+});
+function emailConfigReady() { return Boolean(pool && process.env.RESEND_API_KEY && process.env.EMAIL_FROM && process.env.API_BASE_URL); }
+async function ensureEmailAuthSchema() {
+  if (!pool) throw Object.assign(new Error("Email sign-in requires DATABASE_URL."), { status: 503 });
+  await pool.query("CREATE TABLE IF NOT EXISTS nexus_email_accounts (email TEXT PRIMARY KEY, password_hash TEXT NOT NULL, verified BOOLEAN NOT NULL DEFAULT FALSE, verification_hash TEXT, verification_expires_at TIMESTAMPTZ, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
+}
+function normalizeEmail(value) {
+  const email = String(value || "").trim().toLowerCase();
+  if (email.length > 254 || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) throw Object.assign(new Error("Enter a valid email address."), { status: 400 });
+  return email;
+}
+function passwordHash(password, salt = crypto.randomBytes(16).toString("hex")) {
+  return salt + ":" + crypto.scryptSync(password, salt, 64, { N: 16384, r: 8, p: 1, maxmem: 64 * 1024 * 1024 }).toString("hex");
+}
+function passwordMatches(password, stored) {
+  const [salt, expected] = String(stored || "").split(":");
+  if (!salt || !expected) return false;
+  const actual = Buffer.from(passwordHash(password, salt).split(":")[1], "hex"), wanted = Buffer.from(expected, "hex");
+  return actual.length === wanted.length && crypto.timingSafeEqual(actual, wanted);
+}
+async function sendVerificationEmail(email, token) {
+  if (!emailConfigReady()) throw Object.assign(new Error("Add RESEND_API_KEY, EMAIL_FROM and DATABASE_URL to Render to enable email sign-in."), { status: 503 });
+  const verifyUrl = process.env.API_BASE_URL + "/auth/email/verify?token=" + encodeURIComponent(token);
+  const response = await fetch("https://api.resend.com/emails", { method: "POST", headers: { Authorization: "Bearer " + process.env.RESEND_API_KEY, "Content-Type": "application/json" }, body: JSON.stringify({ from: process.env.EMAIL_FROM, to: [email], subject: "Verify your NEXUS account", html: "<p>Welcome to NEXUS.</p><p><a href=\"" + verifyUrl + "\">Verify your email address</a></p><p>If you did not request this, ignore this message.</p>" }) });
+  if (!response.ok) throw Object.assign(new Error("Could not send verification email. Check the Resend configuration."), { status: 502 });
+}
+app.post("/auth/email/register", async (req, res) => {
+  try {
+    if (!emailConfigReady()) return res.status(503).json({ error: "Email sign-in is not configured. Add DATABASE_URL, RESEND_API_KEY and EMAIL_FROM in Render." });
+    await ensureEmailAuthSchema();
+    const email = normalizeEmail(req.body && req.body.email), password = String(req.body && req.body.password || "");
+    if (password.length < 10 || password.length > 200) return res.status(400).json({ error: "Password must contain 10–200 characters." });
+    const token = crypto.randomBytes(32).toString("hex"), hash = crypto.createHash("sha256").update(token).digest("hex");
+    const saved = await pool.query("INSERT INTO nexus_email_accounts (email,password_hash,verification_hash,verification_expires_at) VALUES ($1,$2,$3,NOW()+INTERVAL '30 minutes') ON CONFLICT (email) DO UPDATE SET password_hash=EXCLUDED.password_hash,verified=FALSE,verification_hash=EXCLUDED.verification_hash,verification_expires_at=EXCLUDED.verification_expires_at WHERE nexus_email_accounts.verified=FALSE RETURNING email", [email, passwordHash(password), hash]);
+    if (!saved.rows.length) return res.status(409).json({ error: "An account with this email already exists. Sign in instead." });
+    await sendVerificationEmail(email, token);
+    res.status(202).json({ ok: true, message: "Verification link sent. Check your email." });
+  } catch (error) { res.status(error.status || 500).json({ error: error.message || "Could not create email account." }); }
+});
+app.get("/auth/email/verify", async (req, res) => {
+  try {
+    await ensureEmailAuthSchema();
+    const token = String(req.query.token || "");
+    if (!/^[a-f0-9]{64}$/.test(token)) return res.status(400).send("Invalid verification link.");
+    const hash = crypto.createHash("sha256").update(token).digest("hex");
+    const result = await pool.query("UPDATE nexus_email_accounts SET verified=TRUE,verification_hash=NULL,verification_expires_at=NULL WHERE verification_hash=$1 AND verification_expires_at>NOW() RETURNING email", [hash]);
+    if (!result.rows.length) return res.status(400).send("This verification link has expired or was already used.");
+    const email = result.rows[0].email;
+    const session = seal({ provider: "email", email, login: email, expiresAt: Date.now() + SESSION_TTL * 1000 });
+    res.append("Set-Cookie", COOKIE_NAME + "=" + encodeURIComponent(session) + "; " + cookieOptions(SESSION_TTL));
+    res.redirect(FRONTEND_URL + "/?auth=email-connected");
+  } catch (error) { res.status(error.status || 500).send("Email verification could not be completed."); }
+});
+app.post("/auth/email/login", async (req, res) => {
+  try {
+    await ensureEmailAuthSchema();
+    const email = normalizeEmail(req.body && req.body.email), password = String(req.body && req.body.password || "");
+    const result = await pool.query("SELECT password_hash,verified FROM nexus_email_accounts WHERE email=$1", [email]);
+    if (!result.rows.length || !passwordMatches(password, result.rows[0].password_hash)) return res.status(401).json({ error: "Email or password is incorrect." });
+    if (!result.rows[0].verified) return res.status(403).json({ error: "Verify your email address before signing in." });
+    const session = seal({ provider: "email", email, login: email, expiresAt: Date.now() + SESSION_TTL * 1000 });
+    res.append("Set-Cookie", COOKIE_NAME + "=" + encodeURIComponent(session) + "; " + cookieOptions(SESSION_TTL));
+    res.json({ ok: true, provider: "email", email });
+  } catch (error) { res.status(error.status || 500).json({ error: error.message || "Email sign-in failed." }); }
+});
 app.get("/auth/github", (req, res) => {
   if (!configReady()) return res.status(503).send("GitHub OAuth is not configured yet.");
   const state = crypto.randomBytes(24).toString("hex");
@@ -170,7 +266,7 @@ app.post("/auth/logout", requireSession, (req, res) => {
   clearCookie(res, COOKIE_NAME);
   res.json({ ok: true });
 });
-app.get("/api/me", (req, res) => {
+app.get("/api/me", (req, res) => { const session = getSession(req); res.json({ connected: Boolean(session), provider: session ? (session.provider || "github") : null, user: session ? { login: session.login, email: session.email || null, avatarUrl: session.avatarUrl || "" } : null }); });
   const session = getSession(req);
   res.json({ connected: Boolean(session), user: session ? { login: session.login, avatarUrl: session.avatarUrl } : null });
 });

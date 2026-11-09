@@ -262,7 +262,7 @@ app.get("/auth/github/callback", async (req, res) => {
     res.redirect(FRONTEND_URL + "/?github=connected");
   } catch (error) { res.status(400).send(error.message || "GitHub authorization failed."); }
 });
-app.post("/auth/logout", requireSession, (req, res) => {
+app.post("/auth/logout", (req, res) => {
   clearCookie(res, COOKIE_NAME);
   res.json({ ok: true });
 });

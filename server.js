@@ -14,6 +14,7 @@ const SESSION_TTL = 8 * 60 * 60;
 const MAX_FILE_BYTES = 1024 * 1024;
 const MAX_AVATAR_BYTES = 1024 * 1024;
 const pool = process.env.DATABASE_URL ? new Pool({ connectionString: process.env.DATABASE_URL, ssl: process.env.DATABASE_SSL === "false" ? false : { rejectUnauthorized: false }, max: 5, connectionTimeoutMillis: 8000 }) : null;
+const authPool = (process.env.AUTH_DATABASE_URL || process.env.NEON_DATABASE_URL) ? new Pool({ connectionString: process.env.AUTH_DATABASE_URL || process.env.NEON_DATABASE_URL, ssl: process.env.AUTH_DATABASE_SSL === "false" ? false : { rejectUnauthorized: false }, max: 3, connectionTimeoutMillis: 8000 }) : null;
 let schemaReady;
 
 app.set("trust proxy", 1);
@@ -164,10 +165,10 @@ app.get("/auth/google/callback", async (req, res) => {
     res.redirect(FRONTEND_URL + "/?auth=google-connected");
   } catch (error) { res.status(400).send(error.message || "Google authorization failed."); }
 });
-function emailConfigReady() { return Boolean(pool && process.env.RESEND_API_KEY && process.env.EMAIL_FROM && process.env.API_BASE_URL); }
+function emailConfigReady() { return Boolean(authPool && process.env.RESEND_API_KEY && process.env.EMAIL_FROM && process.env.API_BASE_URL); }
 async function ensureEmailAuthSchema() {
-  if (!pool) throw Object.assign(new Error("Email sign-in requires DATABASE_URL."), { status: 503 });
-  await pool.query("CREATE TABLE IF NOT EXISTS nexus_email_accounts (email TEXT PRIMARY KEY, password_hash TEXT NOT NULL, verified BOOLEAN NOT NULL DEFAULT FALSE, verification_hash TEXT, verification_expires_at TIMESTAMPTZ, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
+  if (!authPool) throw Object.assign(new Error("Email sign-in requires NEON_DATABASE_URL or AUTH_DATABASE_URL."), { status: 503 });
+  await authPool.query("CREATE TABLE IF NOT EXISTS nexus_email_accounts (email TEXT PRIMARY KEY, password_hash TEXT NOT NULL, verified BOOLEAN NOT NULL DEFAULT FALSE, verification_hash TEXT, verification_expires_at TIMESTAMPTZ, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
 }
 function normalizeEmail(value) {
   const email = String(value || "").trim().toLowerCase();
@@ -196,7 +197,7 @@ app.post("/auth/email/register", async (req, res) => {
     const email = normalizeEmail(req.body && req.body.email), password = String(req.body && req.body.password || "");
     if (password.length < 10 || password.length > 200) return res.status(400).json({ error: "Password must contain 10–200 characters." });
     const token = crypto.randomBytes(32).toString("hex"), hash = crypto.createHash("sha256").update(token).digest("hex");
-    const saved = await pool.query("INSERT INTO nexus_email_accounts (email,password_hash,verification_hash,verification_expires_at) VALUES ($1,$2,$3,NOW()+INTERVAL '30 minutes') ON CONFLICT (email) DO UPDATE SET password_hash=EXCLUDED.password_hash,verified=FALSE,verification_hash=EXCLUDED.verification_hash,verification_expires_at=EXCLUDED.verification_expires_at WHERE nexus_email_accounts.verified=FALSE RETURNING email", [email, passwordHash(password), hash]);
+    const saved = await authPool.query("INSERT INTO nexus_email_accounts (email,password_hash,verification_hash,verification_expires_at) VALUES ($1,$2,$3,NOW()+INTERVAL '30 minutes') ON CONFLICT (email) DO UPDATE SET password_hash=EXCLUDED.password_hash,verified=FALSE,verification_hash=EXCLUDED.verification_hash,verification_expires_at=EXCLUDED.verification_expires_at WHERE nexus_email_accounts.verified=FALSE RETURNING email", [email, passwordHash(password), hash]);
     if (!saved.rows.length) return res.status(409).json({ error: "An account with this email already exists. Sign in instead." });
     await sendVerificationEmail(email, token);
     res.status(202).json({ ok: true, message: "Verification link sent. Check your email." });
@@ -208,7 +209,7 @@ app.get("/auth/email/verify", async (req, res) => {
     const token = String(req.query.token || "");
     if (!/^[a-f0-9]{64}$/.test(token)) return res.status(400).send("Invalid verification link.");
     const hash = crypto.createHash("sha256").update(token).digest("hex");
-    const result = await pool.query("UPDATE nexus_email_accounts SET verified=TRUE,verification_hash=NULL,verification_expires_at=NULL WHERE verification_hash=$1 AND verification_expires_at>NOW() RETURNING email", [hash]);
+    const result = await authPool.query("UPDATE nexus_email_accounts SET verified=TRUE,verification_hash=NULL,verification_expires_at=NULL WHERE verification_hash=$1 AND verification_expires_at>NOW() RETURNING email", [hash]);
     if (!result.rows.length) return res.status(400).send("This verification link has expired or was already used.");
     const email = result.rows[0].email;
     const session = seal({ provider: "email", email, login: email, expiresAt: Date.now() + SESSION_TTL * 1000 });
@@ -220,7 +221,7 @@ app.post("/auth/email/login", async (req, res) => {
   try {
     await ensureEmailAuthSchema();
     const email = normalizeEmail(req.body && req.body.email), password = String(req.body && req.body.password || "");
-    const result = await pool.query("SELECT password_hash,verified FROM nexus_email_accounts WHERE email=$1", [email]);
+    const result = await authPool.query("SELECT password_hash,verified FROM nexus_email_accounts WHERE email=$1", [email]);
     if (!result.rows.length || !passwordMatches(password, result.rows[0].password_hash)) return res.status(401).json({ error: "Email or password is incorrect." });
     if (!result.rows[0].verified) return res.status(403).json({ error: "Verify your email address before signing in." });
     const session = seal({ provider: "email", email, login: email, expiresAt: Date.now() + SESSION_TTL * 1000 });

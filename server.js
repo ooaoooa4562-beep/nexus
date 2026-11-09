@@ -6,7 +6,8 @@ const { Pool } = require("pg");
 
 const app = express();
 const PORT = Number(process.env.PORT || 10000);
-const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || "https://ooaoooa4562-beep.github.io";
+const FRONTEND_ORIGIN = "https://ooaoooa4562-beep.github.io";
+const API_BASE_URL = "https://nexus-github-api.onrender.com";
 const FRONTEND_URL = (() => {
   const configured = process.env.FRONTEND_URL || FRONTEND_ORIGIN + "/nexus";
   try {
@@ -47,7 +48,7 @@ function clearCookie(res, name) {
   res.append("Set-Cookie", name + "=; Path=/; HttpOnly; Secure; SameSite=None; Max-Age=0");
 }
 function configReady() {
-  return Boolean(process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET && process.env.SESSION_SECRET && process.env.API_BASE_URL);
+  return Boolean(process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET && process.env.SESSION_SECRET);
 }
 function secretKey() {
   if (!process.env.SESSION_SECRET || process.env.SESSION_SECRET.length < 32) throw new Error("SESSION_SECRET must contain at least 32 characters");
@@ -144,12 +145,12 @@ function safeError(res, error) {
 
 app.get("/health", (_req, res) => res.json({ ok: true, service: "NEXUS GitHub API", version: "0.2.0", socialDatabaseConfigured: Boolean(pool) }));
 app.get("/auth/google", (req, res) => {
-  if (!process.env.GOOGLE_CLIENT_ID || !process.env.API_BASE_URL) return res.status(503).send("Google OAuth is not configured.");
+  if (!process.env.GOOGLE_CLIENT_ID) return res.status(503).send("Google OAuth is not configured.");
   const state = crypto.randomBytes(24).toString("hex");
   res.setHeader("Set-Cookie", STATE_COOKIE + "=" + encodeURIComponent(state + "." + sign(state)) + "; " + cookieOptions(600));
   const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
   url.searchParams.set("client_id", process.env.GOOGLE_CLIENT_ID);
-  url.searchParams.set("redirect_uri", process.env.API_BASE_URL + "/auth/google/callback");
+  url.searchParams.set("redirect_uri", API_BASE_URL + "/auth/google/callback");
   url.searchParams.set("response_type", "code");
   url.searchParams.set("scope", "openid email profile");
   url.searchParams.set("state", state);
@@ -163,8 +164,8 @@ app.get("/auth/google/callback", async (req, res) => {
     const pair = saved.split(".");
     if (!req.query.state || !safeEqual(req.query.state, pair[0]) || !safeEqual(sign(pair[0]), pair[1])) return res.status(400).send("OAuth state validation failed.");
     if (req.query.error) return res.redirect(FRONTEND_URL + "/?auth=google-cancelled");
-    if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET || !process.env.API_BASE_URL || typeof req.query.code !== "string") return res.status(503).send("Google OAuth is not fully configured.");
-    const tokenResponse = await fetch("https://oauth2.googleapis.com/token", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ code: req.query.code, client_id: process.env.GOOGLE_CLIENT_ID, client_secret: process.env.GOOGLE_CLIENT_SECRET, redirect_uri: process.env.API_BASE_URL + "/auth/google/callback", grant_type: "authorization_code" }) });
+    if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET || typeof req.query.code !== "string") return res.status(503).send("Google OAuth is not fully configured.");
+    const tokenResponse = await fetch("https://oauth2.googleapis.com/token", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ code: req.query.code, client_id: process.env.GOOGLE_CLIENT_ID, client_secret: process.env.GOOGLE_CLIENT_SECRET, redirect_uri: API_BASE_URL + "/auth/google/callback", grant_type: "authorization_code" }) });
     const tokens = await tokenResponse.json();
     if (!tokenResponse.ok || !tokens.access_token) throw new Error("Google authorization failed.");
     const profileResponse = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", { headers: { Authorization: "Bearer " + tokens.access_token } });
@@ -175,7 +176,7 @@ app.get("/auth/google/callback", async (req, res) => {
     res.redirect(FRONTEND_URL + "/?auth=google-connected");
   } catch (error) { res.status(400).send(error.message || "Google authorization failed."); }
 });
-function emailConfigReady() { return Boolean(authPool && process.env.RESEND_API_KEY && process.env.EMAIL_FROM && process.env.API_BASE_URL); }
+function emailConfigReady() { return Boolean(authPool && process.env.RESEND_API_KEY && process.env.EMAIL_FROM); }
 async function ensureEmailAuthSchema() {
   if (!authPool) throw Object.assign(new Error("Email sign-in requires NEON_DATABASE_URL or AUTH_DATABASE_URL."), { status: 503 });
   await authPool.query("CREATE TABLE IF NOT EXISTS nexus_email_accounts (email TEXT PRIMARY KEY, password_hash TEXT NOT NULL, verified BOOLEAN NOT NULL DEFAULT FALSE, verification_hash TEXT, verification_expires_at TIMESTAMPTZ, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
@@ -196,7 +197,7 @@ function passwordMatches(password, stored) {
 }
 async function sendVerificationEmail(email, token) {
   if (!emailConfigReady()) throw Object.assign(new Error("Add RESEND_API_KEY, EMAIL_FROM and a working Neon database URL to Render to enable email sign-in."), { status: 503 });
-  const verifyUrl = process.env.API_BASE_URL + "/auth/email/verify?token=" + encodeURIComponent(token);
+  const verifyUrl = API_BASE_URL + "/auth/email/verify?token=" + encodeURIComponent(token);
   const response = await fetch("https://api.resend.com/emails", { method: "POST", headers: { Authorization: "Bearer " + process.env.RESEND_API_KEY, "Content-Type": "application/json" }, body: JSON.stringify({ from: process.env.EMAIL_FROM, to: [email], subject: "Verify your NEXUS account", html: "<p>Welcome to NEXUS.</p><p><a href=\"" + verifyUrl + "\">Verify your email address</a></p><p>If you did not request this, ignore this message.</p>" }) });
   if (!response.ok) throw Object.assign(new Error("Could not send verification email. Check the Resend configuration."), { status: 502 });
 }
@@ -246,7 +247,7 @@ app.get("/auth/github", (req, res) => {
   res.setHeader("Set-Cookie", STATE_COOKIE + "=" + encodeURIComponent(signed) + "; " + cookieOptions(600));
   const url = new URL("https://github.com/login/oauth/authorize");
   url.searchParams.set("client_id", process.env.GITHUB_CLIENT_ID);
-  url.searchParams.set("redirect_uri", process.env.API_BASE_URL + "/auth/github/callback");
+  url.searchParams.set("redirect_uri", API_BASE_URL + "/auth/github/callback");
   url.searchParams.set("scope", "read:user repo");
   url.searchParams.set("state", state);
   res.redirect(url.toString());
@@ -263,7 +264,7 @@ app.get("/auth/github/callback", async (req, res) => {
     const tokenResponse = await fetch("https://github.com/login/oauth/access_token", {
       method: "POST",
       headers: { Accept: "application/json", "Content-Type": "application/json" },
-      body: JSON.stringify({ client_id: process.env.GITHUB_CLIENT_ID, client_secret: process.env.GITHUB_CLIENT_SECRET, code: req.query.code, redirect_uri: process.env.API_BASE_URL + "/auth/github/callback" })
+      body: JSON.stringify({ client_id: process.env.GITHUB_CLIENT_ID, client_secret: process.env.GITHUB_CLIENT_SECRET, code: req.query.code, redirect_uri: API_BASE_URL + "/auth/github/callback" })
     });
     const tokenData = await tokenResponse.json();
     if (!tokenResponse.ok || tokenData.error || !tokenData.access_token) throw new Error(tokenData.error_description || "GitHub authorization failed.");

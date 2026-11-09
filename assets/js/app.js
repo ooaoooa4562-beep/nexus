@@ -63,14 +63,14 @@
    $('#themeSelect').onchange=()=>{prefs.theme=$('#themeSelect').value;savePrefs();applyPrefs();};$('#accentSelect').onchange=()=>{prefs.accent=$('#accentSelect').value;savePrefs();applyPrefs();};$('#motionToggle').onchange=()=>{prefs.motion=$('#motionToggle').checked?'advanced':'reduced';savePrefs();applyPrefs();};
    $('#resetSettings').onclick=()=>{Object.assign(prefs,{theme:'dark',accent:'multi',motion:'advanced'});savePrefs();applyPrefs();settingsPage();};
   }
-  function navigate(id){const isHome=id==='overview'||!info[id];home.hidden=!isHome;page.hidden=isHome;
+  function navigate(id){id=String(id||'overview');if(id.toLowerCase()==='threed')id='threeD';const isHome=id==='overview'||!info[id];home.hidden=!isHome;page.hidden=isHome;
    if(!isHome){crumb.textContent=info[id][0];if(id==='profile')profilePage();else if(id==='settings')settingsPage();else if(id!=='extensions'&&window.NEXUSExtensionEnabled&&!window.NEXUSExtensionEnabled(id)){page.innerHTML='<div class="eyebrow">MODULE DISABLED</div><h1>'+info[id][0]+'</h1><p class="subtitle">Enable this module in Extensions.</p><button class="primary-button" id="openExtensions">OPEN EXTENSIONS</button>';$('#openExtensions').onclick=()=>navigate('extensions');}
     else{const mod=window.NEXUSModules&&window.NEXUSModules[id];if(mod){page.innerHTML=mod.render();try{mod.mount(page);}catch(e){console.error('[NEXUS] module error',e);page.innerHTML='<h1>Module error</h1><pre class="module-error"></pre>';page.querySelector('pre').textContent=String(e);}}else{page.innerHTML='<h1>Module unavailable</h1><p class="subtitle"></p>';page.querySelector('p').textContent=loadError?String(loadError):'Module registration is missing.';}}
    }else crumb.textContent='Overview';
    document.querySelectorAll('.nav-link').forEach(a=>a.classList.toggle('active',a.dataset.page===(isHome?'overview':id)));sidebar.classList.remove('open');const hash=isHome?'#overview':'#'+id;if(location.hash!==hash)history.replaceState(null,'',hash);
   }
   document.querySelectorAll('[data-page]').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();navigate(a.dataset.page);}));document.querySelectorAll('[data-open-page]').forEach(b=>b.addEventListener('click',()=>navigate(b.dataset.openPage)));
-  window.addEventListener('hashchange',()=>navigate(info[location.hash.slice(1)]?location.hash.slice(1):'overview'));window.NEXUSNavigate=navigate;
+  window.addEventListener('hashchange',()=>navigate(info[location.hash.slice(1)]?location.hash.slice(1):(location.hash.slice(1).toLowerCase()==='threed'?'threeD':'overview')));window.NEXUSNavigate=navigate;
   $('#mobileMenu').onclick=()=>sidebar.classList.toggle('open');$('#themeButton').onclick=()=>{prefs.theme=prefs.theme==='light'?'dark':'light';savePrefs();applyPrefs();event('Appearance changed',prefs.theme+' mode enabled');};$('#topProfile').onclick=()=>navigate('profile');
   $('#clearLog').onclick=()=>{$('#eventList').replaceChildren();event('Activity log cleared','Previous events cleared');};
   const palette=$('#commandPalette'),input=$('#commandInput'),results=$('#commandResults'),choices=[['Overview','overview'],...Object.entries(info).map(([id,v])=>[v[0],id])];

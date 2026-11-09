@@ -356,6 +356,34 @@ app.put("/api/files", requireSession, async (req, res) => {
     res.json({ ok: true, path, branch, sha: result.content.sha, commit: result.commit.sha, url: result.content.html_url });
   } catch (error) { safeError(res, error); }
 });
+app.delete("/api/files", requireSession, async (req, res) => {
+  try {
+    const body = req.body || {}, repository = body.repository, path = body.path, sha = body.sha;
+    if (!validRepoName(repository)) return res.status(400).json({ error: "Repository must use owner/name format." });
+    if (!validPath(path)) return res.status(400).json({ error: "Invalid file path." });
+    if (typeof sha !== "string" || !/^[a-f0-9]{40}$/i.test(sha)) return res.status(400).json({ error: "A valid current file SHA is required to delete." });
+    const repo = await githubRequest("/repos/" + repository, req.github.accessToken);
+    const branch = typeof body.branch === "string" && body.branch.trim() ? body.branch.trim() : repo.default_branch;
+    const encodedPath = path.split("/").map(encodeURIComponent).join("/");
+    const result = await githubRequest("/repos/" + repository + "/contents/" + encodedPath, req.github.accessToken, {
+      method: "DELETE", body: JSON.stringify({ message: body.message || ("Delete " + path), sha, branch })
+    });
+    res.json({ ok: true, path, branch, commit: result.commit.sha });
+  } catch (error) { safeError(res, error); }
+});
+app.get("/api/commits", requireSession, async (req, res) => {
+  try {
+    const repository = req.query.repository, path = typeof req.query.path === "string" ? req.query.path : "";
+    if (!validRepoName(repository)) return res.status(400).json({ error: "Repository must use owner/name format." });
+    if (path && !validPath(path)) return res.status(400).json({ error: "Invalid file path." });
+    const repo = await githubRequest("/repos/" + repository, req.github.accessToken);
+    const branch = typeof req.query.branch === "string" && req.query.branch.trim() ? req.query.branch.trim() : repo.default_branch;
+    const query = new URLSearchParams({ sha: branch, per_page: "20" });
+    if (path) query.set("path", path);
+    const commits = await githubRequest("/repos/" + repository + "/commits?" + query.toString(), req.github.accessToken);
+    res.json({ repository, branch, commits: commits.map(item => ({ sha: item.sha, message: (item.commit && item.commit.message || "").split("\\n")[0], author: item.commit && item.commit.author && item.commit.author.name, date: item.commit && item.commit.author && item.commit.author.date, url: item.html_url })) });
+  } catch (error) { safeError(res, error); }
+});
 app.post("/api/files", requireSession, async (req, res) => {
   try {
     const body = req.body || {};

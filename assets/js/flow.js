@@ -1,7 +1,6 @@
 (() => {
  const api=window.NEXUSModules=window.NEXUSModules||{},KEY='nexus.flow.graph.v1';
  const defs=[
- const defs=[
   {id:'flag',cat:'events',label:'when 🚩 clicked',fields:[]},
   {id:'key',cat:'events',label:'when key pressed',fields:[['key','space']]},
   {id:'move',cat:'motion',label:'move steps',fields:[['steps','10']]},
@@ -820,7 +819,7 @@
     if(target&&target.closest&&target.closest('input,textarea,select,[contenteditable="true"],[contenteditable=""]'))return;
     const pressed=normalizeKeyName(event.key);
     if(!pressed||event.repeat)return;
-    const matches=nodes.filter(n=>n.type==='key'&&keyMatches(n.fields?.key||'space',pressed));
+    const matches=nodes.filter(n=>(typeAliases[n.type]||n.type)==='key'&&keyMatches(n.fields?.key||'space',pressed));
     if(!matches.length)return;
     if(['space','up','down','left','right'].includes(pressed))event.preventDefault();
     log('⌨ Key pressed: '+pressed);
@@ -843,7 +842,7 @@
     out.replaceChildren();resetSprite();$('#flowRun').disabled=true;$('#flowStop').disabled=false;
     setStatus('Runtime is executing.');
     log('NEXUS block runtime started');
-    const starts=nodes.filter(n=>n.type==='flag'),keyScripts=nodes.filter(n=>n.type==='key');
+    const starts=nodes.filter(n=>(typeAliases[n.type]||n.type)==='flag'),keyScripts=nodes.filter(n=>(typeAliases[n.type]||n.type)==='key');
     try{
      if(keyScripts.length){keyHandler=handleKeyDown;document.addEventListener('keydown',keyHandler);}
      if(!starts.length&&!keyScripts.length)log('No start block found. Add “when clicked” or “when key pressed”.');

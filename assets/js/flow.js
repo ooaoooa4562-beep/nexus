@@ -62,6 +62,7 @@
  ];
  const cats=[['events','Events'],['motion','Motion'],['looks','Looks'],['animation','Animation'],['effects','Effects'],['control','Control'],['variables','Variables'],['operators','Operators'],['sensing','Sensing'],['data','Data']];
  const containerTypes=new Set(['repeat','forever','if','ifElse','repeatUntil']);
+ const eventTypes=new Set(['flag','key']);
  const reporterTypes=new Set(defs.filter(d=>d.kind==='reporter').map(d=>d.id));
  const expressionInputs={repeat:['times'],if:['condition'],ifElse:['condition'],repeatUntil:['condition'],say:['text'],think:['text'],set:['value'],change:['value'],add:['a','b'],subtract:['a','b'],multiply:['a','b'],divide:['a','b'],mathAdd:['a','b'],mathSubtract:['a','b'],mathMultiply:['a','b'],mathDivide:['a','b'],compare:['a','b'],and:['left','right'],or:['left','right'],not:['value'],join:['left','right'],length:['value'],contains:['text','search'],round:['value'],absolute:['value'],modulo:['a','b']};
  const isReporter=type=>reporterTypes.has(type);
@@ -457,6 +458,7 @@
     if(side==='out'){
      pending=node.id;$('#graphStatus').textContent='Output selected. Click another top-level block input.';renderPorts();return;
     }
+    if(eventTypes.has(node.type)){$('#graphStatus').textContent='Event blocks must stay at the start of a top-level script.';return;}
     if(!pending){$('#graphStatus').textContent='First select an output connector.';return;}
     if(!findTop(pending)){pending=null;$('#graphStatus').textContent='The selected block is no longer on the top-level workspace.';renderPorts();return;}
     if(pending===node.id){$('#graphStatus').textContent='Choose a different block.';return;}
@@ -474,7 +476,7 @@
      const movingId=e.dataTransfer.getData('application/x-nexus-block');
      if(movingId){
       const moving=findBlock(movingId);
-      if(!moving||isReporter(moving.type)||containsBlock(moving,ownerId)){log('Only statement blocks can be placed in control slots.');return;}
+      if(!moving||isReporter(moving.type)||eventTypes.has(moving.type)||containsBlock(moving,ownerId)){log('Event hats must remain at the top level; only statement blocks can be placed in control slots.');return;}
       const wasTop=!!findTop(movingId),block=takeBlock(movingId);
       if(!block)return;
       if(wasTop)links=links.filter(l=>l.from!==movingId&&l.to!==movingId);
@@ -484,6 +486,7 @@
       const type=e.dataTransfer.getData('application/x-nexus-type')||e.dataTransfer.getData('text/plain');
       if(!def(type))return;
       if(isReporter(type)){$('#graphStatus').textContent='Reporter blocks must be dropped into an expression slot.';return;}
+      if(eventTypes.has(type)){$('#graphStatus').textContent='Event blocks must start a top-level script.';return;}
       target.push(make(type,20,20));
      }
      save();render();$('#graphStatus').textContent=branch==='else'?'Block added to ELSE body.':'Block added to nested body.';

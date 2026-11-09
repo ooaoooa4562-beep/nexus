@@ -277,7 +277,7 @@ app.get("/api/repos", requireSession, async (req, res) => {
   } catch (error) { safeError(res, error); }
 });
 function validBranchName(value) {
-  return typeof value === "string" && value.length <= 240 && !value.startsWith("/") && !value.endsWith("/") && !value.includes("..") && !value.includes("\\\\") && !/[\\s~^:?*\\[\\]\\x00-\\x20]/.test(value) && !value.endsWith(".lock");
+  return typeof value === "string" && value.length <= 240 && !value.startsWith("/") && !value.endsWith("/") && !value.includes("\\\\") && !value.includes("..") && !/[\\s~^:?*\\[\\]\\x00-\\x20]/.test(value) && !value.endsWith(".lock");
 }
 app.get("/api/branches", requireSession, async (req, res) => {
   try {

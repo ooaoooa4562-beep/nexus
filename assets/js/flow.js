@@ -733,7 +733,7 @@
    }
    async function run(){
     if(running)return;
-    running=true;stopFlag=false;runtimeSteps=0;runAbort=new AbortController();
+    running=true;stopFlag=false;runtimeSteps=0;window.__nexusFlowTimer=Date.now();runAbort=new AbortController();
     out.replaceChildren();resetSprite();$('#flowRun').disabled=true;$('#flowStop').disabled=false;
     $('#graphStatus').textContent='Runtime is executing.';
     log('NEXUS block runtime started');

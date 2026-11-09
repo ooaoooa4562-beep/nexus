@@ -1,9 +1,24 @@
 (() => {
  const script=document.currentScript,base=script&&script.src?script.src:new URL('assets/js/app.js',document.baseURI).href;
+ const API='https://nexus-github-api.onrender.com';
+ const rawFetch=window.fetch.bind(window);
+ window.fetch=(input,options={})=>{
+  const url=typeof input==='string'?input:(input&&input.url)||'';
+  if(url.startsWith(API+'/')&&!url.startsWith(API+'/auth/exchange')){
+   const token=sessionStorage.getItem('nexus.api.session');
+   if(token){const headers=new Headers(options.headers||(input&&input.headers)||{});headers.set('Authorization','Bearer '+token);return rawFetch(input,{...options,headers,credentials:'omit'});}
+  }
+  return rawFetch(input,options);
+ };
  const files={terminal:'terminal.js',storage:'storage.js',flow:'flow.js',threeD:'3d.js',monitor:'monitor.js',network:'network.js',extensions:'extensions.js',editor:'editor.js'};
  const ensure=(id,file)=>{window.NEXUSModules=window.NEXUSModules||{};if(window.NEXUSModules[id])return Promise.resolve();return new Promise((ok,no)=>{const s=document.createElement('script');s.src=new URL(file,base).href;s.onload=()=>window.NEXUSModules&&window.NEXUSModules[id]?ok():no(Error(id+' did not register'));s.onerror=()=>no(Error('Could not load '+file));document.head.append(s);});};
  Promise.all(Object.entries(files).map(([id,file])=>ensure(id,file))).then(start).catch(e=>{console.error('[NEXUS]',e);start(e);});
- function start(loadError){
+ async function start(loadError){
+  const handoff=new URLSearchParams(location.search);
+  if(handoff.get('github')==='handoff'&&handoff.get('code')){
+   try{const response=await rawFetch(API+'/auth/exchange',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:handoff.get('code')})});const data=await response.json().catch(()=>({}));if(!response.ok||!data.session)throw new Error(data.error||'GitHub sign-in could not be completed.');sessionStorage.setItem('nexus.api.session',data.session);history.replaceState(null,'',location.pathname+location.hash);}
+   catch(error){console.error('[NEXUS GitHub]',error);history.replaceState(null,'',location.pathname+location.hash);}
+  }
   const $=s=>document.querySelector(s),sidebar=$('#sidebar'),home=$('#overview'),page=$('#modulePage'),crumb=$('#breadcrumb');
   const info={editor:['Code Editor'],terminal:['Terminal'],flow:['Flow Studio'],threeD:['NEXUS 3D'],storage:['Storage'],monitor:['Monitor'],network:['Network'],extensions:['Extensions'],profile:['My profile'],settings:['Settings']};
   const read=(k,f)=>{try{return JSON.parse(localStorage.getItem(k)||'null')||f;}catch{return f;}};
@@ -48,7 +63,7 @@
    const emailPayload=()=>({email:$('#authEmail').value.trim(),password:$('#authPassword').value});
    $('#emailLogin').onclick=async()=>{try{const d=await apiCall('/auth/email/login',{method:'POST',body:JSON.stringify(emailPayload())});setStatus('Signed in with '+d.email+'. Connect GitHub separately to use repository tools and social profiles.');await loadProfile();}catch(e){setStatus(e.message,true);}};
    $('#emailRegister').onclick=async()=>{try{const d=await apiCall('/auth/email/register',{method:'POST',body:JSON.stringify(emailPayload())});setStatus(d.message||'Check your email to verify your account.');}catch(e){setStatus(e.message,true);}};
-   $('#profileLogout').onclick=async()=>{try{await apiCall('/auth/logout',{method:'POST'});connected=false;setStatus('Signed out.');await loadProfile();}catch(e){setStatus(e.message,true);}};
+   $('#profileLogout').onclick=async()=>{try{await apiCall('/auth/logout',{method:'POST'});sessionStorage.removeItem('nexus.api.session');connected=false;setStatus('Signed out.');await loadProfile();}catch(e){setStatus(e.message,true);}};
    $('#profileRefresh').onclick=()=>loadProfile();
    $('#friendSearchForm').onsubmit=async e=>{e.preventDefault();const q=$('#friendSearchInput').value.trim(),box=$('#friendSearchResults');if(!connected){empty(box,'Connect GitHub first.');return;}if(q.length<3){empty(box,'Enter at least 3 characters of a NEXUS ID.');return;}empty(box,'Searching…');try{const d=await apiCall('/api/social/search?q='+encodeURIComponent(q));box.replaceChildren();if(!d.users.length){empty(box,'No users found. Ask your friend for their exact NEXUS ID.');return;}d.users.forEach(u=>box.append(userCard(u,'ADD FRIEND',async(_u,card)=>{const b=card.querySelector('button');b.disabled=true;try{await apiCall('/api/social/requests',{method:'POST',body:JSON.stringify({targetId:u.id})});b.textContent='REQUEST SENT';setStatus('Friend request sent to '+u.displayName+'.');await refreshSocial();}catch(err){setStatus(err.message,true);b.disabled=false;}})));}catch(err){empty(box,err.message);setStatus(err.message,true);}};
    async function loadProfile(){

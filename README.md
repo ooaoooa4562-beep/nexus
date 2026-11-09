@@ -24,7 +24,7 @@
 - Arithmetic reporters reject non-finite results instead of allowing `Infinity` into the runtime.
 - `set`, `change`, repeat counts and arithmetic statement blocks accept reporter expressions.
 - A variable manager supports up to 100 typed variables: Number, Text and Boolean. Legacy numeric variables migrate automatically to Number records; typed values persist with the local project and are retained between runs.
-- The `when key pressed` event listens for real keyboard input while the runtime is active. It supports space, arrow keys, Enter, Escape, letter/number keys and an any-key option; form fields are ignored.
+- The `when key pressed` event listens for real keyboard input while the runtime is active. It supports space, arrow keys, Enter, Escape, letter/number keys and an any-key option; form fields are ignored. Event hats stay at the top level and cannot be wired as incoming blocks.
 - The generic variable reporter preserves the stored type. Numeric expressions and arithmetic reject Text/Boolean variables, logical operators require Boolean inputs, and assignments cannot silently change an existing variable's type.
 - Top-level statement blocks can still be connected with manual wires; reporters are restricted to expression slots.
 - Existing local projects and manually wired legacy repeat/if scripts are normalized for backward compatibility.

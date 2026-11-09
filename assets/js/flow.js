@@ -12,6 +12,20 @@
   {id:'fadeTo',cat:'animation',label:'fade opacity to %',fields:[['opacity','50'],['duration','0.5']]},
   {id:'bounce',cat:'animation',label:'bounce',fields:[['height','35'],['duration','0.6']]},
   {id:'pulse',cat:'animation',label:'pulse size',fields:[['scale','125'],['duration','0.4']]},
+  {id:'shake',cat:'animation',label:'shake sprite',fields:[['strength','12'],['duration','0.45']]},
+  {id:'spin',cat:'animation',label:'spin turns',fields:[['turns','2'],['duration','0.8']]},
+  {id:'jump',cat:'animation',label:'jump',fields:[['height','55'],['duration','0.55']]},
+  {id:'colorTo',cat:'effects',label:'set color hue',fields:[['hue','210'],['duration','0.5']]},
+  {id:'flash',cat:'effects',label:'flash effect',fields:[['times','3'],['duration','0.18']]},
+  {id:'trail',cat:'effects',label:'toggle motion trail',fields:[['enabled','true']]},
+  {id:'random',cat:'operators',label:'random number reporter',kind:'reporter',fields:[['min','1'],['max','10']]},
+  {id:'round',cat:'operators',label:'round number',kind:'reporter',fields:[]},
+  {id:'absolute',cat:'operators',label:'absolute value',kind:'reporter',fields:[]},
+  {id:'modulo',cat:'operators',label:'remainder ( ) % ( )',kind:'reporter',fields:[]},
+  {id:'timer',cat:'sensing',label:'timer seconds reporter',kind:'reporter',fields:[]},
+  {id:'resetTimer',cat:'sensing',label:'reset timer',fields:[]},
+  {id:'log',cat:'data',label:'log message',fields:[['text','NEXUS ready']]},
+  {id:'clearBubble',cat:'looks',label:'clear speech bubble',fields:[]},
   {id:'say',cat:'looks',label:'say',fields:[['text','Hello!']]},
   {id:'think',cat:'looks',label:'think',fields:[['text','Hmm...']]},
   {id:'show',cat:'looks',label:'show',fields:[]},
@@ -44,7 +58,7 @@
   {id:'length',cat:'operators',label:'length of ( )',kind:'reporter',fields:[]},
   {id:'contains',cat:'operators',label:'( ) contains ( )',kind:'reporter',fields:[]}
  ];
- const cats=[['events','Events'],['motion','Motion'],['looks','Looks'],['animation','Animation'],['control','Control'],['variables','Variables'],['operators','Operators']];
+ const cats=[['events','Events'],['motion','Motion'],['looks','Looks'],['animation','Animation'],['effects','Effects'],['control','Control'],['variables','Variables'],['operators','Operators'],['sensing','Sensing'],['data','Data']];
  const containerTypes=new Set(['repeat','forever','if','ifElse']);
  const reporterTypes=new Set(defs.filter(d=>d.kind==='reporter').map(d=>d.id));
  const expressionInputs={repeat:['times'],if:['condition'],ifElse:['condition'],say:['text'],think:['text'],set:['value'],change:['value'],add:['a','b'],subtract:['a','b'],multiply:['a','b'],divide:['a','b'],mathAdd:['a','b'],mathSubtract:['a','b'],mathMultiply:['a','b'],mathDivide:['a','b'],compare:['a','b'],and:['left','right'],or:['left','right'],not:['value'],join:['left','right'],length:['value'],contains:['text','search']};
@@ -177,6 +191,11 @@
   const finite=(value,label)=>{if(!Number.isFinite(value))throw Error(label+' produced a non-finite number.');return value;};
   switch(node.type){
    case 'number':return parseExpression(fields.value??'0',variables,'number');
+   case 'random':{const min=parseExpression(fields.min??'1',variables,'random minimum'),max=parseExpression(fields.max??'10',variables,'random maximum');if(max<min)throw Error('Random maximum must be greater than or equal to minimum.');return Math.floor(Math.random()*(max-min+1))+min;}
+   case 'round':return Math.round(numeric(read('value','0'),'Round'));
+   case 'absolute':return Math.abs(numeric(read('value','0'),'Absolute value'));
+   case 'modulo':{const a=numeric(read('a','0'),'Left operand'),b=numeric(read('b','0'),'Right operand');if(b===0)throw Error('Division by zero.');return a%b;}
+   case 'timer':return Math.max(0,(Date.now()-(window.__nexusFlowTimer||Date.now()))/1000);
    case 'getVar':{
     const name=String(fields.variable||'score').trim();
     if(!/^[A-Za-z_][A-Za-z0-9_]{0,31}$/.test(name))throw Error('Invalid variable name "'+name+'".');
@@ -633,6 +652,15 @@
      case 'fadeTo':await animateSprite({opacity:Math.max(0,Math.min(100,readNumber(f.opacity,'opacity')))/100},f.duration);break;
      case 'bounce':{const h=Math.max(0,Math.min(180,readNumber(f.height,'height'))),d=Math.max(0.1,Math.min(5,Number(f.duration)||0.6));if(window.gsap){await new Promise(resolve=>window.gsap.timeline({onComplete:resolve}).to(sprite,{y:'-='+h,duration:d/2,ease:'power2.out'}).to(sprite,{y:'+='+h,duration:d/2,ease:'bounce.out'}));}else{await animateSprite({y:y+h},d/2);await animateSprite({y:y-h},d/2);}break;}
      case 'pulse':{const original=spriteScale,target=Math.max(0.05,Math.min(5,readNumber(f.scale,'scale')/100));await animateSprite({scale:target},Number(f.duration)||0.4);await animateSprite({scale:original},Number(f.duration)||0.4);break;}
+     case 'shake':{const strength=Math.max(1,Math.min(40,readNumber(f.strength,'strength'))),duration=Math.max(.1,Math.min(3,Number(f.duration)||.45));if(window.gsap){await new Promise(resolve=>window.gsap.to(sprite,{x:'+='+strength,repeat:5,yoyo:true,duration:duration/6,ease:'sine.inOut',onComplete:resolve}));}else await wait(duration*1000);break;}
+     case 'spin':await animateSprite({angle:angle+readNumber(f.turns,'turns')*360},f.duration);break;
+     case 'jump':{const h=Math.max(0,Math.min(220,readNumber(f.height,'height'))),d=Math.max(.1,Math.min(5,Number(f.duration)||.55));if(window.gsap){await new Promise(resolve=>window.gsap.timeline({onComplete:resolve}).to(sprite,{y:'-='+h,duration:d*.45,ease:'power2.out'}).to(sprite,{y:'+='+h,duration:d*.55,ease:'bounce.out'}));}else await wait(d*1000);break;}
+     case 'colorTo':{const hue=((readNumber(f.hue,'hue')%360)+360)%360;const duration=Math.max(.05,Math.min(5,Number(f.duration)||.5));if(window.gsap)await new Promise(resolve=>window.gsap.to(sprite,{filter:'hue-rotate('+hue+'deg)',duration,ease:'power1.inOut',onComplete:resolve}));else sprite.style.filter='hue-rotate('+hue+'deg)';break;}
+     case 'flash':{const times=Math.max(1,Math.min(10,Math.floor(readNumber(f.times,'times')))),duration=Math.max(.05,Math.min(1,Number(f.duration)||.18));if(window.gsap)await new Promise(resolve=>window.gsap.to(sprite,{opacity:.12,repeat:times*2-1,yoyo:true,duration,ease:'none',onComplete:resolve}));else for(let i=0;i<times*2;i++){sprite.style.opacity=i%2?'1':'.12';await wait(duration*1000);}spriteOpacity=1;updateSprite();break;}
+     case 'trail':{const enabled=String(f.enabled)!=='false';sprite.style.filter=enabled?'drop-shadow(0 0 8px currentColor)':'';log('Motion trail '+(enabled?'enabled':'disabled'));break;}
+     case 'resetTimer':window.__nexusFlowTimer=Date.now();log('Timer reset');break;
+     case 'log':log(String(readValue(n,'text',f.text||'')));break;
+     case 'clearBubble':bubble.hidden=true;break;
      case 'say':case 'think':{
       const message=String(readValue(n,'text',f.text||''));
       bubble.textContent=(n.type==='think'?'💭 ':'')+message;bubble.hidden=false;log(message);break;

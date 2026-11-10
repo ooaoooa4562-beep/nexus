@@ -172,8 +172,13 @@ app.get("/auth/google/callback", async (req, res) => {
     const profile = await profileResponse.json();
     if (!profileResponse.ok || !profile.email || profile.verified_email !== true) throw new Error("Google did not return a verified email address.");
     const session = seal({ provider: "google", googleId: String(profile.id), email: profile.email, login: profile.name || profile.email, avatarUrl: profile.picture || "", expiresAt: Date.now() + SESSION_TTL * 1000 });
+    // Use a short-lived one-time handoff so browser third-party-cookie restrictions
+    // do not break the GitHub Pages frontend after Google redirects back here.
     res.append("Set-Cookie", COOKIE_NAME + "=" + encodeURIComponent(session) + "; " + cookieOptions(SESSION_TTL));
-    res.redirect(FRONTEND_URL + "/?auth=google-connected");
+    const handoffCode = crypto.randomBytes(32).toString("hex");
+    oauthHandoffs.set(handoffCode, { session, expiresAt: Date.now() + 60_000 });
+    res.setHeader("Cache-Control", "no-store");
+    res.redirect(FRONTEND_URL + "/?google=handoff&code=" + handoffCode);
   } catch (error) { res.status(400).send(error.message || "Google authorization failed."); }
 });
 function emailConfigReady() { return Boolean(authPool && process.env.RESEND_API_KEY && process.env.EMAIL_FROM); }

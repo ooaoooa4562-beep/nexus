@@ -538,7 +538,7 @@ body[data-skin] .network-card,body[data-skin] .extension-summary>div{
 }
 body[data-skin] .nav-link{color:var(--ds-muted)}
 body[data-skin] .nav-link.active{color:var(--ds-text);border-color:color-mix(in srgb,var(--user-accent,#7da7ff) 48%,transparent);box-shadow:inset 2px 0 var(--user-accent,#7da7ff)}
-body[data-skin] .nav-icon,body[data-skin] .eyebrow-line{color:var(--user-accent,#7da7ff);background-color:var(--user-accent,#7da7ff)}
+body[data-skin] .nav-icon{color:var(--user-accent,#7da7ff)}body[data-skin] .eyebrow-line{background-color:var(--user-accent,#7da7ff)}
 body[data-skin] .primary-button{background:var(--user-accent,#5689f5);border-color:color-mix(in srgb,var(--user-accent,#5689f5) 70%,white);color:#fff}
 body[data-skin] .secondary-button,body[data-skin] .global-search,body[data-skin] .storage-search,
 body[data-skin] .settings-card input,body[data-skin] .settings-card select{

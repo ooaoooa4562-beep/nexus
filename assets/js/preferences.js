@@ -82,7 +82,8 @@
   const applyStorage=()=>{
     const list=$('#storageList');if(!list)return;
     const rows=$$(':scope > *',list);
-    if(enabled('storageRecentFiles'))rows.sort((a,b)=>String(b.querySelector('.storage-record-info span')?.textContent||'').localeCompare(String(a.querySelector('.storage-record-info span')?.textContent||'')));\n    if(enabled('storageSortFolders'))rows.sort((a,b)=>{const af=/folder/i.test(a.className+' '+a.textContent.slice(0,20)),bf=/folder/i.test(b.className+' '+b.textContent.slice(0,20));return Number(bf)-Number(af);}).forEach(x=>list.append(x));
+    if(enabled('storageRecentFiles'))rows.sort((a,b)=>String(b.querySelector('.storage-record-info span')?.textContent||'').localeCompare(String(a.querySelector('.storage-record-info span')?.textContent||'')));
+    if(enabled('storageSortFolders'))rows.sort((a,b)=>{const af=/folder/i.test(a.className+' '+a.textContent.slice(0,20)),bf=/folder/i.test(b.className+' '+b.textContent.slice(0,20));return Number(bf)-Number(af);}).forEach(x=>list.append(x));
     $('.storage-record-info small').forEach(x=>x.hidden=!enabled('storageFilePreviews'));
     if(enabled('storageQuickActions'))$('.storage-record').forEach(row=>{if(row.querySelector('.nexus-copy-record'))return;const b=document.createElement('button');b.className='nexus-copy-record';b.type='button';b.textContent='COPY';b.onclick=()=>{const title=row.querySelector('b')?.textContent||'',value=row.querySelector('.storage-record-info small')?.textContent||'';navigator.clipboard?.writeText(title+'\\n'+value).then(()=>notify('Record copied to clipboard.')).catch(()=>notify('Clipboard access was blocked.'));};row.querySelector('.record-actions')?.prepend(b);});else $('.nexus-copy-record',list).forEach(x=>x.remove());
     const file=$('#storageFile');if(file)file.disabled=false;

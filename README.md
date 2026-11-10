@@ -1,6 +1,6 @@
 # NEXUS — Digital Laboratory
 
-**Current release: 0.9.0. Flow Studio milestone: 1.7.0 — Keyboard Events and Cancellable Runtime.**
+**Current release: 0.9.0. Flow Studio milestone: 2.2.0 — Typed Variable Controls.**
 
 ## Implemented
 
@@ -23,7 +23,7 @@
 - Comparisons support numeric and text values; text equality and contains checks are case-insensitive, while mixed-type comparisons are rejected.
 - Arithmetic reporters reject non-finite results instead of allowing `Infinity` into the runtime.
 - `set`, `change`, repeat counts and arithmetic statement blocks accept reporter expressions.
-- A variable manager supports up to 100 typed variables: Number, Text and Boolean. Legacy numeric variables migrate automatically to Number records; typed values persist with the local project and are retained between runs.
+- A variable manager supports up to 100 typed variables: Number, Text and Boolean. Variable targets use live dropdowns; numeric-only blocks filter to Number variables, while assignment, print and variable reporters can select every type. Types can be changed with checked conversions: text must be a finite numeric string to become Number; Boolean accepts only true/false text or 0/1; Boolean-to-Number maps to 1/0; Number/Boolean-to-Text uses the displayed value. Rejected conversions leave the original variable unchanged. Legacy numeric variables migrate automatically to Number records; typed values persist with the local project and are retained between runs.
 - The `when key pressed` event listens for real keyboard input while the runtime is active. It supports space, arrow keys, Enter, Escape, letter/number keys and an any-key option; form fields are ignored. Event hats stay at the top level and cannot be wired as incoming blocks.
 - The generic variable reporter preserves the stored type. Numeric expressions and arithmetic reject Text/Boolean variables, logical operators require Boolean inputs, and assignments cannot silently change an existing variable's type.
 - Top-level statement blocks can still be connected with manual wires; reporters are restricted to expression slots.
@@ -73,7 +73,7 @@ Open `index.html` in a modern browser. Run Flow Studio unit tests with `npm run 
 ## Limitations
 - Terminal is a browser command simulator, not an operating-system shell.
 - Flow Studio runs visual commands in the browser; it does not execute arbitrary external code or connect to external services.
-- Arithmetic expressions remain Number-only; Text and Boolean values must be handled through compatible reporters and typed assignments.
+- Arithmetic expressions remain Number-only; Text and Boolean values must be handled through compatible reporters and typed assignments. Changing a variable type does not rewrite existing expressions; incompatible uses are still reported by runtime type checks.
 - Keyboard event blocks ignore browser key-repeat events and do not capture keystrokes while an input, select, textarea or editable element has focus.
 - `forever` loops and keyboard listeners remain active until STOP. A 100,000-block safety limit prevents runaway execution; GSAP-backed sprite effects are cancelled when STOP is requested or Flow Studio is closed.
 - Storage and Flow Studio projects are local to the browser profile. Clearing site data may remove them.

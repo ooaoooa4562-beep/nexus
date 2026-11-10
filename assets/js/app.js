@@ -15,9 +15,10 @@
  Promise.all(Object.entries(files).map(([id,file])=>ensure(id,file))).then(start).catch(e=>{console.error('[NEXUS]',e);start(e);});
  async function start(loadError){
   const handoff=new URLSearchParams(location.search);
-  if(handoff.get('github')==='handoff'&&handoff.get('code')){
-   try{const response=await rawFetch(API+'/auth/exchange',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:handoff.get('code')})});const data=await response.json().catch(()=>({}));if(!response.ok||!data.session)throw new Error(data.error||'GitHub sign-in could not be completed.');sessionStorage.setItem('nexus.api.session',data.session);history.replaceState(null,'',location.pathname+location.hash);}
-   catch(error){console.error('[NEXUS GitHub]',error);history.replaceState(null,'',location.pathname+location.hash);}
+  const authProvider=handoff.get('github')==='handoff'?'GitHub':handoff.get('google')==='handoff'?'Google':null;
+  if(authProvider&&handoff.get('code')){
+   try{const response=await rawFetch(API+'/auth/exchange',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:handoff.get('code')})});const data=await response.json().catch(()=>({}));if(!response.ok||!data.session)throw new Error(data.error||authProvider+' sign-in could not be completed.');sessionStorage.setItem('nexus.api.session',data.session);history.replaceState(null,'',location.pathname+location.hash);}
+   catch(error){console.error('[NEXUS '+authProvider+']',error);history.replaceState(null,'',location.pathname+location.hash+'?auth_error='+encodeURIComponent(error.message));}
   }
   const $=s=>document.querySelector(s),sidebar=$('#sidebar'),home=$('#overview'),page=$('#modulePage'),crumb=$('#breadcrumb');
   const info={editor:['Code Editor'],terminal:['Terminal'],flow:['Flow Studio'],threeD:['NEXUS 3D'],storage:['Storage'],monitor:['Monitor'],network:['Network'],extensions:['Extensions'],profile:['My profile'],settings:['Settings']};

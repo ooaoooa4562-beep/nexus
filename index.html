@@ -6,7 +6,7 @@
 <title>NEXUS — Developer Workspace</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/css/style.css?v=2.0.0">
+<link rel="stylesheet" href="assets/css/style.css?v=2.1.0">
 </head>
 <body>
 <div class="app-shell">
@@ -45,36 +45,45 @@
   <div class="topbar-actions"><label class="global-search"><span>⌕</span><input id="globalSearch" placeholder="Search workspace..." aria-label="Search modules"><kbd>Ctrl K</kbd></label><span class="clock" id="clock">--:--:--</span><button class="icon-button" id="themeButton" title="Toggle appearance">◐</button><button class="top-avatar" id="topProfile" title="Open profile">N</button></div>
  </header>
  <div class="workspace-content">
-  <section class="page active-page" id="overview">
-   <div class="page-heading"><div><div class="eyebrow"><span class="eyebrow-line"></span> WORKSPACE / OVERVIEW</div><h1>Good to see you, <span id="welcomeName">Operator.</span></h1><p class="subtitle">Your tools, projects and system activity — all in one place.</p></div><div class="date-chip"><small>LOCAL SESSION</small><b id="dateLabel">Loading date...</b></div></div>
-   <div class="metrics-grid">
-    <article class="metric-card"><div class="metric-top">MODULES <span>◈</span></div><div class="metric-value">08</div><div class="metric-foot"><i class="tiny-indicator"></i> Available in workspace</div></article>
-    <article class="metric-card"><div class="metric-top">WORKFLOWS <span>⌘</span></div><div class="metric-value">01</div><div class="metric-foot">Starter workflow template</div></article>
-    <article class="metric-card"><div class="metric-top">STORAGE <span>▤</span></div><div class="metric-value">LOCAL</div><div class="metric-foot">Browser-based data vault</div></article>
-    <article class="metric-card"><div class="metric-top">NETWORK <span>⌁</span></div><div class="metric-value network-value">ONLINE</div><div class="metric-foot"><i class="tiny-indicator"></i> Browser connection available</div></article>
+  <section class="page active-page dashboard-page" id="overview">
+   <div class="dashboard-welcome">
+    <div class="welcome-copy"><div class="eyebrow"><span class="eyebrow-line"></span> YOUR CREATIVE WORKSPACE</div>
+     <h1>Welcome back, <span id="welcomeName">Operator.</span></h1>
+     <p class="subtitle">Everything you need to build, experiment and ship — in one workspace.</p>
+     <div class="welcome-actions"><button class="primary-button" data-open-page="editor"><span>&lt;/&gt;</span> Open Code Editor <b>↗</b></button><button class="secondary-button" data-open-page="flow">Create a workflow <b>↗</b></button></div>
+    </div>
+    <div class="welcome-orbit" aria-hidden="true"><div class="orbit-ring orbit-one"></div><div class="orbit-ring orbit-two"></div><div class="orbit-core"><span>N</span><small>CORE</small></div><i class="orbit-dot dot-one"></i><i class="orbit-dot dot-two"></i><i class="orbit-dot dot-three"></i></div>
+    <div class="welcome-date"><small id="dateLabel">LOCAL SESSION</small><b id="welcomeClock">--:--:--</b></div>
    </div>
-   <div class="dashboard-grid">
-    <section class="panel quick-panel"><div class="panel-heading"><div><div class="eyebrow">GET STARTED</div><h2>Quick access</h2></div><span class="live-label">YOUR WORKSPACE</span></div>
-     <div class="quick-grid">
-      <button class="quick-card" data-open-page="editor"><span class="quick-icon blue-icon">&lt;/&gt;</span><b>Open Code Editor</b><small>Work with GitHub files</small><span class="quick-arrow">↗</span></button>
-      <button class="quick-card" data-open-page="terminal"><span class="quick-icon green-icon">›_</span><b>Open Terminal</b><small>Run NEXUS commands</small><span class="quick-arrow">↗</span></button>
-      <button class="quick-card" data-open-page="flow"><span class="quick-icon violet-icon">⌘</span><b>Flow Studio</b><small>Build visual workflows</small><span class="quick-arrow">↗</span></button>
-      <button class="quick-card" data-open-page="storage"><span class="quick-icon cyan-icon">▤</span><b>Open Storage</b><small>Manage local records</small><span class="quick-arrow">↗</span></button>
+   <div class="dashboard-stats">
+    <article class="stat-tile"><span class="stat-icon stat-blue">&lt;/&gt;</span><div><small>AVAILABLE MODULES</small><strong>08</strong><em><i></i> Ready to use</em></div><span class="stat-spark spark-blue">▁▃▂▅▄▆</span></article>
+    <article class="stat-tile"><span class="stat-icon stat-violet">⌘</span><div><small>CREATIVE TOOLS</small><strong>03</strong><em>Code · Flow · 3D</em></div><span class="stat-spark spark-violet">▂▄▃▆▅▇</span></article>
+    <article class="stat-tile"><span class="stat-icon stat-green">▤</span><div><small>STORAGE MODE</small><strong>LOCAL</strong><em><i></i> Browser vault</em></div><span class="stat-spark spark-green">▁▂▄▃▅▆</span></article>
+    <article class="stat-tile"><span class="stat-icon stat-cyan">⌁</span><div><small>WORKSPACE STATUS</small><strong>READY</strong><em><i></i> Core initialized</em></div><span class="stat-spark spark-cyan">▂▃▅▄▆▇</span></article>
+   </div>
+   <div class="dashboard-main-grid">
+    <section class="dashboard-panel launch-panel"><div class="dashboard-panel-head"><div><div class="eyebrow">PICK UP WHERE YOU LEFT OFF</div><h2>Quick launch</h2></div><span class="panel-counter">01 — 04</span></div>
+     <div class="launch-grid">
+      <button class="launch-card launch-editor" data-open-page="editor"><span class="launch-card-top"><i>&lt;/&gt;</i><b>01</b></span><strong>Code Editor</strong><small>Write code and browse your GitHub repositories.</small><span class="launch-open">OPEN EDITOR <b>↗</b></span></button>
+      <button class="launch-card launch-flow" data-open-page="flow"><span class="launch-card-top"><i>⌘</i><b>02</b></span><strong>Flow Studio</strong><small>Connect visual blocks and build logic.</small><span class="launch-open">OPEN STUDIO <b>↗</b></span></button>
+      <button class="launch-card launch-three" data-open-page="threeD"><span class="launch-card-top"><i>◇</i><b>03</b></span><strong>NEXUS 3D</strong><small>Create and edit objects in a 3D scene.</small><span class="launch-open">OPEN 3D <b>↗</b></span></button>
+      <button class="launch-card launch-terminal" data-open-page="terminal"><span class="launch-card-top"><i>›_</i><b>04</b></span><strong>Terminal</strong><small>Run commands and manage your workspace.</small><span class="launch-open">OPEN TERMINAL <b>↗</b></span></button>
      </div>
     </section>
-    <section class="panel activity-panel"><div class="panel-heading"><div><div class="eyebrow">SYSTEM LOG</div><h2>Recent activity</h2></div><button class="text-button" id="clearLog">CLEAR</button></div><div class="event-list" id="eventList"><div class="event-item"><span class="event-icon success">✓</span><span><b>Workspace initialized</b><small>NEXUS Core is ready</small></span><time>NOW</time></div><div class="event-item"><span class="event-icon info">↗</span><span><b>Local environment loaded</b><small>Modules are available</small></span><time>NOW</time></div></div></section>
+    <section class="dashboard-panel activity-panel"><div class="dashboard-panel-head"><div><div class="eyebrow">LIVE WORKSPACE FEED</div><h2>Recent activity</h2></div><button class="text-button" id="clearLog">CLEAR LOG</button></div>
+     <div class="event-list" id="eventList"><div class="event-item"><span class="event-icon success">✓</span><span><b>Workspace initialized</b><small>NEXUS Core is ready</small></span><time>NOW</time></div><div class="event-item"><span class="event-icon info">↗</span><span><b>Local environment loaded</b><small>Modules are available</small></span><time>NOW</time></div></div>
+     <div class="activity-foot"><span class="activity-pulse"></span> ACTIVITY IS STORED IN THIS SESSION</div>
+    </section>
    </div>
-   <section class="modules-section"><div class="section-heading"><div><div class="eyebrow">ENVIRONMENT</div><h2>All modules</h2></div><span class="section-count">08 MODULES</span></div><div class="module-grid">
-    <a class="module-card" href="#editor" data-page="editor"><span class="module-icon blue-icon">&lt;/&gt;</span><span class="module-info"><b>Code Editor</b><small>GitHub-connected IDE</small></span><span class="module-arrow">↗</span></a>
-    <a class="module-card" href="#terminal" data-page="terminal"><span class="module-icon green-icon">›_</span><span class="module-info"><b>Terminal</b><small>Command environment</small></span><span class="module-arrow">↗</span></a>
-    <a class="module-card" href="#flow" data-page="flow"><span class="module-icon violet-icon">⌘</span><span class="module-info"><b>Flow Studio</b><small>Visual workflows</small></span><span class="module-arrow">↗</span></a>
-    <a class="module-card" href="#threeD" data-page="threeD"><span class="module-icon violet-icon">◇</span><span class="module-info"><b>NEXUS 3D</b><small>Browser-based 3D model editor</small></span><span class="module-arrow">↗</span></a>
-    <a class="module-card" href="#storage" data-page="storage"><span class="module-icon cyan-icon">▤</span><span class="module-info"><b>Storage</b><small>Local data vault</small></span><span class="module-arrow">↗</span></a>
-    <a class="module-card" href="#monitor" data-page="monitor"><span class="module-icon green-icon">◷</span><span class="module-info"><b>Monitor</b><small>System diagnostics</small></span><span class="module-arrow">↗</span></a>
-    <a class="module-card" href="#network" data-page="network"><span class="module-icon cyan-icon">⌁</span><span class="module-info"><b>Network</b><small>Connectivity tests</small></span><span class="module-arrow">↗</span></a>
-    <a class="module-card" href="#extensions" data-page="extensions"><span class="module-icon violet-icon">⊞</span><span class="module-info"><b>Extensions</b><small>Manage modules</small></span><span class="module-arrow">↗</span></a>
-   </div></section>
-   <footer class="footer"><span>NEXUS DEVELOPER WORKSPACE · 1.0.0</span><span>BUILT FOR EXPLORATION ✳</span></footer>
+   <section class="dashboard-tools"><div class="dashboard-panel-head"><div><div class="eyebrow">YOUR TOOLKIT</div><h2>Workspace modules</h2></div><span class="panel-counter">08 MODULES</span></div>
+    <div class="tool-list">
+     <a href="#storage" data-page="storage"><span class="tool-symbol tool-cyan">▤</span><span><b>Storage</b><small>Local data vault</small></span><i>↗</i></a>
+     <a href="#monitor" data-page="monitor"><span class="tool-symbol tool-green">◷</span><span><b>Monitor</b><small>System diagnostics</small></span><i>↗</i></a>
+     <a href="#network" data-page="network"><span class="tool-symbol tool-blue">⌁</span><span><b>Network</b><small>Connectivity tools</small></span><i>↗</i></a>
+     <a href="#extensions" data-page="extensions"><span class="tool-symbol tool-violet">⊞</span><span><b>Extensions</b><small>Manage modules</small></span><i>↗</i></a>
+    </div>
+   </section>
+   <footer class="dashboard-footer"><span>NEXUS WORKSPACE <i>•</i> VERSION 1.0.0</span><span>MAKE SOMETHING GREAT <b>✳</b></span></footer>
   </section>
   <section class="page module-page" id="modulePage" hidden></section>
  </div>

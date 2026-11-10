@@ -18,7 +18,7 @@
   const authProvider=handoff.get('github')==='handoff'?'GitHub':handoff.get('google')==='handoff'?'Google':null;
   if(authProvider&&handoff.get('code')){
    try{const response=await rawFetch(API+'/auth/exchange',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:handoff.get('code')})});const data=await response.json().catch(()=>({}));if(!response.ok||!data.session)throw new Error(data.error||authProvider+' sign-in could not be completed.');sessionStorage.setItem('nexus.api.session',data.session);history.replaceState(null,'',location.pathname+location.hash);}
-   catch(error){console.error('[NEXUS '+authProvider+']',error);history.replaceState(null,'',location.pathname+location.hash+'?auth_error='+encodeURIComponent(error.message));}
+   catch(error){console.error('[NEXUS '+authProvider+']',error);history.replaceState(null,'',location.pathname+location.hash);}
   }
   const $=s=>document.querySelector(s),sidebar=$('#sidebar'),home=$('#overview'),page=$('#modulePage'),crumb=$('#breadcrumb');
   const info={editor:['Code Editor'],terminal:['Terminal'],flow:['Flow Studio'],threeD:['NEXUS 3D'],storage:['Storage'],monitor:['Monitor'],network:['Network'],extensions:['Extensions'],profile:['My profile'],settings:['Settings']};

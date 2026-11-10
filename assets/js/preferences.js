@@ -143,7 +143,7 @@
   window.addEventListener('nexus:preferences',e=>{prefs=e.detail||read();apply();});
   window.addEventListener('nexus:theme',apply);
   window.addEventListener('nexus:motion-refresh',apply);
-  observer=new MutationObserver(records=>{if(!document.body)return;const relevant=records.some(r=>{if(r.target.closest?.('.nexus-flow-minimap,.nexus-pref-axis,.nexus-pref-stats,.nexus-pref-minimap,.nexus-pref-warning,.nexus-copy-record,#graphWires,#storageList'))return false;return [...r.addedNodes].some(n=>n.nodeType===1&&!n.matches('.nexus-pref-*'));});if(relevant){applyEditor();applyTerminal();applyFlow();apply3D();applyStorage();applyConfirmations();}});
+  observer=new MutationObserver(records=>{if(!document.body)return;const relevant=records.some(r=>{if(r.target.closest?.('.nexus-flow-minimap,.nexus-pref-axis,.nexus-pref-stats,.nexus-pref-minimap,.nexus-pref-warning,.nexus-copy-record,#graphWires,#storageList'))return false;return [...r.addedNodes].some(n=>n.nodeType===1&&!(n.classList&&[...n.classList].some(k=>k.startsWith('nexus-pref-'))));});if(relevant){applyWorkspace();applyEditor();applyTerminal();applyFlow();apply3D();applyStorage();applyConfirmations();}});
   observer.observe(document.body,{childList:true,subtree:true});
   apply();
   window.addEventListener('pagehide',()=>{if(enabled('privacyClearOnExit')){sessionStorage.removeItem('nexus.temp.cache');sessionStorage.removeItem('nexus.editor.tabs.v1');}});

@@ -53,6 +53,16 @@
 - Enable/disable modules locally, with protected Extension Manager.
 - Third-party extension loading is not enabled.
 
+
+### Authentication setup (Render)
+
+- GitHub OAuth requires `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` and `SESSION_SECRET`.
+- Google sign-in additionally requires `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in the Render service environment.
+- Register this exact Google Authorized redirect URI in Google Cloud Console: `https://nexus-github-api.onrender.com/auth/google/callback`.
+- Register this exact GitHub callback URL in the GitHub OAuth App: `https://nexus-github-api.onrender.com/auth/github/callback`.
+- Keep all client secrets in Render Environment Variables. Never put them in frontend files or commit them to Git.
+- Google sign-in creates a NEXUS identity session; GitHub repository access still requires the separate **Connect GitHub** authorization because Google does not grant GitHub permissions.
+
 ## Structure
 
 - `index.html`

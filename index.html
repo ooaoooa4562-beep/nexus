@@ -6,33 +6,44 @@
 <title>NEXUS — Developer Workspace</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/css/style.css?v=3.0.0">
+<link rel="stylesheet" href="assets/css/style.css?v=3.1.0">
 </head>
 <body>
 <div class="app-shell">
 <aside class="sidebar" id="sidebar">
- <a class="brand" href="#overview"><span class="brand-mark"><i></i><i></i><i></i><i></i></span><span>NEXUS<small>CREATIVE DEV ENVIRONMENT</small></span></a>
- <div class="sidebar-scroll">
-  <div class="side-label">WORKSPACE</div>
-  <nav class="navigation">
-   <a class="nav-link active" href="#overview" data-page="overview"><span class="nav-icon">⌂</span> Overview <kbd>⌘1</kbd></a>
-   <a class="nav-link" href="#editor" data-page="editor"><span class="nav-icon">&lt;/&gt;</span> Code Editor <kbd>⌘2</kbd></a>
-   <a class="nav-link" href="#terminal" data-page="terminal"><span class="nav-icon">›_</span> Terminal <kbd>⌘3</kbd></a>
-   <a class="nav-link" href="#flow" data-page="flow"><span class="nav-icon">⌘</span> Flow Studio</a>
-   <a class="nav-link" href="#threeD" data-page="threeD"><span class="nav-icon">◇</span> NEXUS 3D</a>
-   <a class="nav-link" href="#storage" data-page="storage"><span class="nav-icon">▤</span> Storage</a>
-  </nav>
-  <div class="side-label">SYSTEM</div>
-  <nav class="navigation">
-   <a class="nav-link" href="#monitor" data-page="monitor"><span class="nav-icon">◷</span> Monitor</a>
-   <a class="nav-link" href="#network" data-page="network"><span class="nav-icon">⌁</span> Network</a>
-   <a class="nav-link" href="#extensions" data-page="extensions"><span class="nav-icon">⊞</span> Extensions</a>
-  </nav>
-  <div class="side-label">PERSONAL</div>
-  <nav class="navigation">
-   <a class="nav-link" href="#profile" data-page="profile"><span class="nav-icon">◉</span> My profile</a>
-   <a class="nav-link" href="#settings" data-page="settings"><span class="nav-icon">⚙</span> Settings</a>
-  </nav>
+ <a class="brand" href="#overview"><span class="brand-mark"><i></i><i></i><i></i><i></i></span><span class="brand-copy">NEXUS<small>CREATIVE DEV ENVIRONMENT</small></span><span class="brand-version">3.1</span></a>
+ <div class="sidebar-toolbar">
+  <label class="sidebar-filter"><span>⌕</span><input id="sidebarFilter" type="search" placeholder="Filter modules…" aria-label="Filter sidebar modules"><kbd>/</kbd></label>
+  <button class="sidebar-collapse" id="sidebarCollapse" type="button" title="Collapse sidebar" aria-label="Collapse sidebar">‹</button>
+ </div>
+ <div class="sidebar-scroll" id="sidebarScroll">
+  <div class="sidebar-group">
+   <button class="side-label side-group-toggle" type="button" data-group="workspace" aria-expanded="true"><span>WORKSPACE</span><i>⌄</i></button>
+   <nav class="navigation" data-nav-group="workspace">
+    <a class="nav-link active" href="#overview" data-page="overview" title="Overview — workspace dashboard"><span class="nav-icon">⌂</span><span class="nav-text">Overview</span><kbd>⌘1</kbd></a>
+    <a class="nav-link" href="#editor" data-page="editor" title="Code Editor — edit repository files"><span class="nav-icon">&lt;/&gt;</span><span class="nav-text">Code Editor</span><kbd>⌘2</kbd></a>
+    <a class="nav-link" href="#terminal" data-page="terminal" title="Terminal — commands and Git tools"><span class="nav-icon">›_</span><span class="nav-text">Terminal</span><kbd>⌘3</kbd></a>
+    <a class="nav-link" href="#flow" data-page="flow" title="Flow Studio — visual programming"><span class="nav-icon">⌘</span><span class="nav-text">Flow Studio</span></a>
+    <a class="nav-link" href="#threeD" data-page="threeD" title="NEXUS 3D — scene editor"><span class="nav-icon">◇</span><span class="nav-text">NEXUS 3D</span></a>
+    <a class="nav-link" href="#storage" data-page="storage" title="Storage — local files and data"><span class="nav-icon">▤</span><span class="nav-text">Storage</span></a>
+   </nav>
+  </div>
+  <div class="sidebar-group">
+   <button class="side-label side-group-toggle" type="button" data-group="system" aria-expanded="true"><span>SYSTEM</span><i>⌄</i></button>
+   <nav class="navigation" data-nav-group="system">
+    <a class="nav-link" href="#monitor" data-page="monitor" title="Monitor — diagnostics"><span class="nav-icon">◷</span><span class="nav-text">Monitor</span></a>
+    <a class="nav-link" href="#network" data-page="network" title="Network — connectivity"><span class="nav-icon">⌁</span><span class="nav-text">Network</span></a>
+    <a class="nav-link" href="#extensions" data-page="extensions" title="Extensions — module manager"><span class="nav-icon">⊞</span><span class="nav-text">Extensions</span></a>
+   </nav>
+  </div>
+  <div class="sidebar-group">
+   <button class="side-label side-group-toggle" type="button" data-group="personal" aria-expanded="true"><span>PERSONAL</span><i>⌄</i></button>
+   <nav class="navigation" data-nav-group="personal">
+    <a class="nav-link" href="#profile" data-page="profile" title="My profile"><span class="nav-icon">◉</span><span class="nav-text">My profile</span></a>
+    <a class="nav-link" href="#settings" data-page="settings" title="Settings"><span class="nav-icon">⚙</span><span class="nav-text">Settings</span></a>
+   </nav>
+  </div>
+  <div class="sidebar-filter-empty" id="sidebarFilterEmpty" hidden>No matching modules</div>
  </div>
  <div class="sidebar-bottom">
   <div class="system-card"><div class="system-card-top"><span class="pulse"></span> NEXUS CORE</div><strong>Workspace operational</strong><small>VERSION <b>1.0.0</b></small></div>
@@ -92,5 +103,5 @@
 </div>
 <script src="assets/js/terminal.js?v=1.4.1"></script><script src="assets/js/storage.js?v=1.1.0"></script><script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script><script src="assets/js/flow.js?v=2.2.0"></script><script src="assets/js/3d.js?v=1.3.0"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.6/ace.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.6/ext-language_tools.js"></script>
-<script src="assets/js/editor.js?v=1.3.0"></script><script src="assets/js/monitor.js?v=1.1.0"></script><script src="assets/js/network.js?v=1.1.0"></script><script src="assets/js/extensions.js?v=1.1.0"></script><script src="assets/js/motion.js?v=1.2.0"></script><script src="assets/js/app.js?v=1.4.0"></script>
+<script src="assets/js/editor.js?v=1.3.0"></script><script src="assets/js/monitor.js?v=1.1.0"></script><script src="assets/js/network.js?v=1.1.0"></script><script src="assets/js/extensions.js?v=1.1.0"></script><script src="assets/js/motion.js?v=1.2.0"></script><script src="assets/js/app.js?v=1.5.0"></script>
 </body></html>

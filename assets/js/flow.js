@@ -267,6 +267,40 @@
   variables[name]={type,value};
   return variables[name];
  }
+ function convertVariableValue(value,fromType,toType){
+  if(!['number','text','boolean'].includes(fromType)||!['number','text','boolean'].includes(toType))throw Error('Unknown variable type.');
+  if(fromType===toType)return value;
+  if(toType==='text')return String(value);
+  if(toType==='number'){
+   if(fromType==='boolean')return value?1:0;
+   const raw=String(value).trim(),number=Number(raw);
+   if(!raw||!Number.isFinite(number))throw Error('Text must contain a finite number before it can become Number.');
+   return number;
+  }
+  if(toType==='boolean'){
+   if(fromType==='number'&&(value===0||value===1))return value===1;
+   if(fromType==='text'){
+    const raw=value.trim().toLowerCase();
+    if(raw==='true'||raw==='false')return raw==='true';
+   }
+   throw Error('Boolean conversion accepts only 0 or 1, or the text true or false.');
+  }
+  throw Error('Unsupported variable type conversion.');
+ }
+ function changeVariableType(variables,name,targetType){
+  const variableName=String(name||'').trim();
+  if(!/^[A-Za-z_][A-Za-z0-9_]{0,31}$/.test(variableName))throw Error('Invalid variable name "'+variableName+'".');
+  if(!['number','text','boolean'].includes(targetType))throw Error('Unknown variable type "'+targetType+'".');
+  if(!Object.prototype.hasOwnProperty.call(variables,variableName))throw Error('Variable "'+variableName+'" does not exist.');
+  const current=readVariableRecord(variables,variableName);
+  const converted=convertVariableValue(current.value,current.type,targetType);
+  variables[variableName]={type:targetType,value:converted};
+  return variables[variableName];
+ }
+ function variableFieldMode(blockType){
+  const type=typeAliases[blockType]||blockType;
+  return ['change','add','subtract','multiply','divide','if','ifElse','repeatUntil'].includes(type)?'number':'any';
+ }
  function parseExpression(source,variables={},label='expression'){
   const input=String(source??'').trim();
   if(!input)throw Error(label+' is empty.');
@@ -406,6 +440,9 @@
   evaluateReporter:(reporter,variables={})=>evaluateReporter(reporter,variables),
   normalizeVariables,
   assignVariable:(variables,name,value)=>assignVariableValue(variables,name,value),
+  convertVariableValue,
+  changeVariableType,
+  variableFieldMode,
   render:()=>'<div class="eyebrow">NEXUS MODULE / 006</div><div class="module-title-row"><div><h1>Flow <span>Studio.</span></h1><p class="subtitle">Build programs with nested control blocks, variables and a live stage.</p></div><span class="flow-badge">● BLOCK EDITOR</span></div><div class="scratch-toolbar graph-toolbar"><div class="scratch-project"><span class="scratch-project-icon">✳</span><input id="projectName" value="My first project" aria-label="Project name"></div><div class="graph-tools"><button class="secondary-button" id="wireMode">⌁ WIRE: OFF</button><button class="secondary-button" id="deleteLinks">CLEAR WIRES</button><button class="secondary-button" id="flowNew">NEW</button><button class="secondary-button" id="flowSave">SAVE</button><button class="run-button" id="flowRun">▶ RUN</button><button class="stop-button" id="flowStop" disabled>■ STOP</button></div></div><div class="graph-workbench"><aside class="graph-library"><div class="graph-library-head"><b>BLOCK LIBRARY</b><small>DRAG BLOCKS TO CANVAS OR INTO SLOTS</small></div><div class="graph-categories" id="scratchCategories"></div><div class="graph-palette" id="scratchPalette"></div></aside><section class="graph-editor"><div class="graph-editor-head"><b>WORKSPACE</b><span id="blockCount">0 BLOCKS</span><span class="graph-help">Drag blocks · drop into orange control slots · WIRE links top-level scripts</span></div><div class="graph-canvas" id="graphCanvas"><svg class="graph-wires" id="graphWires"></svg><div id="graphNodes"></div><div class="graph-empty" id="graphEmpty">Drag blocks here from the library</div></div><div class="graph-status" id="graphStatus">Drop blocks into a control slot to build a nested body.</div></section><aside class="graph-side"><div class="stage-character-picker"><label for="stageCharacter">CHARACTER</label><select id="stageCharacter" aria-label="Choose stage character"><option value="🐱">🐱 Cat</option><option value="🐶">🐶 Dog</option><option value="🐰">🐰 Rabbit</option><option value="🦊">🦊 Fox</option><option value="🐻">🐻 Bear</option><option value="🐼">🐼 Panda</option><option value="🐸">🐸 Frog</option><option value="🐵">🐵 Monkey</option><option value="🐧">🐧 Penguin</option><option value="🦉">🦉 Owl</option><option value="🦁">🦁 Lion</option><option value="🐯">🐯 Tiger</option><option value="🐮">🐮 Cow</option><option value="🐷">🐷 Pig</option><option value="🐨">🐨 Koala</option><option value="🐹">🐹 Hamster</option><option value="🐺">🐺 Wolf</option><option value="🦄">🦄 Unicorn</option><option value="🐲">🐲 Dragon</option><option value="🐙">🐙 Octopus</option><option value="🦖">🦖 Dinosaur</option><option value="🐢">🐢 Turtle</option><option value="🐬">🐬 Dolphin</option><option value="🦋">🦋 Butterfly</option><option value="🐝">🐝 Bee</option><option value="🤖">🤖 Robot</option><option value="👾">👾 Alien</option><option value="👻">👻 Ghost</option><option value="🥷">🥷 Ninja</option><option value="🚀">🚀 Rocket</option></select></div><div class="scratch-panel-title"><b>STAGE</b><small>360 × 260</small></div><div class="scratch-stage" id="scratchStage"><div class="stage-grid"></div><div class="stage-sprite" id="stageSprite">🐱</div><div class="stage-bubble" id="stageBubble" hidden></div></div><div class="stage-controls"><button id="stageReset">↺ RESET SPRITE</button><span id="stagePosition">x: 0 y: 0</span></div><div class="scratch-console"><div class="scratch-panel-title"><b>OUTPUT</b><button id="clearOutput">CLEAR</button></div><div id="scratchOutput" class="scratch-output">Ready. Press RUN to execute the script.</div><div class="flow-variable-manager"><div class="flow-variable-tools"><input id="newVariableName" placeholder="new variable" maxlength="32" aria-label="New variable name"><select id="newVariableType" aria-label="New variable type" title="Variable type"><option value="number">Number</option><option value="text">Text</option><option value="boolean">Boolean</option></select><button id="addVariable" type="button">+ ADD</button></div><div id="flowVariableList" class="flow-variable-list"></div><datalist id="flowVariableOptions"></datalist></div><div id="variableReadout" class="variable-readout">Variables: score = 0</div></div></aside></div><div class="scratch-footer"><span><i></i> LOCAL PROJECT</span><span>Nested blocks · Variables · Runtime stop control</span></div>',
   mount(root){
    let data=load(),nodes=data.nodes,links=data.links,character=typeof data.character==='string'?data.character:'🐱',category='events',wireMode=false,pending=null,running=false,stopFlag=false,runAbort=null,x=0,y=0,angle=0,visible=true,vars=data.variables||defaultVariables(),runtimeSteps=0,runtimeFailure=null,activeKeyTasks=new Set(),keyHandler=null;
@@ -436,15 +473,27 @@
      const option=document.createElement('option');option.value=name;options.append(option);
      const row=document.createElement('div');row.className='flow-variable-row';
      const label=document.createElement('span');label.textContent=name;
-     const current=document.createElement('small');current.textContent=value.type.toUpperCase()+' · '+String(value.value);
+     const typeSelect=document.createElement('select');typeSelect.className='flow-variable-type';typeSelect.setAttribute('aria-label','Change '+name+' type');
+     [['number','Number'],['text','Text'],['boolean','Boolean']].forEach(([type,labelText])=>{const choice=document.createElement('option');choice.value=type;choice.textContent=labelText;typeSelect.append(choice);});
+     typeSelect.value=value.type;
+     typeSelect.addEventListener('change',()=>{
+      if(running){typeSelect.value=value.type;return;}
+      try{
+       const changed=changeVariableType(vars,name,typeSelect.value);
+       save();updateVars();log('Variable type changed: '+name+' → '+changed.type.toUpperCase());
+      }catch(error){
+       typeSelect.value=value.type;setStatus('Type change rejected: '+error.message);log('Variable type change rejected: '+error.message);
+      }
+     });
+     const current=document.createElement('small');current.textContent=String(value.value);
      const remove=document.createElement('button');remove.type='button';remove.textContent='×';remove.title='Delete variable '+name;
      remove.addEventListener('click',()=>{if(running)return;delete vars[name];updateVars();save();log('Variable deleted: '+name);});
-     row.append(label,current,remove);list.append(row);
+     row.append(label,typeSelect,current,remove);list.append(row);
     });
    }
    const updateVars=()=>{
     $('#variableReadout').textContent='Variables: '+Object.entries(vars).sort(([a],[b])=>a.localeCompare(b)).map(([k,v])=>k+' ('+v.type+') = '+String(v.value)).join(' · ');
-    renderVariableManager();
+    renderVariableManager();refreshVariableFields();
    };
    const findBlock=(id,list=nodes)=>{
     for(const n of list){
@@ -455,6 +504,30 @@
     }
     return null;
    };
+   function populateVariableSelect(field,block,key,defaultValue){
+    const current=String(block.fields[key]??defaultValue??'score'),mode=variableFieldMode(block.type);
+    field.replaceChildren();
+    let found=false;
+    Object.entries(vars).sort(([a],[b])=>a.localeCompare(b)).forEach(([name,entry])=>{
+     if(mode==='number'&&entry.type!=='number')return;
+     const option=document.createElement('option');option.value=name;option.textContent=name+' · '+entry.type.toUpperCase();
+     field.append(option);if(name===current)found=true;
+    });
+    if(!found){
+     const existing=Object.prototype.hasOwnProperty.call(vars,current)?readVariableRecord(vars,current):null;
+     const option=document.createElement('option');option.value=current;
+     option.textContent=existing?current+' · '+existing.type.toUpperCase()+' (incompatible)':current+' · new variable';
+     option.disabled=!!(existing&&mode==='number'&&existing.type!=='number');
+     field.append(option);
+    }
+    field.value=current;
+   }
+   function refreshVariableFields(){
+    root.querySelectorAll('select[data-variable-field="true"]').forEach(field=>{
+     const block=findBlock(field.dataset.blockId);
+     if(block)populateVariableSelect(field,block,field.dataset.field,field.value);
+    });
+   }
    const findTop=id=>nodes.find(n=>n.id===id);
    const outgoing=id=>links.find(l=>l.from===id);
    const incoming=id=>links.some(l=>l.to===id);
@@ -700,11 +773,13 @@
      }else if(n.type==='boolean'&&key==='value'){
       field=document.createElement('select');
       ['true','false'].forEach(value=>{const option=document.createElement('option');option.value=value;option.textContent=value;field.append(option);});
+     }else if(key==='variable'){
+      field=document.createElement('select');field.dataset.variableField='true';field.dataset.blockId=n.id;
+      populateVariableSelect(field,n,key,defaultValue);
      }else{
       field=document.createElement('input');field.type='text';field.spellcheck=false;
-      if(key==='variable')field.setAttribute('list','flowVariableOptions');
      }
-     field.className='graph-field';field.value=n.fields[key]??defaultValue;field.setAttribute('aria-label',key);field.title=key;field.dataset.field=key;
+     field.className='graph-field';if(key!=='variable')field.value=n.fields[key]??defaultValue;field.setAttribute('aria-label',key);field.title=key;field.dataset.field=key;
      field.addEventListener('change',()=>{n.fields[key]=field.value;save();});
      row.append(field);card.append(row);
     });

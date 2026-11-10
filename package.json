@@ -6,7 +6,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test:flow": "node --test tests/flow-expressions.test.js tests/flow-text.test.js tests/flow-typed-variables.test.js tests/flow-events.test.js"
+    "test:flow": "node --test tests/flow-expressions.test.js tests/flow-text.test.js tests/flow-typed-variables.test.js tests/flow-events.test.js tests/flow-variable-controls.test.js"
   },
   "engines": {
     "node": ">=20"

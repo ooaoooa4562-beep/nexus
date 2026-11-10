@@ -393,9 +393,9 @@
  const load=()=>{
   try{
    const current=localStorage.getItem(KEY);
-   if(current){const parsed=JSON.parse(current);return {...normalize(parsed),variables:normalizeVariables(parsed.variables)};}
+   if(current){const parsed=JSON.parse(current);return {...normalize(parsed),variables:normalizeVariables(parsed.variables),character:typeof parsed.character==='string'?parsed.character:'🐱'};}
    const old=localStorage.getItem('nexus.flow.scratch.v2');
-   if(old){const parsed=JSON.parse(old);return {...normalize(parsed),variables:normalizeVariables(parsed.variables)};}
+   if(old){const parsed=JSON.parse(old);return {...normalize(parsed),variables:normalizeVariables(parsed.variables),character:typeof parsed.character==='string'?parsed.character:'🐱'};}
    return {...starter(),variables:defaultVariables()};
   }catch{return {...starter(),variables:defaultVariables()};}
  };
@@ -1003,7 +1003,7 @@
    $('#projectName').value=localStorage.getItem(KEY+'.name')||'My first project';
    $('#projectName').addEventListener('change',()=>localStorage.setItem(KEY+'.name',$('#projectName').value));
    category='events';root.querySelector('.category-button.events').classList.add('active');
-   characterSelect.value=characterSelect.querySelector('option[value="'+CSS.escape(character)+'"]')?character:'🐱';character=characterSelect.value;characterSelect.addEventListener('change',()=>{if(running)return;character=characterSelect.value;updateSprite();save();log('Character changed: '+characterSelect.options[characterSelect.selectedIndex].text);});renderPalette();render();updateSprite();updateVars();save();
+   characterSelect.value=characterSelect.querySelector('option[value="'+CSS.escape(character)+'"]')?character:'🐱';character=characterSelect.value;characterSelect.addEventListener('change',()=>{if(running){characterSelect.value=character;return;}character=characterSelect.value;updateSprite();save();log('Character changed: '+characterSelect.options[characterSelect.selectedIndex].text);});renderPalette();render();updateSprite();updateVars();save();
   }
  };
 })();

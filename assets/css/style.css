@@ -317,3 +317,8 @@ body{background:radial-gradient(ellipse at 78% -15%,#263b63 0,transparent 38%),v
  .sidebar,.topbar{transition:background .25s,border-color .25s}
  .nav-link:active,.icon-button:active{transform:scale(.97)}
 }
+
+.workspace-context{display:inline-flex;align-items:center;gap:8px;margin-left:18px;padding:6px 10px;border:1px solid #34435c;border-radius:7px;background:#182234;color:#93a4c0;font:8px var(--mono);letter-spacing:1px;white-space:nowrap}
+.workspace-context i{width:6px;height:6px;border-radius:50%;background:#83d9ad;box-shadow:0 0 9px #83d9ad88}
+.light-mode .workspace-context{background:#f5f7fb;border-color:#dce3ef;color:#71809a}
+@media(max-width:760px){.workspace-context{display:none}}

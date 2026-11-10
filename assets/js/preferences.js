@@ -37,7 +37,7 @@
     ed.setOption('displayIndentGuides',enabled('editorIndentGuides'));
     ed.setOption('highlightActiveLine',enabled('editorBracketPairs'));
     ed.setOption('showInvisibles',enabled('editorInlineHints'));
-    ed.setOption('scrollPastEnd',enabled('editorStickyScroll')?.5:0);
+    ed.setOption('scrollPastEnd',enabled('editorStickyScroll') ? 0.5 : 0);
     ed.setOption('enableBasicAutocompletion',enabled('editorInlineHints'));
     ed.setOption('enableLiveAutocompletion',enabled('editorInlineHints'));
     let mini=$('.nexus-pref-minimap',document.getElementById('codeEditor')?.parentElement||document);

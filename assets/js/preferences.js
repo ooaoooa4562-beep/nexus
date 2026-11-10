@@ -2,7 +2,7 @@
   const KEY='nexus.settings.v1';
   const read=()=>{try{return JSON.parse(localStorage.getItem(KEY)||'{}').extras||{};}catch{return{};}};
   let prefs=read(), timers=new Map(), observer;
-  const enabled=k=>prefs[k]!==false;
+  const enabled=k=>prefs[k]===true;
   const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
   const style=document.createElement('style');
   style.id='nexus-preference-runtime';

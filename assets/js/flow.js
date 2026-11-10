@@ -830,7 +830,8 @@
     e.preventDefault();
     const blockId=e.dataTransfer.getData('application/x-nexus-block');
     const rect=canvas.getBoundingClientRect();
-    let px=Math.max(8,e.clientX-rect.left+canvas.scrollLeft-105),py=Math.max(8,e.clientY-rect.top+canvas.scrollTop-25);\n    try{const p=JSON.parse(localStorage.getItem('nexus.settings.v1')||'{}').extras||{};if(p.flowSnapGrid){px=Math.round(px/20)*20;py=Math.round(py/20)*20;}}catch{}
+    let px=Math.max(8,e.clientX-rect.left+canvas.scrollLeft-105),py=Math.max(8,e.clientY-rect.top+canvas.scrollTop-25);
+    try{const p=JSON.parse(localStorage.getItem('nexus.settings.v1')||'{}').extras||{};if(p.flowSnapGrid){px=Math.round(px/20)*20;py=Math.round(py/20)*20;}}catch{}
     if(blockId){
      const block=findBlock(blockId);if(!block)return;
      if(isReporter(block.type)){$('#graphStatus').textContent='Reporter blocks must stay inside expression slots.';return;}

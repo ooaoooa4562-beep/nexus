@@ -87,7 +87,7 @@
     document.body.classList.toggle('nexus-dyslexia',enabled('accessibilityDyslexiaFont'));
     document.body.classList.toggle('nexus-performance-mode',enabled('advancedPerformanceMode'));
     if(enabled('accessibilityDyslexiaFont'))document.body.classList.add('nexus-pref-dyslexia');else document.body.classList.remove('nexus-pref-dyslexia');
-    if(!enabled('accessibilityTooltips'))$$('[title]').forEach(x=>x.removeAttribute('title'));
+    $('[data-nexus-original-title]').forEach(x=>{if(enabled('accessibilityTooltips')){x.title=x.dataset.nexusOriginalTitle;delete x.dataset.nexusOriginalTitle;}else{x.removeAttribute('title');}});if(!enabled('accessibilityTooltips'))$('[title]').forEach(x=>{x.dataset.nexusOriginalTitle=x.title;x.removeAttribute('title');});
     if(enabled('accessibilityKeyboardHints'))$$('.ide-shortcuts').forEach(x=>x.hidden=false);
     if(!enabled('accessibilityKeyboardHints'))$$('.ide-shortcuts').forEach(x=>x.hidden=true);
     if(enabled('accessibilityScreenReader'))$$('button:not([aria-label])').forEach(b=>{if(!b.getAttribute('aria-label'))b.setAttribute('aria-label',b.textContent.trim().slice(0,80)||'Workspace action');});

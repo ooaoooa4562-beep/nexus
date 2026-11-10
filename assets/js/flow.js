@@ -807,7 +807,7 @@
       const sx=e.clientX,sy=e.clientY,ox=n.x,oy=n.y;
       card.setPointerCapture(e.pointerId);
       const move=ev=>{
-       n.x=Math.max(0,ox+ev.clientX-sx);n.y=Math.max(0,oy+ev.clientY-sy);
+       n.x=Math.max(0,ox+ev.clientX-sx);n.y=Math.max(0,oy+ev.clientY-sy);try{const p=JSON.parse(localStorage.getItem('nexus.settings.v1')||'{}').extras||{};if(p.flowSnapGrid){n.x=Math.round(n.x/20)*20;n.y=Math.round(n.y/20)*20;}}catch{}
        card.style.left=n.x+'px';card.style.top=n.y+'px';drawWires();
       };
       const up=()=>{card.removeEventListener('pointermove',move);card.removeEventListener('pointerup',up);card.removeEventListener('pointercancel',up);save();};
@@ -830,7 +830,7 @@
     e.preventDefault();
     const blockId=e.dataTransfer.getData('application/x-nexus-block');
     const rect=canvas.getBoundingClientRect();
-    const px=Math.max(8,e.clientX-rect.left+canvas.scrollLeft-105),py=Math.max(8,e.clientY-rect.top+canvas.scrollTop-25);
+    let px=Math.max(8,e.clientX-rect.left+canvas.scrollLeft-105),py=Math.max(8,e.clientY-rect.top+canvas.scrollTop-25);\n    try{const p=JSON.parse(localStorage.getItem('nexus.settings.v1')||'{}').extras||{};if(p.flowSnapGrid){px=Math.round(px/20)*20;py=Math.round(py/20)*20;}}catch{}
     if(blockId){
      const block=findBlock(blockId);if(!block)return;
      if(isReporter(block.type)){$('#graphStatus').textContent='Reporter blocks must stay inside expression slots.';return;}

@@ -98,7 +98,8 @@ body.light-mode{color-scheme:light;--bg:#f2f4f8;--surface:#fff;--surface-2:#f0f2
 .stage-sprite{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:grid;place-items:center;font-size:42px;filter:drop-shadow(0 5px 3px #33445b55);transition:left .2s,top .2s,transform .2s}
 .stage-bubble{position:absolute;top:10px;left:10px;max-width:75%;padding:8px 11px;border-radius:12px;background:#fff;color:#243047;font-size:10px;box-shadow:0 2px 8px #26344b33}
 .stage-bubble[hidden]{display:none}
-.stage-controls{display:flex;justify-content:space-between;align-items:center;padding:7px 0 11px;color:var(--muted);font:8px var(--mono)}
+.stage-character-picker{display:flex;align-items:center;gap:8px;margin:0 0 8px;padding:7px 9px;border:1px solid var(--line);border-radius:6px;background:var(--surface-2)}.stage-character-picker label{font:700 8px var(--mono);letter-spacing:.7px;color:var(--muted)}.stage-character-picker select{min-width:0;flex:1;padding:6px 8px;border:1px solid var(--line);border-radius:4px;background:var(--surface);color:var(--text);font:10px var(--mono);cursor:pointer}.stage-character-picker select:focus{outline:2px solid var(--accent);outline-offset:2px}
+ .stage-controls{display:flex;justify-content:space-between;align-items:center;padding:7px 0 11px;color:var(--muted);font:8px var(--mono)}
 .stage-controls button,.scratch-console .scratch-panel-title button{border:1px solid var(--line);background:var(--surface-2);color:var(--muted);border-radius:4px;padding:6px 8px;font:8px var(--mono);cursor:pointer}
 .scratch-console{border-top:1px solid var(--line);padding-top:11px;min-height:180px}
 .scratch-output{max-height:180px;min-height:120px;overflow:auto;background:#090f19;border:1px solid #26344a;border-radius:5px;padding:10px;color:#b9c8e1;font:9px/1.8 var(--mono);white-space:pre-wrap}

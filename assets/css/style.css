@@ -598,3 +598,8 @@ body[data-skin="light"] .launch-card,body[data-skin="light"] .tool-list>a{backgr
 @media(max-width:1180px){.flow2-workbench{grid-template-columns:210px minmax(300px,1fr)}.flow2-inspector{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;align-items:start}.flow2-inspector-section{min-width:0}.flow2-output-section{grid-column:1/-1}}
 @media(max-width:760px){.flow2-topbar{align-items:flex-start;flex-wrap:wrap}.flow2-brand{min-width:140px}.flow2-project{order:3;flex-basis:100%}.flow2-actions{margin-left:auto}.flow2-actions span{display:none}.flow2-workbench{grid-template-columns:1fr;min-height:0}.flow2-library{min-height:300px;max-height:420px}.flow2-library .graph-palette{max-height:220px}.flow2-editor{min-height:560px}.flow2-canvas{min-height:470px}.flow2-inspector{grid-template-columns:1fr;min-height:0}.flow2-output-section{grid-column:auto}.flow2-canvas-toolbar{align-items:flex-start;flex-direction:column}.flow2-canvas-actions{width:100%;flex-wrap:wrap}.flow2-canvas-actions #wireMode{margin-left:auto}}
 @media(max-width:440px){.flow2-brand{min-width:0}.flow2-brand small{font-size:7px}.flow2-actions{gap:4px}.flow2-action{padding:0 8px;min-width:31px}.flow2-project{flex-wrap:wrap}.flow2-save-state{font-size:7px}}
+
+/* Large virtual Flow workspace: the visible viewport scrolls independently of the project graph. */
+.flow2-canvas #graphNodes{min-width:12000px;min-height:9000px;width:12000px;height:9000px;}
+.flow2-canvas .graph-wires{min-width:12000px;min-height:9000px;}
+.flow2-canvas .graph-empty{position:sticky;left:18px;top:18px;width:max-content;pointer-events:none;}

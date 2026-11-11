@@ -32,9 +32,12 @@
   {id:'hide',cat:'looks',label:'hide',fields:[]},
   {id:'wait',cat:'control',label:'wait seconds',fields:[['seconds','1']]},
   {id:'repeat',cat:'control',label:'repeat',fields:[['times','3']]},
+  {id:'while',cat:'control',label:'while condition',fields:[['variable','score'],['operator','>'],['value','0']]},
   {id:'forever',cat:'control',label:'forever',fields:[]},
   {id:'repeatUntil',cat:'control',label:'repeat until condition',fields:[['variable','score'],['operator','>='],['value','10']]},
   {id:'stopAll',cat:'control',label:'stop all scripts',fields:[]},
+  {id:'broadcast',cat:'events',label:'broadcast message',fields:[['message','start']]},
+  {id:'whenMessage',cat:'events',label:'when I receive message',fields:[['message','start']]},
   {id:'if',cat:'control',label:'if condition',fields:[['variable','score'],['operator','>'],['value','0']]},
   {id:'ifElse',cat:'control',label:'if / else',fields:[['variable','score'],['operator','>'],['value','0']]},
   {id:'set',cat:'variables',label:'set variable to',fields:[['variable','score'],['value','0']]},
@@ -215,10 +218,10 @@
  const categoryMoves={logic:['if','ifElse','repeatUntil','compare','boolean','and','or','not'],math:['random','round','absolute','modulo','number','add','subtract','multiply','divide','mathAdd','mathSubtract','mathMultiply','mathDivide'],text:['text','join','length','contains','say','think','clearBubble','log'],functions:['procedureDef'],events:['flag','key','startOnLoad','whenClicked','whenSpace','whenEnter'],lists:['listLength','listItem','listContains'],audio:['playTone','stopTone'],network:['httpGet']};
  defs.forEach(d=>{for(const [cat,ids] of Object.entries(categoryMoves)){if(ids.includes(d.id)){d.cat=cat;break;}}});
  const cats=[['events','Events'],['logic','Logic'],['math','Math'],['text','Text'],['lists','Lists'],['variables','Variables'],['functions','Functions'],['audio','Audio'],['network','Network'],['motion','Motion'],['looks','Looks'],['animation','Animation'],['effects','Effects'],['control','Control'],['sensing','Sensing'],['data','Data'],['operators','Other operators'],['myBlocks','My Blocks'],['favorites','★ Favorites']];
- const containerTypes=new Set(['repeat','forever','if','ifElse','repeatUntil','repeatTen','loopForever','procedureDef']);
- const eventTypes=new Set(['flag','key','procedureDef',...Object.keys(typeAliases).filter(id=>typeAliases[id]==='flag'||typeAliases[id]==='key')]);
+ const containerTypes=new Set(['repeat','while','forever','if','ifElse','repeatUntil','repeatTen','loopForever','procedureDef']);
+ const eventTypes=new Set(['flag','key','whenMessage','procedureDef',...Object.keys(typeAliases).filter(id=>typeAliases[id]==='flag'||typeAliases[id]==='key')]);
  const reporterTypes=new Set(defs.filter(d=>d.kind==='reporter').map(d=>d.id));
- const expressionInputs={repeat:['times'],if:['condition'],ifElse:['condition'],repeatUntil:['condition'],say:['text'],think:['text'],set:['value'],change:['value'],add:['a','b'],subtract:['a','b'],multiply:['a','b'],divide:['a','b'],mathAdd:['a','b'],mathSubtract:['a','b'],mathMultiply:['a','b'],mathDivide:['a','b'],compare:['a','b'],and:['left','right'],or:['left','right'],not:['value'],join:['left','right'],length:['value'],contains:['text','search'],round:['value'],absolute:['value'],modulo:['a','b'],listLength:['items'],listItem:['items'],listContains:['items']};
+ const expressionInputs={repeat:['times'],while:['condition'],if:['condition'],ifElse:['condition'],repeatUntil:['condition'],say:['text'],think:['text'],set:['value'],change:['value'],add:['a','b'],subtract:['a','b'],multiply:['a','b'],divide:['a','b'],mathAdd:['a','b'],mathSubtract:['a','b'],mathMultiply:['a','b'],mathDivide:['a','b'],compare:['a','b'],and:['left','right'],or:['left','right'],not:['value'],join:['left','right'],length:['value'],contains:['text','search'],round:['value'],absolute:['value'],modulo:['a','b'],listLength:['items'],listItem:['items'],listContains:['items']};
  const isReporter=type=>reporterTypes.has(type);
  const uid=()=> 'n'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
  const def=t=>defs.find(d=>d.id===t);
@@ -273,9 +276,10 @@
  function normalizeVariableEntry(raw){
   if(raw&&typeof raw==='object'&&!Array.isArray(raw)&&Object.prototype.hasOwnProperty.call(raw,'type')&&Object.prototype.hasOwnProperty.call(raw,'value')){
    const type=raw.type,value=raw.value;
-   if(type==='number'&&typeof value==='number'&&Number.isFinite(value))return {type,value};
-   if(type==='text'&&typeof value==='string')return {type,value};
-   if(type==='boolean'&&typeof value==='boolean')return {type,value};
+   const constant=raw.constant===true;
+   if(type==='number'&&typeof value==='number'&&Number.isFinite(value))return {type,value,constant};
+   if(type==='text'&&typeof value==='string')return {type,value,constant};
+   if(type==='boolean'&&typeof value==='boolean')return {type,value,constant};
    return null;
   }
   if(typeof raw==='number'&&Number.isFinite(raw))return {type:'number',value:raw};
@@ -291,6 +295,7 @@
   const type=typeof value==='number'&&Number.isFinite(value)?'number':typeof value==='string'?'text':typeof value==='boolean'?'boolean':null;
   if(!type)throw Error('Variables can only store finite numbers, text or booleans.');
   const exists=Object.prototype.hasOwnProperty.call(variables,name),current=exists?readVariableRecord(variables,name):null;
+  if(current?.constant)throw Error('Cannot change constant "'+name+'". Constants are read-only after creation.');
   if(current&&current.type!==type)throw Error('Type mismatch for variable "'+name+'": expected '+current.type+', received '+type+'.');
   if(!current&&Object.keys(variables).length>=100)throw Error('A project can contain at most 100 variables.');
   variables[name]={type,value};
@@ -323,7 +328,7 @@
   if(!Object.prototype.hasOwnProperty.call(variables,variableName))throw Error('Variable "'+variableName+'" does not exist.');
   const current=readVariableRecord(variables,variableName);
   const converted=convertVariableValue(current.value,current.type,targetType);
-  variables[variableName]={type:targetType,value:converted};
+  variables[variableName]={type:targetType,value:converted,constant:current.constant===true};
   return variables[variableName];
  }
  function variableFieldMode(blockType){
@@ -529,9 +534,10 @@
       }
      });
      const current=document.createElement('small');current.textContent=String(value.value);
+     const constant=document.createElement('button');constant.type='button';constant.className='flow-variable-constant'+(value.constant?' active':'');constant.textContent=value.constant?'CONST':'VAR';constant.title=value.constant?'Make variable mutable':'Make variable constant';constant.disabled=running;constant.addEventListener('click',()=>{if(running)return;vars[name]={...value,constant:!value.constant};updateVars();save();log(name+(vars[name].constant?' is now constant.':' is now mutable.'));});
      const remove=document.createElement('button');remove.type='button';remove.textContent='×';remove.title='Delete variable '+name;
      remove.addEventListener('click',()=>{if(running)return;delete vars[name];updateVars();save();log('Variable deleted: '+name);});
-     row.append(label,typeSelect,current,remove);list.append(row);
+     row.append(label,typeSelect,current,constant,remove);list.append(row);
     });
    }
    const updateVars=()=>{
@@ -709,13 +715,13 @@
    const blockDescriptions={
     flag:'Starts a script when the project is run.',key:'Starts a script when the selected keyboard key is pressed.',
     move:'Moves the character in the direction it is facing.',turn:'Rotates the character by the chosen angle.',goto:'Moves the character to the specified coordinates.',
-    repeat:'Runs the blocks inside its DO slot a fixed number of times.',forever:'Repeats the nested blocks until the user presses STOP.',
+    repeat:'Runs the blocks inside its DO slot a fixed number of times.',while:'Repeats its DO slot while the condition remains true.',forever:'Repeats the nested blocks until the user presses STOP.',
     if:'Runs nested blocks only when the condition is true.',ifElse:'Runs the DO or ELSE branch depending on the condition.',
     repeatUntil:'Repeats nested blocks until the condition becomes true.',procedureDef:'Defines a reusable custom function; place statements inside DO.',
     random:'Returns a random integer between the minimum and maximum.',getVar:'Returns the current value of a variable.',
     compare:'Compares two values and returns true or false.',and:'Returns true only when both inputs are true.',or:'Returns true when at least one input is true.',not:'Inverts a Boolean value.',
     join:'Combines two text values.',length:'Returns the number of characters in a text value.',contains:'Checks whether text contains another text value.',
-    timer:'Returns seconds elapsed since the script started.',wait:'Pauses the script for the specified number of seconds.'
+    timer:'Returns seconds elapsed since the script started.',wait:'Pauses the script for the specified number of seconds.',broadcast:'Sends a named message to every matching receiver script.',whenMessage:'Starts this script whenever a matching broadcast message is received.'
    };
    const describeBlock=d=>blockDescriptions[d.id]||((d.kind==='reporter'?'Returns a value: ':'Runs an action: ')+d.label+'.');
    const toggleFavorite=(id)=>{favorites=favorites.includes(id)?favorites.filter(x=>x!==id):[...favorites,id];try{localStorage.setItem(FAVORITES_KEY,JSON.stringify(favorites));}catch{}renderPalette();};
@@ -1095,9 +1101,12 @@
       const target=validVariableName(f.variable||'result');ensureVariableCapacity(target);assignVariableValue(vars,target,result);updateVars();save();
       const symbol={add:'+',subtract:'−',multiply:'×',divide:'÷'}[n.type];log(target+' = '+a+' '+symbol+' '+b+' = '+result);break;
      }
+     case 'while':{let guard=0;while(conditionFor(n)&&!stopFlag){if(++guard>MAX_STEPS)throw Error('WHILE safety limit reached. Check that the condition can become false.');tick();await executeSequence(n.children||[],depth+1);if(!(n.children||[]).length)await wait(50);}break;}
      case 'if':if(conditionFor(n))await executeSequence(n.children||[],depth+1);break;
      case 'ifElse':await executeSequence(conditionFor(n)?(n.children||[]):(n.elseChildren||[]),depth+1);break;
      case 'repeatUntil':{let guard=0;while(!conditionFor(n)&&!stopFlag){if(++guard>MAX_STEPS)throw Error('Repeat-until safety limit reached.');tick();if((n.children||[]).length)await executeSequence(n.children,depth+1);else await wait(100);}break;}
+     case 'broadcast':{const message=String(readValue(n,'message',f.message||'')).trim();if(!message)throw Error('Broadcast message cannot be empty.');const receivers=nodes.filter(block=>block.type==='whenMessage'&&String(block.fields?.message||'').trim().toLowerCase()===message.toLowerCase());log('📨 Broadcast: '+message+' ('+receivers.length+' receiver'+(receivers.length===1?'':'s')+')');if(receivers.length){if(depth>=MAX_DEPTH)throw Error('Message recursion depth limit reached.');await Promise.all(receivers.map(receiver=>executeLinked(receiver.id,depth+1)));}break;}
+     case 'whenMessage':break;
      case 'stopAll':requestStop('Stop all scripts requested.');break;
      case 'repeat':{
       const times=readExpression(n,'times','3','repeat count');
@@ -1167,17 +1176,17 @@
     out.replaceChildren();resetSprite();$('#flowRun').disabled=true;$('#flowStop').disabled=false;
     setStatus('Runtime is executing.');
     log('NEXUS block runtime started');
-    const starts=nodes.filter(n=>(typeAliases[n.type]||n.type)==='flag'),keyScripts=nodes.filter(n=>(typeAliases[n.type]||n.type)==='key');
+    const starts=nodes.filter(n=>(typeAliases[n.type]||n.type)==='flag'),keyScripts=nodes.filter(n=>(typeAliases[n.type]||n.type)==='key'),messageScripts=nodes.filter(n=>n.type==='whenMessage');
     try{
      if(keyScripts.length){keyHandler=handleKeyDown;document.addEventListener('keydown',keyHandler);}
-     if(!starts.length&&!keyScripts.length)log('No start block found. Add “when clicked” or “when key pressed”.');
-     if(!starts.length&&keyScripts.length)log('No green-flag script found. Waiting for keyboard events.');
+     if(!starts.length&&!keyScripts.length&&!messageScripts.length)log('No start block found. Add a start, key, or message event block.');
+     if(!starts.length&&(keyScripts.length||messageScripts.length))log('No green-flag script found. Waiting for keyboard or broadcast events.');
      for(const n of starts){if(!stopFlag)await executeLinked(n.id);}
      if(runtimeFailure)throw runtimeFailure;
-     if(keyScripts.length&&!stopFlag){
-      const names=[...new Set(keyScripts.map(n=>normalizeKeyName(n.fields?.key||'space')))].join(', ');
-      log('⌨ Listening for keys: '+names+'. Press STOP to finish.');
-      setStatus('Listening for keyboard events. Press STOP to finish.');
+     if((keyScripts.length||messageScripts.length)&&!stopFlag){
+      const names=keyScripts.length?[...new Set(keyScripts.map(n=>normalizeKeyName(n.fields?.key||'space')))].join(', '):'';
+      log((names?'⌨ Listening for keys: '+names+'. ':'')+(messageScripts.length?'📨 Listening for broadcast messages. ':'')+'Press STOP to finish.');
+      setStatus('Listening for keyboard and broadcast events. Press STOP to finish.');
       await new Promise(resolve=>{
        if(stopFlag){resolve();return;}
        runAbort.signal.addEventListener('abort',resolve,{once:true});

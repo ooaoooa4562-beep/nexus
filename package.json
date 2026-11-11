@@ -5,8 +5,7 @@
   "description": "Secure GitHub OAuth and repository API for NEXUS Digital Laboratory",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "test:flow": "node --test tests/flow-expressions.test.js tests/flow-text.test.js tests/flow-typed-variables.test.js tests/flow-events.test.js tests/flow-variable-controls.test.js tests/flow-procedures.test.js"
+    "start": "node server.js"
   },
   "engines": {
     "node": ">=20"

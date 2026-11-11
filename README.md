@@ -1,6 +1,6 @@
 # NEXUS — Digital Laboratory
 
-**Current release: 0.9.0. Flow Studio milestone: 2.5.0 — Custom Procedures.**
+**Current release: 0.9.0.**
 
 ## Implemented
 
@@ -13,22 +13,6 @@
 - Create, edit, search and delete text records.
 - Import and export JSON.
 - Data persists in browser localStorage, not on a server.
-
-### Flow Studio
-- Scratch-style nested statement blocks with separate `DO` and `ELSE` bodies; blocks can be moved between containers and nested sequences.
-- `if`, `if / else`, `repeat` and `forever` execute their nested bodies with STOP cancellation and runtime safety limits.
-- Reporter blocks can be nested into expression slots: number, variable, arithmetic, comparison, boolean, AND, OR, NOT, text, join, length and contains.
-- `say` and `think` accept text reporters, so nested expressions can generate stage messages without JavaScript code.
-- Numeric text fields also accept safe expressions such as `($score + 3) * 2`; no JavaScript `eval` is used.
-- Comparisons support numeric and text values; text equality and contains checks are case-insensitive, while mixed-type comparisons are rejected.
-- Arithmetic reporters reject non-finite results instead of allowing `Infinity` into the runtime.
-- `set`, `change`, repeat counts and arithmetic statement blocks accept reporter expressions.
-- A variable manager supports up to 100 typed variables: Number, Text and Boolean. Variable targets use live dropdowns; numeric-only blocks filter to Number variables, while assignment, print and variable reporters can select every type. Types can be changed with checked conversions: text must be a finite numeric string to become Number; Boolean accepts only true/false text or 0/1; Boolean-to-Number maps to 1/0; Number/Boolean-to-Text uses the displayed value. Rejected conversions leave the original variable unchanged. Legacy numeric variables migrate automatically to Number records; typed values persist with the local project and are retained between runs.
-- The `when key pressed` event listens for real keyboard input while the runtime is active. It supports space, arrow keys, Enter, Escape, letter/number keys and an any-key option; form fields are ignored. Event hats stay at the top level and cannot be wired as incoming blocks.
-- The generic variable reporter preserves the stored type. Numeric expressions and arithmetic reject Text/Boolean variables, logical operators require Boolean inputs, and assignments cannot silently change an existing variable's type.
-- Top-level statement blocks can still be connected with manual wires; reporters are restricted to expression slots.
-- My Blocks supports up to 50 user-defined, reusable procedures. Each definition has a nested `DO` body; call blocks can be placed in top-level scripts or nested control bodies, and procedure calls can nest or recurse within the runtime depth/step limits. Definitions and calls persist in the local project.
-- Existing local projects and manually wired legacy repeat/if scripts are normalized for backward compatibility.
 
 ### Code Editor
 - GitHub repository explorer with directory navigation.
@@ -79,29 +63,23 @@
 - `server.js`
 
 ## Run
-Open `index.html` in a modern browser. Run Flow Studio unit tests with `npm run test:flow` in a Node.js 20+ environment. No local build step is required. GitHub Pages can host the project from the main branch root. The code editor loads Ace from a CDN and needs an internet connection; GitHub browsing and saving require an active NEXUS GitHub session.
+Open `index.html` in a modern browser. No local build step is required. GitHub Pages can host the project from the main branch root. The code editor loads Ace from a CDN and needs an internet connection; GitHub browsing and saving require an active NEXUS GitHub session.
 
 ## Limitations
 - Terminal is a browser command simulator, not an operating-system shell.
-- Flow Studio runs visual commands in the browser; it does not execute arbitrary external code or connect to external services.
 - Arithmetic expressions remain Number-only; Text and Boolean values must be handled through compatible reporters and typed assignments.
-- Custom procedures currently have no input parameters or return values; they share the project's typed variables. Recursive calls are bounded by the existing runtime depth and step limits. Changing a variable type does not rewrite existing expressions; incompatible uses are still reported by runtime type checks.
-- Keyboard event blocks ignore browser key-repeat events and do not capture keystrokes while an input, select, textarea or editable element has focus.
-- `forever` loops and keyboard listeners remain active until STOP. A 100,000-block safety limit prevents runaway execution; GSAP-backed sprite effects are cancelled when STOP is requested or Flow Studio is closed.
-- Storage and Flow Studio projects are local to the browser profile. Clearing site data may remove them.
+- Storage records are local to the browser profile. Clearing site data may remove them.
 - Dashboard activity metrics are illustrative.
 - The code editor currently supports text files up to 1 MB and uses GitHub as its file backend.
 
 ## Roadmap
 - [x] 0.1.0 Dashboard foundation
-- [x] 0.2.0 Terminal, Storage and Flow Studio
+- [x] 0.2.0 Terminal and Storage
 - [ ] 0.3.0 Advanced data collections
 - [x] 0.4.0 Monitor
 - [x] 0.5.0 Network
-- [ ] 0.6.0 Advanced workflow engine
 - [x] 0.7.0 Extension system
 - [x] 0.8.0 GitHub-connected Code Editor
-- [x] 0.9.0 Nested Flow Studio runtime
 - [ ] 1.0.0 Integrated release
 
 ## Technology

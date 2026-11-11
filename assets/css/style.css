@@ -618,3 +618,10 @@ body[data-skin="light"] .launch-card,body[data-skin="light"] .tool-list>a{backgr
 .flow-variable-row .flow-variable-constant{border:1px solid var(--line);border-radius:4px;padding:3px 5px;background:var(--surface-2);color:var(--muted);font:700 7px var(--mono);letter-spacing:.3px}
 .flow-variable-row .flow-variable-constant.active{border-color:var(--amber,#d6a84f);background:color-mix(in srgb,var(--amber,#d6a84f) 14%,transparent);color:var(--amber,#d6a84f)}
 .flow-variable-row .flow-variable-constant:disabled{opacity:.55;cursor:not-allowed}
+
+
+/* Flow Studio finite workspace override: no infinite grid or 12000px plane. */
+.flow2-canvas{background:#111722!important;background-image:none!important;}
+.flow2-canvas #graphNodes{min-width:0!important;min-height:0!important;width:auto;}
+.flow2-canvas .graph-wires{min-width:0!important;min-height:0!important;}
+.flow2-canvas .graph-empty{position:absolute!important;left:18px;top:18px;width:max-content;pointer-events:none;}

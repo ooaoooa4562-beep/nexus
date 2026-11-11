@@ -303,6 +303,66 @@ app.get("/api/repos", requireSession, async (req, res) => {
     res.json({ repositories: repos.map(repo => ({ fullName: repo.full_name, name: repo.name, private: repo.private, defaultBranch: repo.default_branch, htmlUrl: repo.html_url, permissions: repo.permissions || {} })) });
   } catch (error) { safeError(res, error); }
 });
+
+// GitHub repository lifecycle: create, inspect, update and delete.
+app.get("/api/repo", requireSession, async (req, res) => {
+  try {
+    const repository = req.query.repository;
+    if (!validRepoName(repository)) return res.status(400).json({ error: "Repository must use owner/name format." });
+    const repo = await githubRequest("/repos/" + repository, req.github.accessToken);
+    res.json({ repository: repo.full_name, name: repo.name, description: repo.description || "", homepage: repo.homepage || "", private: repo.private, archived: repo.archived, defaultBranch: repo.default_branch, htmlUrl: repo.html_url, permissions: repo.permissions || {} });
+  } catch (error) { safeError(res, error); }
+});
+app.post("/api/repos", requireSession, async (req, res) => {
+  try {
+    const body = req.body || {}, name = String(body.name || "").trim();
+    const description = typeof body.description === "string" ? body.description.trim() : "";
+    if (!/^[A-Za-z0-9._-]{1,100}$/.test(name)) return res.status(400).json({ error: "Repository name must be 1–100 characters and use letters, numbers, dots, underscores or hyphens." });
+    if (description.length > 350) return res.status(400).json({ error: "Description must be 350 characters or fewer." });
+    const created = await githubRequest("/user/repos", req.github.accessToken, { method: "POST", body: JSON.stringify({ name, description, private: body.private !== false, auto_init: body.autoInit !== false }) });
+    res.status(201).json({ ok: true, repository: created.full_name, name: created.name, private: created.private, defaultBranch: created.default_branch, htmlUrl: created.html_url });
+  } catch (error) { safeError(res, error); }
+});
+app.patch("/api/repos", requireSession, async (req, res) => {
+  try {
+    const body = req.body || {}, repository = body.repository;
+    if (!validRepoName(repository)) return res.status(400).json({ error: "Repository must use owner/name format." });
+    const current = await githubRequest("/repos/" + repository, req.github.accessToken);
+    if (!current.permissions || !current.permissions.admin) return res.status(403).json({ error: "Admin access to this repository is required to change its settings." });
+    const patch = {};
+    if (typeof body.name === "string" && body.name.trim()) {
+      const name = body.name.trim();
+      if (!/^[A-Za-z0-9._-]{1,100}$/.test(name)) return res.status(400).json({ error: "Invalid repository name." });
+      patch.name = name;
+    }
+    if (typeof body.description === "string") {
+      if (body.description.length > 350) return res.status(400).json({ error: "Description must be 350 characters or fewer." });
+      patch.description = body.description;
+    }
+    if (typeof body.homepage === "string") {
+      if (body.homepage && !/^https?:\/\//i.test(body.homepage)) return res.status(400).json({ error: "Homepage must start with http:// or https://." });
+      patch.homepage = body.homepage;
+    }
+    if (typeof body.private === "boolean") patch.private = body.private;
+    if (typeof body.archived === "boolean") patch.archived = body.archived;
+    if (typeof body.hasIssues === "boolean") patch.has_issues = body.hasIssues;
+    if (typeof body.hasWiki === "boolean") patch.has_wiki = body.hasWiki;
+    if (!Object.keys(patch).length) return res.status(400).json({ error: "No repository settings were supplied." });
+    const updated = await githubRequest("/repos/" + repository, req.github.accessToken, { method: "PATCH", body: JSON.stringify(patch) });
+    res.json({ ok: true, repository: updated.full_name, name: updated.name, description: updated.description || "", homepage: updated.homepage || "", private: updated.private, archived: updated.archived, defaultBranch: updated.default_branch, htmlUrl: updated.html_url });
+  } catch (error) { safeError(res, error); }
+});
+app.delete("/api/repos", requireSession, async (req, res) => {
+  try {
+    const body = req.body || {}, repository = body.repository;
+    if (!validRepoName(repository)) return res.status(400).json({ error: "Repository must use owner/name format." });
+    if (body.confirmRepository !== repository) return res.status(400).json({ error: "Type the exact repository name to confirm deletion." });
+    const current = await githubRequest("/repos/" + repository, req.github.accessToken);
+    if (!current.permissions || !current.permissions.admin) return res.status(403).json({ error: "Admin access is required to delete this repository." });
+    await githubRequest("/repos/" + repository, req.github.accessToken, { method: "DELETE" });
+    res.json({ ok: true, deleted: repository });
+  } catch (error) { safeError(res, error); }
+});
 function validBranchName(value) {
   return typeof value === "string" && value.length <= 240 && !value.startsWith("/") && !value.endsWith("/") && !value.includes("\\") && !value.includes("..") && !/[\s~^:?*\[\]\x00-\x20]/.test(value) && !value.endsWith(".lock");
 }

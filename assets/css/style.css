@@ -564,3 +564,21 @@ body[data-skin="light"] .launch-card,body[data-skin="light"] .tool-list>a{backgr
 .settings-extra-suite{grid-column:1/-1;margin-top:14px}.settings-extra-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:14px}.settings-extra-group{min-width:0;border:1px solid var(--ds-line);border-radius:10px;background:var(--user-bg,var(--ds-bg));overflow:hidden}.settings-extra-group summary{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:12px;cursor:pointer;color:var(--ds-text);font-size:10px;font-weight:700;list-style:none}.settings-extra-group summary::-webkit-details-marker{display:none}.settings-extra-group summary:after{content:'＋';color:var(--user-accent);font-size:13px}.settings-extra-group[open] summary:after{content:'−'}.settings-extra-group summary small{margin-left:auto;color:var(--ds-muted);font:8px var(--mono)}.settings-extra-list{padding:0 11px 8px}.settings-extra-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:8px 2px;border-top:1px solid var(--ds-line)}.settings-extra-row>span{font-size:9px;color:var(--ds-text);text-transform:capitalize}.settings-extra-row>span small{display:block;margin-top:3px;color:var(--ds-muted);font-size:8px}.settings-extra-row input{width:15px;height:15px;accent-color:var(--user-accent);cursor:pointer;flex:0 0 auto}.nexus-high-contrast{--ds-line-strong:color-mix(in srgb,var(--ds-text) 60%,var(--ds-bg))}.nexus-large-text .workspace-content{font-size:1.08em}.nexus-no-flash *{animation:none!important}@media(max-width:760px){.settings-extra-grid{grid-template-columns:1fr}}
 
 .flow-block-search{display:flex;align-items:center;gap:8px;margin:9px 10px 2px;padding:0 9px;height:32px;border:1px solid var(--ds-line);border-radius:7px;background:var(--user-bg);color:var(--ds-muted)}.flow-block-search input{min-width:0;width:100%;border:0!important;outline:0!important;background:transparent!important;box-shadow:none!important;color:var(--ds-text);font-size:9px}.flow-block-search:focus-within{border-color:var(--user-accent)}
+
+
+/* Flow Studio custom procedures */
+.graph-categories .category-button.myBlocks{background:#6854a3}
+.code-block.myBlocks,.graph-node.myBlocks{background:#6854a3;border-color:#8e79c6;color:#fff}
+.graph-node.myBlocks .graph-node-title{color:#f4efff}
+.flow-procedure-manager{margin-top:8px;padding:8px;border:1px solid var(--line);border-radius:6px;background:var(--surface-2)}
+.flow-procedure-tools{display:flex;gap:5px}
+.flow-procedure-tools input{flex:1;min-width:0;width:0;border:1px solid var(--line);border-radius:4px;background:var(--surface);color:var(--text);padding:6px 7px;font:8px var(--mono)}
+.flow-procedure-tools button{border:1px solid var(--line);border-radius:4px;background:var(--surface-3);color:var(--green);padding:5px 7px;font:8px var(--mono);cursor:pointer}
+.flow-procedure-list{display:grid;gap:5px;margin-top:7px}
+.flow-procedure-row{display:flex;align-items:center;gap:6px;padding:5px 6px;border:1px solid var(--line);border-radius:4px;background:var(--surface)}
+.flow-procedure-row b{flex:1;min-width:0;color:var(--text);font:8px var(--mono);overflow-wrap:anywhere}
+.flow-procedure-row small{color:var(--muted);font:7px var(--mono);white-space:nowrap}
+.flow-procedure-row button{border:0;background:transparent;color:var(--red);font-size:12px;cursor:pointer}
+.flow-procedure-row button:disabled{opacity:.35;cursor:not-allowed}
+.flow-procedure-help,.flow-procedure-empty,.flow-palette-empty{display:block;margin-top:6px;color:var(--muted);font:7px/1.55 var(--mono)}
+@media(max-width:440px){.flow-procedure-tools input{font-size:7px}.flow-procedure-row b{font-size:7px}}

@@ -30,12 +30,50 @@ app.set("trust proxy", 1);
 app.disable("x-powered-by");
 app.use(helmet());
 
-// Layer 1: short burst protection per client IP.
-// Health checks and CORS preflights do not consume the public request budget.
-const rateLimitReply = (_req, res) => res.status(429).json({
-  error: "Too many requests. Please wait a moment and try again.",
-  code: "RATE_LIMITED"
+// IP denylist and temporary automatic bans.
+// Set NEXUS_BANNED_IPS to a comma-separated list of exact IP addresses in Render.
+const manuallyBannedIps = new Set(
+  String(process.env.NEXUS_BANNED_IPS || "").split(",").map(value => value.trim()).filter(Boolean)
+);
+const ipViolations = new Map();
+const temporaryIpBans = new Map();
+const BAN_WINDOW_MS = 10 * 60 * 1000;
+const BAN_THRESHOLD = Math.max(2, Math.min(20, Number(process.env.NEXUS_BAN_THRESHOLD || 5)));
+const BAN_DURATION_MS = Math.max(60_000, Math.min(7 * 24 * 60 * 60 * 1000, Number(process.env.NEXUS_BAN_DURATION_MS || 30 * 60 * 1000)));
+function clientIp(req) {
+  return String(req.ip || req.socket?.remoteAddress || "").replace(/^::ffff:/, "");
+}
+function recordIpViolation(ip) {
+  const now = Date.now();
+  const recent = (ipViolations.get(ip) || []).filter(timestamp => now - timestamp < BAN_WINDOW_MS);
+  recent.push(now);
+  ipViolations.set(ip, recent);
+  if (recent.length >= BAN_THRESHOLD) {
+    temporaryIpBans.set(ip, now + BAN_DURATION_MS);
+    ipViolations.delete(ip);
+  }
+}
+app.use((req, res, next) => {
+  const ip = clientIp(req);
+  const now = Date.now();
+  const banUntil = temporaryIpBans.get(ip) || 0;
+  if (manuallyBannedIps.has(ip) || banUntil > now) {
+    if (banUntil && banUntil <= now) temporaryIpBans.delete(ip);
+    if (banUntil > now) res.setHeader("Retry-After", String(Math.ceil((banUntil - now) / 1000)));
+    return res.status(403).json({ error: "Access from this IP address is blocked.", code: "IP_BANNED" });
+  }
+  next();
 });
+
+// Layer 1: short burst protection per client IP.
+// Repeated rate-limit violations trigger a temporary IP ban.
+const rateLimitReply = (req, res) => {
+  recordIpViolation(clientIp(req));
+  return res.status(429).json({
+    error: "Too many requests. Please wait a moment and try again.",
+    code: "RATE_LIMITED"
+  });
+};
 const globalLimiter = rateLimit({
   windowMs: 10 * 1000,
   limit: 120,

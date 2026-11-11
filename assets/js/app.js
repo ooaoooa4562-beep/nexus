@@ -118,7 +118,7 @@
    mark();
   }
   let lastVisited='overview';
-  function navigate(id){id=String(id||'overview').replace(/^#/,'');const canonical=Object.keys(info).find(key=>key.toLowerCase()===id.toLowerCase());id=canonical||'overview';const isHome=id==='overview';home.hidden=!isHome;page.hidden=isHome;
+  function navigate(id){id=String(id||'overview').replace(/^#/,'');const canonical=Object.keys(info).find(key=>key.toLowerCase()===id.toLowerCase());id=canonical||'overview';const isHome=id==='overview';document.body.classList.toggle('editor-fullscreen',id==='editor');home.hidden=!isHome;page.hidden=isHome;
    if(!isHome){crumb.textContent=info[id][0];if(id==='profile')profilePage();else if(id==='settings')settingsPage();else if(id!=='extensions'&&window.NEXUSExtensionEnabled&&!window.NEXUSExtensionEnabled(id)){page.innerHTML='<div class="eyebrow">MODULE DISABLED</div><h1>'+info[id][0]+'</h1><p class="subtitle">Enable this module in Extensions.</p><button class="primary-button" id="openExtensions">OPEN EXTENSIONS</button>';$('#openExtensions').onclick=()=>navigate('extensions');}
     else{const mod=window.NEXUSModules&&window.NEXUSModules[id];if(mod){page.innerHTML=mod.render();try{mod.mount(page);}catch(e){console.error('[NEXUS] module error',e);page.innerHTML='<h1>Module error</h1><pre class="module-error"></pre>';page.querySelector('pre').textContent=String(e);}}else{page.innerHTML='<h1>Module unavailable</h1><p class="subtitle"></p>';page.querySelector('p').textContent=loadError?String(loadError):'Module registration is missing.';}}
    }else crumb.textContent='Overview';

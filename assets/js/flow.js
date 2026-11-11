@@ -205,7 +205,10 @@
 
  ];
  const typeAliases={"startOnLoad":"flag","whenClicked":"flag","whenSpace":"key","whenEnter":"key","moveBack":"move","moveFast":"move","turnLeft":"turn","turnRight":"turn","goCenter":"goto","setX":"goto","setY":"goto","glideCenter":"glide","rotateLeft":"rotateTo","rotateRight":"rotateTo","grow":"scaleTo","shrink":"scaleTo","setSize":"scaleTo","showMessage":"say","thinkMessage":"think","clearMessage":"clearBubble","fadeIn":"fadeTo","fadeOut":"fadeTo","zoomIn":"scaleTo","zoomOut":"scaleTo","wobble":"shake","quickSpin":"spin","slowSpin":"spin","glowOn":"trail","glowOff":"trail","flashTwice":"flash","hueShift":"colorTo","waitShort":"wait","repeatTen":"repeat","loopForever":"forever","stopScripts":"stopAll","setScore":"set","addScore":"change","subtractScore":"change","showScore":"print","writeOutput":"log","resetClock":"resetTimer","stopClock":"resetTimer","whenKey1":"key","whenKey2":"key","whenKey3":"key","whenKey4":"key","whenKey5":"key","whenKey6":"key","whenKey7":"key","whenKey8":"key","whenKey9":"key","whenKey10":"key","moveSteps1":"move","moveSteps2":"move","moveSteps3":"move","moveSteps4":"move","moveSteps5":"move","moveSteps6":"move","moveSteps7":"move","moveSteps8":"move","moveSteps9":"move","moveSteps10":"move","turnAngle1":"turn","turnAngle2":"turn","turnAngle3":"turn","turnAngle4":"turn","turnAngle5":"turn","turnAngle6":"turn","turnAngle7":"turn","turnAngle8":"turn","turnAngle9":"turn","turnAngle10":"turn","goPoint1":"goto","goPoint2":"goto","goPoint3":"goto","goPoint4":"goto","goPoint5":"goto","goPoint6":"goto","goPoint7":"goto","goPoint8":"goto","goPoint9":"goto","goPoint10":"goto","sayText1":"say","sayText2":"say","sayText3":"say","sayText4":"say","sayText5":"say","sayText6":"say","sayText7":"say","sayText8":"say","sayText9":"say","sayText10":"say","setSize1":"scaleTo","setSize2":"scaleTo","setSize3":"scaleTo","setSize4":"scaleTo","setSize5":"scaleTo","setSize6":"scaleTo","setSize7":"scaleTo","setSize8":"scaleTo","setSize9":"scaleTo","setSize10":"scaleTo","animateRotate1":"rotateTo","animateRotate2":"rotateTo","animateRotate3":"rotateTo","animateRotate4":"rotateTo","animateRotate5":"rotateTo","animateRotate6":"rotateTo","animateRotate7":"rotateTo","animateRotate8":"rotateTo","animateRotate9":"rotateTo","animateRotate10":"rotateTo","flashCount1":"flash","flashCount2":"flash","flashCount3":"flash","flashCount4":"flash","flashCount5":"flash","flashCount6":"flash","flashCount7":"flash","flashCount8":"flash","flashCount9":"flash","flashCount10":"flash","waitSeconds1":"wait","waitSeconds2":"wait","waitSeconds3":"wait","waitSeconds4":"wait","waitSeconds5":"wait","waitSeconds6":"wait","waitSeconds7":"wait","waitSeconds8":"wait","waitSeconds9":"wait","waitSeconds10":"wait","changeValue1":"change","changeValue2":"change","changeValue3":"change","changeValue4":"change","changeValue5":"change","changeValue6":"change","changeValue7":"change","changeValue8":"change","changeValue9":"change","changeValue10":"change"};
- const cats=[['events','Events'],['motion','Motion'],['looks','Looks'],['animation','Animation'],['effects','Effects'],['control','Control'],['variables','Variables'],['operators','Operators'],['sensing','Sensing'],['data','Data'],['myBlocks','My Blocks']];
+ // Reclassify the existing, executable blocks into the new learning-oriented library.
+ const categoryMoves={logic:['if','ifElse','repeatUntil','compare','boolean','and','or','not'],math:['random','round','absolute','modulo','number','add','subtract','multiply','divide','mathAdd','mathSubtract','mathMultiply','mathDivide'],text:['text','join','length','contains','say','think','clearBubble','log'],functions:['procedureDef'],events:['flag','key','startOnLoad','whenClicked','whenSpace','whenEnter'],lists:[],audio:[],network:[]};
+ defs.forEach(d=>{for(const [cat,ids] of Object.entries(categoryMoves)){if(ids.includes(d.id)){d.cat=cat;break;}}});
+ const cats=[['events','Events'],['logic','Logic'],['math','Math'],['text','Text'],['lists','Lists'],['variables','Variables'],['functions','Functions'],['audio','Audio'],['network','Network'],['motion','Motion'],['looks','Looks'],['animation','Animation'],['effects','Effects'],['control','Control'],['sensing','Sensing'],['data','Data'],['operators','Other operators'],['myBlocks','My Blocks'],['favorites','★ Favorites']];
  const containerTypes=new Set(['repeat','forever','if','ifElse','repeatUntil','repeatTen','loopForever','procedureDef']);
  const eventTypes=new Set(['flag','key','procedureDef',...Object.keys(typeAliases).filter(id=>typeAliases[id]==='flag'||typeAliases[id]==='key')]);
  const reporterTypes=new Set(defs.filter(d=>d.kind==='reporter').map(d=>d.id));
@@ -692,18 +695,40 @@
      if(runAbort)runAbort.signal.addEventListener('abort',done,{once:true});
     });
    }
+   const FAVORITES_KEY=KEY+'.favorites';
+   let favorites=[];try{favorites=JSON.parse(localStorage.getItem(FAVORITES_KEY)||'[]');if(!Array.isArray(favorites))favorites=[];}catch{favorites=[];}
+   const blockDescriptions={
+    flag:'Starts a script when the project is run.',key:'Starts a script when the selected keyboard key is pressed.',
+    move:'Moves the character in the direction it is facing.',turn:'Rotates the character by the chosen angle.',goto:'Moves the character to the specified coordinates.',
+    repeat:'Runs the blocks inside its DO slot a fixed number of times.',forever:'Repeats the nested blocks until the user presses STOP.',
+    if:'Runs nested blocks only when the condition is true.',ifElse:'Runs the DO or ELSE branch depending on the condition.',
+    repeatUntil:'Repeats nested blocks until the condition becomes true.',procedureDef:'Defines a reusable custom function; place statements inside DO.',
+    random:'Returns a random integer between the minimum and maximum.',getVar:'Returns the current value of a variable.',
+    compare:'Compares two values and returns true or false.',and:'Returns true only when both inputs are true.',or:'Returns true when at least one input is true.',not:'Inverts a Boolean value.',
+    join:'Combines two text values.',length:'Returns the number of characters in a text value.',contains:'Checks whether text contains another text value.',
+    timer:'Returns seconds elapsed since the script started.',wait:'Pauses the script for the specified number of seconds.'
+   };
+   const describeBlock=d=>blockDescriptions[d.id]||((d.kind==='reporter'?'Returns a value: ':'Runs an action: ')+d.label+'.');
+   const toggleFavorite=(id)=>{favorites=favorites.includes(id)?favorites.filter(x=>x!==id):[...favorites,id];try{localStorage.setItem(FAVORITES_KEY,JSON.stringify(favorites));}catch{}renderPalette();};
    function renderPalette(){
      palette.replaceChildren();
      const query=(root.querySelector('#blockSearch')?.value||'').trim().toLowerCase();
-     defs.filter(d=>d.cat===category&&d.id!=='procedureDef'&&(!query||d.label.toLowerCase().includes(query)||d.id.toLowerCase().includes(query))).forEach(d=>{
-      const el=document.createElement('button');el.className='code-block '+d.cat+' graph-library-block';el.draggable=true;el.textContent=d.label;
-      el.addEventListener('dragstart',e=>{e.dataTransfer.setData('application/x-nexus-type',d.id);e.dataTransfer.setData('text/plain',d.id);e.dataTransfer.effectAllowed='copy';});
-      el.addEventListener('click',()=>{
-       if(isReporter(d.id)){$('#graphStatus').textContent='Reporter blocks belong inside an expression slot. Drag this block into a slot.';return;}
+     const duplicateLabels=new Set(['when space is pressed','when enter is pressed']);
+     const candidates=defs.filter(d=>d.id!=='procedureDef'&&!(duplicateLabels.has(d.label.toLowerCase())&&['whenKey10','whenKey6'].includes(d.id)));
+     const filtered=candidates.filter(d=>(category==='favorites'?favorites.includes(d.id):(query||category==='all'?true:d.cat===category))&&(!query||d.label.toLowerCase().includes(query)||d.id.toLowerCase().includes(query)||describeBlock(d).toLowerCase().includes(query)));
+     filtered.forEach(d=>{
+      const el=document.createElement('div');el.className='flow-library-item';
+      const add=document.createElement('button');add.className='code-block '+d.cat+' graph-library-block';add.draggable=true;add.textContent=d.label;add.title=describeBlock(d);
+      add.addEventListener('dragstart',e=>{e.dataTransfer.setData('application/x-nexus-type',d.id);e.dataTransfer.setData('text/plain',d.id);e.dataTransfer.effectAllowed='copy';});
+      add.addEventListener('click',()=>{
+       if(isReporter(d.id)){$('#graphStatus').textContent='Reporter blocks belong inside a matching expression slot. Drag this block into a slot.';return;}
        const n=make(d.id,60+Math.random()*120,70+Math.random()*100);nodes.push(n);save();render();
       });
-      palette.append(el);
+      const star=document.createElement('button');star.type='button';star.className='flow-favorite '+(favorites.includes(d.id)?'active':'');star.textContent=favorites.includes(d.id)?'★':'☆';star.title=favorites.includes(d.id)?'Remove from favorites':'Add to favorites';star.setAttribute('aria-label',star.title);star.addEventListener('click',e=>{e.stopPropagation();toggleFavorite(d.id);});
+      el.append(add,star);palette.append(el);
      });
+     if(!filtered.length){const empty=document.createElement('div');empty.className='flow-palette-empty';empty.textContent=category==='lists'?'List blocks are scheduled for the next interpreter pass.':category==='audio'?'Audio blocks are scheduled for the next interpreter pass.':category==='network'?'Network blocks are scheduled for the next interpreter pass.':category==='favorites'?'No favorite blocks yet. Press ☆ beside a block to save it.':'No blocks match this search.';palette.append(empty);}
+     if(category==='myBlocks'){
      if(category==='myBlocks'){
       const matches=procedures.filter(procedure=>!query||('call '+procedure.name).toLowerCase().includes(query));
       matches.forEach(procedure=>{
@@ -822,7 +847,7 @@
      const rendered=renderBlock(reporter,true);if(rendered)slot.append(rendered);
      const clear=document.createElement('button');clear.type='button';clear.className='flow-clear-reporter';clear.textContent='CLEAR';clear.addEventListener('click',()=>{owner.inputs[key]=null;save();render();});slot.append(clear);
     }else{
-     const hint=document.createElement('span');hint.className='flow-reporter-hint';hint.textContent='Drop a reporter here';slot.append(hint);
+     const hint=document.createElement('span');hint.className='flow-reporter-hint';hint.textContent='Drop a value / reporter here';slot.append(hint);
     }
     addExpressionDropHandlers(slot,owner.id,key);wrap.append(slot);return wrap;
    }
@@ -837,7 +862,7 @@
     if(!nested){
      const top=document.createElement('button');top.className='graph-port input-port';top.dataset.node=n.id;top.dataset.side='in';top.title='Input connector';top.addEventListener('click',()=>connectPort(n,'in'));card.append(top);
     }
-    const title=document.createElement('div');title.className='graph-node-title';title.textContent=n.type==='procedureDef'?'define '+(procedure?.name||'missing custom block'):n.type==='callProcedure'?'call '+(procedure?.name||'missing custom block'):d.label;title.title='Drag this block into a control slot';title.draggable=true;
+    const title=document.createElement('div');title.className='graph-node-title';title.textContent=n.type==='procedureDef'?'define '+(procedure?.name||'missing custom block'):n.type==='callProcedure'?'call '+(procedure?.name||'missing custom block'):d.label;title.title=describeBlock(d)+' Drag this block into a control slot or expression slot.';title.draggable=true;
     title.addEventListener('dragstart',e=>{
      e.dataTransfer.setData('application/x-nexus-block',n.id);
      e.dataTransfer.effectAllowed='move';
@@ -949,7 +974,7 @@
    $('#flowCenterView').addEventListener('click',()=>{canvas.scrollTo({left:0,top:0,behavior:'smooth'});setZoom(1);});
    canvas.addEventListener('pointerdown',e=>{if(e.target!==canvas&&e.target.id!=='graphEmpty')return;const sx=e.clientX,sy=e.clientY,left=canvas.scrollLeft,top=canvas.scrollTop;const move=ev=>{canvas.scrollLeft=left-(ev.clientX-sx);canvas.scrollTop=top-(ev.clientY-sy);};const up=()=>{canvas.removeEventListener('pointermove',move);canvas.removeEventListener('pointerup',up);canvas.removeEventListener('pointercancel',up);};canvas.setPointerCapture(e.pointerId);canvas.addEventListener('pointermove',move);canvas.addEventListener('pointerup',up);canvas.addEventListener('pointercancel',up);});
    cats.forEach(([id,name])=>{
-    const b=document.createElement('button');b.className='category-button '+id;b.textContent=name;
+    const b=document.createElement('button');b.className='category-button '+id;b.textContent=name;b.title=name+' category';
     b.addEventListener('click',()=>{
      category=id;root.querySelectorAll('.category-button').forEach(v=>v.classList.toggle('active',v===b));renderPalette();
     });

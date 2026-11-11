@@ -1,6 +1,6 @@
 # NEXUS — Digital Laboratory
 
-**Current release: 0.9.0. Flow Studio milestone: 2.2.0 — Typed Variable Controls.**
+**Current release: 0.9.0. Flow Studio milestone: 2.5.0 — Custom Procedures.**
 
 ## Implemented
 
@@ -27,6 +27,7 @@
 - The `when key pressed` event listens for real keyboard input while the runtime is active. It supports space, arrow keys, Enter, Escape, letter/number keys and an any-key option; form fields are ignored. Event hats stay at the top level and cannot be wired as incoming blocks.
 - The generic variable reporter preserves the stored type. Numeric expressions and arithmetic reject Text/Boolean variables, logical operators require Boolean inputs, and assignments cannot silently change an existing variable's type.
 - Top-level statement blocks can still be connected with manual wires; reporters are restricted to expression slots.
+- My Blocks supports up to 50 user-defined, reusable procedures. Each definition has a nested `DO` body; call blocks can be placed in top-level scripts or nested control bodies, and procedure calls can nest or recurse within the runtime depth/step limits. Definitions and calls persist in the local project.
 - Existing local projects and manually wired legacy repeat/if scripts are normalized for backward compatibility.
 
 ### Code Editor
@@ -83,7 +84,8 @@ Open `index.html` in a modern browser. Run Flow Studio unit tests with `npm run 
 ## Limitations
 - Terminal is a browser command simulator, not an operating-system shell.
 - Flow Studio runs visual commands in the browser; it does not execute arbitrary external code or connect to external services.
-- Arithmetic expressions remain Number-only; Text and Boolean values must be handled through compatible reporters and typed assignments. Changing a variable type does not rewrite existing expressions; incompatible uses are still reported by runtime type checks.
+- Arithmetic expressions remain Number-only; Text and Boolean values must be handled through compatible reporters and typed assignments.
+- Custom procedures currently have no input parameters or return values; they share the project's typed variables. Recursive calls are bounded by the existing runtime depth and step limits. Changing a variable type does not rewrite existing expressions; incompatible uses are still reported by runtime type checks.
 - Keyboard event blocks ignore browser key-repeat events and do not capture keystrokes while an input, select, textarea or editable element has focus.
 - `forever` loops and keyboard listeners remain active until STOP. A 100,000-block safety limit prevents runaway execution; GSAP-backed sprite effects are cancelled when STOP is requested or Flow Studio is closed.
 - Storage and Flow Studio projects are local to the browser profile. Clearing site data may remove them.

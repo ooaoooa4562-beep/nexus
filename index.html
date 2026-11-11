@@ -6,7 +6,7 @@
 <title>NEXUS — Developer Workspace</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/css/style.css?v=3.3.6">
+<link rel="stylesheet" href="assets/css/style.css?v=3.3.7">
 </head>
 <body>
 <div class="app-shell">
@@ -23,7 +23,6 @@
     <a class="nav-link active" href="#overview" data-page="overview" title="Overview — workspace dashboard"><span class="nav-icon">⌂</span><span class="nav-text">Overview</span><kbd>⌘1</kbd></a>
     <a class="nav-link" href="#editor" data-page="editor" title="Code Editor — edit repository files"><span class="nav-icon">&lt;/&gt;</span><span class="nav-text">Code Editor</span><kbd>⌘2</kbd></a>
     <a class="nav-link" href="#terminal" data-page="terminal" title="Terminal — commands and Git tools"><span class="nav-icon">›_</span><span class="nav-text">Terminal</span><kbd>⌘3</kbd></a>
-    <a class="nav-link" href="#flow" data-page="flow" title="Flow Studio — visual programming"><span class="nav-icon">⌘</span><span class="nav-text">Flow Studio</span></a>
     <a class="nav-link" href="#storage" data-page="storage" title="Storage — local files and data"><span class="nav-icon">▤</span><span class="nav-text">Storage</span></a>
    </nav>
   </div>
@@ -60,23 +59,20 @@
     <div class="welcome-copy"><div class="eyebrow"><span class="eyebrow-line"></span> YOUR CREATIVE WORKSPACE</div>
      <h1>Welcome back, <span id="welcomeName">Operator.</span></h1>
      <p class="subtitle">Everything you need to build, experiment and ship — in one workspace.</p>
-     <div class="welcome-actions"><button class="primary-button" data-open-page="editor"><span>&lt;/&gt;</span> Open Code Editor <b>↗</b></button><button class="secondary-button" data-open-page="flow">Create a workflow <b>↗</b></button></div>
     </div>
     <div class="welcome-orbit" aria-hidden="true"><div class="orbit-ring orbit-one"></div><div class="orbit-ring orbit-two"></div><div class="orbit-core"><span>N</span><small>CORE</small></div><i class="orbit-dot dot-one"></i><i class="orbit-dot dot-two"></i><i class="orbit-dot dot-three"></i></div>
     <div class="welcome-date"><small id="dateLabel">LOCAL SESSION</small><b id="welcomeClock">--:--:--</b></div>
    </div>
    <div class="dashboard-stats">
-    <article class="stat-tile"><span class="stat-icon stat-blue">&lt;/&gt;</span><div><small>AVAILABLE MODULES</small><strong>07</strong><em><i></i> Ready to use</em></div><span class="stat-spark spark-blue">▁▃▂▅▄▆</span></article>
-    <article class="stat-tile"><span class="stat-icon stat-violet">⌘</span><div><small>CREATIVE TOOLS</small><strong>02</strong><em>Code · Flow</em></div><span class="stat-spark spark-violet">▂▄▃▆▅▇</span></article>
+    <article class="stat-tile"><span class="stat-icon stat-blue">&lt;/&gt;</span><div><small>AVAILABLE MODULES</small><strong>06</strong><em><i></i> Ready to use</em></div><span class="stat-spark spark-blue">▁▃▂▅▄▆</span></article>
     <article class="stat-tile"><span class="stat-icon stat-green">▤</span><div><small>STORAGE MODE</small><strong>LOCAL</strong><em><i></i> Browser vault</em></div><span class="stat-spark spark-green">▁▂▄▃▅▆</span></article>
     <article class="stat-tile"><span class="stat-icon stat-cyan">⌁</span><div><small>WORKSPACE STATUS</small><strong>READY</strong><em><i></i> Core initialized</em></div><span class="stat-spark spark-cyan">▂▃▅▄▆▇</span></article>
    </div>
    <div class="dashboard-main-grid">
-    <section class="dashboard-panel launch-panel"><div class="dashboard-panel-head"><div><div class="eyebrow">PICK UP WHERE YOU LEFT OFF</div><h2>Quick launch</h2></div><span class="panel-counter">01 — 03</span></div>
+    <section class="dashboard-panel launch-panel"><div class="dashboard-panel-head"><div><div class="eyebrow">PICK UP WHERE YOU LEFT OFF</div><h2>Quick launch</h2></div><span class="panel-counter">01 — 02</span></div>
      <div class="launch-grid">
       <button class="launch-card launch-editor" data-open-page="editor"><span class="launch-card-top"><i>&lt;/&gt;</i><b>01</b></span><strong>Code Editor</strong><small>Write code and browse your GitHub repositories.</small><span class="launch-open">OPEN EDITOR <b>↗</b></span></button>
-      <button class="launch-card launch-flow" data-open-page="flow"><span class="launch-card-top"><i>⌘</i><b>02</b></span><strong>Flow Studio</strong><small>Connect visual blocks and build logic.</small><span class="launch-open">OPEN STUDIO <b>↗</b></span></button>
-      <button class="launch-card launch-terminal" data-open-page="terminal"><span class="launch-card-top"><i>›_</i><b>03</b></span><strong>Terminal</strong><small>Run commands and manage your workspace.</small><span class="launch-open">OPEN TERMINAL <b>↗</b></span></button>
+      <button class="launch-card launch-terminal" data-open-page="terminal"><span class="launch-card-top"><i>›_</i><b>02</b></span><strong>Terminal</strong><small>Run commands and manage your workspace.</small><span class="launch-open">OPEN TERMINAL <b>↗</b></span></button>
      </div>
     </section>
     <section class="dashboard-panel activity-panel"><div class="dashboard-panel-head"><div><div class="eyebrow">LIVE WORKSPACE FEED</div><h2>Recent activity</h2></div><button class="text-button" id="clearLog">CLEAR LOG</button></div>
@@ -99,7 +95,6 @@
  <div class="command-palette" id="commandPalette" hidden><div class="command-box"><input id="commandInput" placeholder="Type a command or search a module..." autocomplete="off"><div id="commandResults"></div><small>ESC TO CLOSE · ENTER TO OPEN</small></div></div>
 </main>
 </div>
-<script src="assets/js/terminal.js?v=1.5.0"></script><script src="assets/js/storage.js?v=1.1.0"></script><script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script><script src="assets/js/flow.js?v=2.9.0"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.6/ace.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.6/ext-language_tools.js"></script>
 <script src="assets/js/editor.js?v=1.4.2"></script><script src="assets/js/monitor.js?v=1.1.0"></script><script src="assets/js/network.js?v=1.1.0"></script><script src="assets/js/extensions.js?v=1.1.0"></script><script src="assets/js/motion.js?v=1.2.0"></script><script src="assets/js/preferences.js?v=1.0.6"></script><script src="assets/js/app.js?v=1.8.3"></script>
 </body></html>

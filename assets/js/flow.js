@@ -730,7 +730,7 @@
      palette.replaceChildren();
      const query=(root.querySelector('#blockSearch')?.value||'').trim().toLowerCase();
      const duplicateLabels=new Set(['when space is pressed','when enter is pressed']);
-     const candidates=defs.filter(d=>d.id!=='procedureDef'&&!(duplicateLabels.has(d.label.toLowerCase())&&['whenKey10','whenKey6'].includes(d.id)));
+     const candidates=defs.filter(d=>d.id!=='procedureDef');
      const filtered=candidates.filter(d=>(category==='favorites'?favorites.includes(d.id):(query||category==='all'?true:d.cat===category))&&(!query||d.label.toLowerCase().includes(query)||d.id.toLowerCase().includes(query)||describeBlock(d).toLowerCase().includes(query)));
      filtered.forEach(d=>{
       const el=document.createElement('div');el.className='flow-library-item';
@@ -938,8 +938,8 @@
     return card;
    }
    function render(){
-     nodeLayer.style.width=Math.max(12000,...nodes.map(n=>(Number(n.x)||0)+2600))+'px';
-     nodeLayer.style.height=Math.max(9000,...nodes.map(n=>(Number(n.y)||0)+1800))+'px';
+     nodeLayer.style.width=Math.min(6000,Math.max(canvas.clientWidth||900,2400,...nodes.map(n=>(Number(n.x)||0)+520)))+'px';
+     nodeLayer.style.height=Math.min(3600,Math.max(canvas.clientHeight||650,1600,...nodes.map(n=>(Number(n.y)||0)+360)))+'px';
      nodeLayer.replaceChildren();
      nodes.forEach(n=>{const card=renderBlock(n,false);if(card)nodeLayer.append(card);});
      $('#graphEmpty').hidden=nodes.length>0;

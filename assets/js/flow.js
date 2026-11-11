@@ -201,12 +201,13 @@
   {id:"changeValue8",cat:"variables",label:"change lives by 1",fields:[["variable","lives"],["value","1"]]},
   {id:"changeValue9",cat:"variables",label:"change lives by -1",fields:[["variable","lives"],["value","-1"]]},
   {id:"changeValue10",cat:"variables",label:"change coins by 10",fields:[["variable","coins"],["value","10"]]},
+  {id:"procedureDef",cat:"myBlocks",label:"define custom block",fields:[]},
 
  ];
  const typeAliases={"startOnLoad":"flag","whenClicked":"flag","whenSpace":"key","whenEnter":"key","moveBack":"move","moveFast":"move","turnLeft":"turn","turnRight":"turn","goCenter":"goto","setX":"goto","setY":"goto","glideCenter":"glide","rotateLeft":"rotateTo","rotateRight":"rotateTo","grow":"scaleTo","shrink":"scaleTo","setSize":"scaleTo","showMessage":"say","thinkMessage":"think","clearMessage":"clearBubble","fadeIn":"fadeTo","fadeOut":"fadeTo","zoomIn":"scaleTo","zoomOut":"scaleTo","wobble":"shake","quickSpin":"spin","slowSpin":"spin","glowOn":"trail","glowOff":"trail","flashTwice":"flash","hueShift":"colorTo","waitShort":"wait","repeatTen":"repeat","loopForever":"forever","stopScripts":"stopAll","setScore":"set","addScore":"change","subtractScore":"change","showScore":"print","writeOutput":"log","resetClock":"resetTimer","stopClock":"resetTimer","whenKey1":"key","whenKey2":"key","whenKey3":"key","whenKey4":"key","whenKey5":"key","whenKey6":"key","whenKey7":"key","whenKey8":"key","whenKey9":"key","whenKey10":"key","moveSteps1":"move","moveSteps2":"move","moveSteps3":"move","moveSteps4":"move","moveSteps5":"move","moveSteps6":"move","moveSteps7":"move","moveSteps8":"move","moveSteps9":"move","moveSteps10":"move","turnAngle1":"turn","turnAngle2":"turn","turnAngle3":"turn","turnAngle4":"turn","turnAngle5":"turn","turnAngle6":"turn","turnAngle7":"turn","turnAngle8":"turn","turnAngle9":"turn","turnAngle10":"turn","goPoint1":"goto","goPoint2":"goto","goPoint3":"goto","goPoint4":"goto","goPoint5":"goto","goPoint6":"goto","goPoint7":"goto","goPoint8":"goto","goPoint9":"goto","goPoint10":"goto","sayText1":"say","sayText2":"say","sayText3":"say","sayText4":"say","sayText5":"say","sayText6":"say","sayText7":"say","sayText8":"say","sayText9":"say","sayText10":"say","setSize1":"scaleTo","setSize2":"scaleTo","setSize3":"scaleTo","setSize4":"scaleTo","setSize5":"scaleTo","setSize6":"scaleTo","setSize7":"scaleTo","setSize8":"scaleTo","setSize9":"scaleTo","setSize10":"scaleTo","animateRotate1":"rotateTo","animateRotate2":"rotateTo","animateRotate3":"rotateTo","animateRotate4":"rotateTo","animateRotate5":"rotateTo","animateRotate6":"rotateTo","animateRotate7":"rotateTo","animateRotate8":"rotateTo","animateRotate9":"rotateTo","animateRotate10":"rotateTo","flashCount1":"flash","flashCount2":"flash","flashCount3":"flash","flashCount4":"flash","flashCount5":"flash","flashCount6":"flash","flashCount7":"flash","flashCount8":"flash","flashCount9":"flash","flashCount10":"flash","waitSeconds1":"wait","waitSeconds2":"wait","waitSeconds3":"wait","waitSeconds4":"wait","waitSeconds5":"wait","waitSeconds6":"wait","waitSeconds7":"wait","waitSeconds8":"wait","waitSeconds9":"wait","waitSeconds10":"wait","changeValue1":"change","changeValue2":"change","changeValue3":"change","changeValue4":"change","changeValue5":"change","changeValue6":"change","changeValue7":"change","changeValue8":"change","changeValue9":"change","changeValue10":"change"};
- const cats=[['events','Events'],['motion','Motion'],['looks','Looks'],['animation','Animation'],['effects','Effects'],['control','Control'],['variables','Variables'],['operators','Operators'],['sensing','Sensing'],['data','Data']];
- const containerTypes=new Set(['repeat','forever','if','ifElse','repeatUntil','repeatTen','loopForever']);
- const eventTypes=new Set(['flag','key',...Object.keys(typeAliases).filter(id=>typeAliases[id]==='flag'||typeAliases[id]==='key')]);
+ const cats=[['events','Events'],['motion','Motion'],['looks','Looks'],['animation','Animation'],['effects','Effects'],['control','Control'],['variables','Variables'],['operators','Operators'],['sensing','Sensing'],['data','Data'],['myBlocks','My Blocks']];
+ const containerTypes=new Set(['repeat','forever','if','ifElse','repeatUntil','repeatTen','loopForever','procedureDef']);
+ const eventTypes=new Set(['flag','key','procedureDef',...Object.keys(typeAliases).filter(id=>typeAliases[id]==='flag'||typeAliases[id]==='key')]);
  const reporterTypes=new Set(defs.filter(d=>d.kind==='reporter').map(d=>d.id));
  const expressionInputs={repeat:['times'],if:['condition'],ifElse:['condition'],repeatUntil:['condition'],say:['text'],think:['text'],set:['value'],change:['value'],add:['a','b'],subtract:['a','b'],multiply:['a','b'],divide:['a','b'],mathAdd:['a','b'],mathSubtract:['a','b'],mathMultiply:['a','b'],mathDivide:['a','b'],compare:['a','b'],and:['left','right'],or:['left','right'],not:['value'],join:['left','right'],length:['value'],contains:['text','search'],round:['value'],absolute:['value'],modulo:['a','b']};
  const isReporter=type=>reporterTypes.has(type);
@@ -230,15 +231,34 @@
   if(legacyControl)block._legacyControl=true;else delete block._legacyControl;
   return block;
  }
+ function validateProcedureName(value){
+  const name=String(value??'').trim();
+  if(!/^[A-Za-z_][A-Za-z0-9_]{0,31}$/.test(name))throw Error('Invalid custom block name "'+name+'". Use 1–32 letters, numbers or underscores; the first character must be a letter or underscore.');
+  return name;
+ }
+ function normalizeProcedures(raw){
+  if(!Array.isArray(raw))return [];
+  const result=[],ids=new Set(),names=new Set();
+  for(const item of raw){
+   if(result.length>=50)break;
+   if(!item||typeof item!=='object')continue;
+   const id=String(item.id||'').trim();
+   if(!/^p[a-z0-9]{6,40}$/i.test(id)||ids.has(id))continue;
+   let name;try{name=validateProcedureName(item.name);}catch{continue;}
+   const key=name.toLowerCase();if(names.has(key))continue;
+   ids.add(id);names.add(key);result.push({id,name});
+  }
+  return result;
+ }
  function normalize(data){
   if(Array.isArray(data)){
    const nodes=data.map((b,i)=>normalizeBlock(b,70+i*215,70));
-   return {nodes,links:nodes.slice(1).map((n,i)=>({from:nodes[i].id,to:n.id}))};
+   return {nodes,links:nodes.slice(1).map((n,i)=>({from:nodes[i].id,to:n.id})),procedures:[]};
   }
   if(data&&Array.isArray(data.nodes)){
-   return {nodes:data.nodes.map((n,i)=>normalizeBlock(n,60+(i%3)*215,60+Math.floor(i/3)*170)),links:Array.isArray(data.links)?data.links.filter(l=>l&&l.from&&l.to).map(l=>({from:String(l.from),to:String(l.to)})):[]};
+   return {nodes:data.nodes.map((n,i)=>normalizeBlock(n,60+(i%3)*215,60+Math.floor(i/3)*170)),links:Array.isArray(data.links)?data.links.filter(l=>l&&l.from&&l.to).map(l=>({from:String(l.from),to:String(l.to)})):[],procedures:normalizeProcedures(data.procedures)};
   }
-  return starter();
+  return {...starter(),procedures:[]};
  }
 
  function normalizeVariableEntry(raw){
@@ -430,8 +450,8 @@
    if(current){const parsed=JSON.parse(current);return {...normalize(parsed),variables:normalizeVariables(parsed.variables),character:typeof parsed.character==='string'?parsed.character:'🐱'};}
    const old=localStorage.getItem('nexus.flow.scratch.v2');
    if(old){const parsed=JSON.parse(old);return {...normalize(parsed),variables:normalizeVariables(parsed.variables),character:typeof parsed.character==='string'?parsed.character:'🐱'};}
-   return {...starter(),variables:defaultVariables()};
-  }catch{return {...starter(),variables:defaultVariables()};}
+   return {...starter(),procedures:[],variables:defaultVariables()};
+  }catch{return {...starter(),procedures:[],variables:defaultVariables()};}
  };
  api.flow={
   normalizeKey:normalizeKeyName,
@@ -443,9 +463,11 @@
   convertVariableValue,
   changeVariableType,
   variableFieldMode,
-  render:()=>'<div class="eyebrow">NEXUS MODULE / 006</div><div class="module-title-row"><div><h1>Flow <span>Studio.</span></h1><p class="subtitle">Build programs with nested control blocks, variables and a live stage.</p></div><span class="flow-badge">● BLOCK EDITOR</span></div><div class="scratch-toolbar graph-toolbar"><div class="scratch-project"><span class="scratch-project-icon">✳</span><input id="projectName" value="My first project" aria-label="Project name"></div><div class="graph-tools"><button class="secondary-button" id="wireMode">⌁ WIRE: OFF</button><button class="secondary-button" id="deleteLinks">CLEAR WIRES</button><button class="secondary-button" id="flowNew">NEW</button><button class="secondary-button" id="flowSave">SAVE</button><button class="run-button" id="flowRun">▶ RUN</button><button class="stop-button" id="flowStop" disabled>■ STOP</button></div></div><div class="graph-workbench"><aside class="graph-library"><div class="graph-library-head"><b>BLOCK LIBRARY</b><small>SEARCH, FILTER AND DRAG BLOCKS INTO THE WORKSPACE</small></div><label class="flow-block-search"><span>⌕</span><input id="blockSearch" type="search" placeholder="Find a block…" aria-label="Search blocks"></label><div class="graph-categories" id="scratchCategories"></div><div class="graph-palette" id="scratchPalette"></div></aside><section class="graph-editor"><div class="graph-editor-head"><b>WORKSPACE</b><span id="blockCount">0 BLOCKS</span><span class="graph-help">Drag blocks · drop into orange control slots · WIRE links top-level scripts</span></div><div class="graph-canvas" id="graphCanvas"><svg class="graph-wires" id="graphWires"></svg><div id="graphNodes"></div><div class="graph-empty" id="graphEmpty">Drag blocks here from the library</div></div><div class="graph-status" id="graphStatus">Drop blocks into a control slot to build a nested body.</div></section><aside class="graph-side"><div class="stage-character-picker"><label for="stageCharacter">CHARACTER</label><select id="stageCharacter" aria-label="Choose stage character"><option value="🐱">🐱 Cat</option><option value="🐶">🐶 Dog</option><option value="🐰">🐰 Rabbit</option><option value="🦊">🦊 Fox</option><option value="🐻">🐻 Bear</option><option value="🐼">🐼 Panda</option><option value="🐸">🐸 Frog</option><option value="🐵">🐵 Monkey</option><option value="🐧">🐧 Penguin</option><option value="🦉">🦉 Owl</option><option value="🦁">🦁 Lion</option><option value="🐯">🐯 Tiger</option><option value="🐮">🐮 Cow</option><option value="🐷">🐷 Pig</option><option value="🐨">🐨 Koala</option><option value="🐹">🐹 Hamster</option><option value="🐺">🐺 Wolf</option><option value="🦄">🦄 Unicorn</option><option value="🐲">🐲 Dragon</option><option value="🐙">🐙 Octopus</option><option value="🦖">🦖 Dinosaur</option><option value="🐢">🐢 Turtle</option><option value="🐬">🐬 Dolphin</option><option value="🦋">🦋 Butterfly</option><option value="🐝">🐝 Bee</option><option value="🤖">🤖 Robot</option><option value="👾">👾 Alien</option><option value="👻">👻 Ghost</option><option value="🥷">🥷 Ninja</option><option value="🚀">🚀 Rocket</option></select></div><div class="scratch-panel-title"><b>STAGE</b><small>360 × 260</small></div><div class="scratch-stage" id="scratchStage"><div class="stage-grid"></div><div class="stage-sprite" id="stageSprite">🐱</div><div class="stage-bubble" id="stageBubble" hidden></div></div><div class="stage-controls"><button id="stageReset">↺ RESET SPRITE</button><span id="stagePosition">x: 0 y: 0</span></div><div class="scratch-console"><div class="scratch-panel-title"><b>OUTPUT</b><button id="clearOutput">CLEAR</button></div><div id="scratchOutput" class="scratch-output">Ready. Press RUN to execute the script.</div><div class="flow-variable-manager"><div class="flow-variable-tools"><input id="newVariableName" placeholder="new variable" maxlength="32" aria-label="New variable name"><select id="newVariableType" aria-label="New variable type" title="Variable type"><option value="number">Number</option><option value="text">Text</option><option value="boolean">Boolean</option></select><button id="addVariable" type="button">+ ADD</button></div><div id="flowVariableList" class="flow-variable-list"></div><datalist id="flowVariableOptions"></datalist></div><div id="variableReadout" class="variable-readout">Variables: score = 0</div></div></aside></div><div class="scratch-footer"><span><i></i> LOCAL PROJECT</span><span>Nested blocks · Variables · Runtime stop control</span></div>',
+  normalizeProcedures,
+  validateProcedureName,
+  render:()=>'<div class="eyebrow">NEXUS MODULE / 006</div><div class="module-title-row"><div><h1>Flow <span>Studio.</span></h1><p class="subtitle">Build programs with nested control blocks, variables and a live stage.</p></div><span class="flow-badge">● BLOCK EDITOR</span></div><div class="scratch-toolbar graph-toolbar"><div class="scratch-project"><span class="scratch-project-icon">✳</span><input id="projectName" value="My first project" aria-label="Project name"></div><div class="graph-tools"><button class="secondary-button" id="wireMode">⌁ WIRE: OFF</button><button class="secondary-button" id="deleteLinks">CLEAR WIRES</button><button class="secondary-button" id="flowNew">NEW</button><button class="secondary-button" id="flowSave">SAVE</button><button class="run-button" id="flowRun">▶ RUN</button><button class="stop-button" id="flowStop" disabled>■ STOP</button></div></div><div class="graph-workbench"><aside class="graph-library"><div class="graph-library-head"><b>BLOCK LIBRARY</b><small>SEARCH, FILTER AND DRAG BLOCKS INTO THE WORKSPACE</small></div><label class="flow-block-search"><span>⌕</span><input id="blockSearch" type="search" placeholder="Find a block…" aria-label="Search blocks"></label><div class="graph-categories" id="scratchCategories"></div><div class="graph-palette" id="scratchPalette"></div></aside><section class="graph-editor"><div class="graph-editor-head"><b>WORKSPACE</b><span id="blockCount">0 BLOCKS</span><span class="graph-help">Drag blocks · drop into orange control slots · WIRE links top-level scripts</span></div><div class="graph-canvas" id="graphCanvas"><svg class="graph-wires" id="graphWires"></svg><div id="graphNodes"></div><div class="graph-empty" id="graphEmpty">Drag blocks here from the library</div></div><div class="graph-status" id="graphStatus">Drop blocks into a control slot to build a nested body.</div></section><aside class="graph-side"><div class="stage-character-picker"><label for="stageCharacter">CHARACTER</label><select id="stageCharacter" aria-label="Choose stage character"><option value="🐱">🐱 Cat</option><option value="🐶">🐶 Dog</option><option value="🐰">🐰 Rabbit</option><option value="🦊">🦊 Fox</option><option value="🐻">🐻 Bear</option><option value="🐼">🐼 Panda</option><option value="🐸">🐸 Frog</option><option value="🐵">🐵 Monkey</option><option value="🐧">🐧 Penguin</option><option value="🦉">🦉 Owl</option><option value="🦁">🦁 Lion</option><option value="🐯">🐯 Tiger</option><option value="🐮">🐮 Cow</option><option value="🐷">🐷 Pig</option><option value="🐨">🐨 Koala</option><option value="🐹">🐹 Hamster</option><option value="🐺">🐺 Wolf</option><option value="🦄">🦄 Unicorn</option><option value="🐲">🐲 Dragon</option><option value="🐙">🐙 Octopus</option><option value="🦖">🦖 Dinosaur</option><option value="🐢">🐢 Turtle</option><option value="🐬">🐬 Dolphin</option><option value="🦋">🦋 Butterfly</option><option value="🐝">🐝 Bee</option><option value="🤖">🤖 Robot</option><option value="👾">👾 Alien</option><option value="👻">👻 Ghost</option><option value="🥷">🥷 Ninja</option><option value="🚀">🚀 Rocket</option></select></div><div class="scratch-panel-title"><b>STAGE</b><small>360 × 260</small></div><div class="scratch-stage" id="scratchStage"><div class="stage-grid"></div><div class="stage-sprite" id="stageSprite">🐱</div><div class="stage-bubble" id="stageBubble" hidden></div></div><div class="stage-controls"><button id="stageReset">↺ RESET SPRITE</button><span id="stagePosition">x: 0 y: 0</span></div><div class="scratch-console"><div class="scratch-panel-title"><b>OUTPUT</b><button id="clearOutput">CLEAR</button></div><div id="scratchOutput" class="scratch-output">Ready. Press RUN to execute the script.</div><div class="flow-variable-manager"><div class="flow-variable-tools"><input id="newVariableName" placeholder="new variable" maxlength="32" aria-label="New variable name"><select id="newVariableType" aria-label="New variable type" title="Variable type"><option value="number">Number</option><option value="text">Text</option><option value="boolean">Boolean</option></select><button id="addVariable" type="button">+ ADD</button></div><div id="flowVariableList" class="flow-variable-list"></div><datalist id="flowVariableOptions"></datalist></div><div class="flow-procedure-manager"><div class="flow-procedure-tools"><input id="newProcedureName" placeholder="custom block name" maxlength="32" aria-label="New custom block name"><button id="addProcedure" type="button">+ CREATE</button></div><div id="flowProcedureList" class="flow-procedure-list"></div><small class="flow-procedure-help">Create reusable blocks, then drag their calls from MY BLOCKS into any script.</small></div><div id="variableReadout" class="variable-readout">Variables: score = 0</div></div></aside></div><div class="scratch-footer"><span><i></i> LOCAL PROJECT</span><span>Nested blocks · Variables · Runtime stop control</span></div>',
   mount(root){
-   let data=load(),nodes=data.nodes,links=data.links,character=typeof data.character==='string'?data.character:'🐱',category='events',wireMode=false,pending=null,running=false,stopFlag=false,runAbort=null,x=0,y=0,angle=0,visible=true,vars=data.variables||defaultVariables(),runtimeSteps=0,runtimeFailure=null,activeKeyTasks=new Set(),keyHandler=null;
+   let data=load(),nodes=data.nodes,links=data.links,procedures=data.procedures||[],character=typeof data.character==='string'?data.character:'🐱',category='events',wireMode=false,pending=null,running=false,stopFlag=false,runAbort=null,x=0,y=0,angle=0,visible=true,vars=data.variables||defaultVariables(),runtimeSteps=0,runtimeFailure=null,activeKeyTasks=new Set(),keyHandler=null;
    const MAX_STEPS=100000,MAX_DEPTH=40;
    const $=s=>root.querySelector(s),canvas=$('#graphCanvas'),nodeLayer=$('#graphNodes'),wireSvg=$('#graphWires'),palette=$('#scratchPalette'),out=$('#scratchOutput'),sprite=$('#stageSprite'),bubble=$('#stageBubble');
    const characterSelect=$('#stageCharacter');
@@ -461,7 +483,7 @@
    const countBlocks=list=>list.reduce((sum,n)=>sum+countBlock(n),0);
    const save=()=>{
     try{
-     localStorage.setItem(KEY,JSON.stringify({version:5,nodes,links,variables:vars,character}));
+     localStorage.setItem(KEY,JSON.stringify({version:6,nodes,links,procedures,variables:vars,character}));
      $('#blockCount').textContent=countBlocks(nodes)+' BLOCKS · '+links.length+' WIRES';
     }catch(e){log('Save error: '+e.message);}
    };
@@ -552,13 +574,47 @@
     return null;
    }
    function removeBlock(id){
-    const wasTop=!!findTop(id);
+     const target=findBlock(id);
+     if(target?.type==='procedureDef'){setStatus('Delete custom block definitions from the MY BLOCKS manager.');return;}
+     const wasTop=!!findTop(id);
     if(!takeBlock(id))return;
     if(wasTop)links=links.filter(l=>l.from!==id&&l.to!==id);
     if(pending===id)pending=null;
     save();render();
    }
-   function slotFor(ownerId,branch){
+   function countProcedureCalls(procedureId){
+     let count=0;
+     const visit=block=>{
+      if(!block)return;
+      if(block.type==='callProcedure'&&String(block.fields?.procedureId||'')===procedureId)count++;
+      (block.children||[]).forEach(visit);(block.elseChildren||[]).forEach(visit);
+      Object.values(block.inputs||{}).forEach(visit);
+     };
+     nodes.forEach(visit);return count;
+    }
+    function renderProcedureManager(){
+     const list=$('#flowProcedureList');if(!list)return;list.replaceChildren();
+     if(!procedures.length){const empty=document.createElement('small');empty.className='flow-procedure-empty';empty.textContent='No custom blocks yet.';list.append(empty);return;}
+     procedures.forEach(procedure=>{
+      const row=document.createElement('div');row.className='flow-procedure-row';
+      const name=document.createElement('b');name.textContent=procedure.name;
+      const usage=countProcedureCalls(procedure.id);
+      const meta=document.createElement('small');meta.textContent=usage?('USED '+usage+'×'):'READY';
+      const remove=document.createElement('button');remove.type='button';remove.textContent='×';remove.title=usage?'Remove all calls before deleting this custom block':'Delete custom block';remove.disabled=usage>0||running;
+      remove.addEventListener('click',()=>{
+       if(usage>0||running)return;
+       const definition=nodes.find(block=>block.type==='procedureDef'&&String(block.fields?.procedureId||'')===procedure.id);
+       if(definition){takeBlock(definition.id);links=links.filter(link=>link.from!==definition.id&&link.to!==definition.id);}
+       procedures=procedures.filter(item=>item.id!==procedure.id);
+       save();render();renderPalette();renderProcedureManager();log('Custom block deleted: '+procedure.name);
+      });
+      row.append(name,meta,remove);list.append(row);
+     });
+    }
+    function createProcedureCall(procedureId,x=80,y=70){
+     return {id:uid(),type:'callProcedure',fields:{procedureId},inputs:{},x,y,children:[],elseChildren:[]};
+    }
+    function slotFor(ownerId,branch){
     const owner=findBlock(ownerId);
     if(!owner||!containerTypes.has(owner.type))return null;
     return branch==='else'?owner.elseChildren:owner.children;
@@ -628,24 +684,31 @@
     });
    }
    function renderPalette(){
-    palette.replaceChildren();
-    const query=(root.querySelector('#blockSearch')?.value||'').trim().toLowerCase();
-    defs.filter(d=>d.cat===category&&(!query||d.label.toLowerCase().includes(query)||d.id.toLowerCase().includes(query))).forEach(d=>{
-     const el=document.createElement('button');
-     el.className='code-block '+d.cat+' graph-library-block';el.draggable=true;el.textContent=d.label;
-     el.addEventListener('dragstart',e=>{
-      e.dataTransfer.setData('application/x-nexus-type',d.id);
-      e.dataTransfer.setData('text/plain',d.id);
-      e.dataTransfer.effectAllowed='copy';
+     palette.replaceChildren();
+     const query=(root.querySelector('#blockSearch')?.value||'').trim().toLowerCase();
+     defs.filter(d=>d.cat===category&&d.id!=='procedureDef'&&(!query||d.label.toLowerCase().includes(query)||d.id.toLowerCase().includes(query))).forEach(d=>{
+      const el=document.createElement('button');el.className='code-block '+d.cat+' graph-library-block';el.draggable=true;el.textContent=d.label;
+      el.addEventListener('dragstart',e=>{e.dataTransfer.setData('application/x-nexus-type',d.id);e.dataTransfer.setData('text/plain',d.id);e.dataTransfer.effectAllowed='copy';});
+      el.addEventListener('click',()=>{
+       if(isReporter(d.id)){$('#graphStatus').textContent='Reporter blocks belong inside an expression slot. Drag this block into a slot.';return;}
+       const n=make(d.id,60+Math.random()*120,70+Math.random()*100);nodes.push(n);save();render();
+      });
+      palette.append(el);
      });
-     el.addEventListener('click',()=>{
-      if(isReporter(d.id)){$('#graphStatus').textContent='Reporter blocks belong inside an expression slot. Drag this block into a slot.';return;}
-      const n=make(d.id,60+Math.random()*120,70+Math.random()*100);
-      nodes.push(n);save();render();
-     });
-     palette.append(el);
-    });
-   }
+     if(category==='myBlocks'){
+      const matches=procedures.filter(procedure=>!query||('call '+procedure.name).toLowerCase().includes(query));
+      matches.forEach(procedure=>{
+       const el=document.createElement('button');el.className='code-block myBlocks graph-library-block';el.draggable=true;el.textContent='call '+procedure.name;
+       el.addEventListener('dragstart',e=>{
+        e.dataTransfer.setData('application/x-nexus-type','callProcedure');e.dataTransfer.setData('application/x-nexus-procedure-id',procedure.id);
+        e.dataTransfer.setData('text/plain','call '+procedure.name);e.dataTransfer.effectAllowed='copy';
+       });
+       el.addEventListener('click',()=>{nodes.push(createProcedureCall(procedure.id,60+Math.random()*120,70+Math.random()*100));save();render();});
+       palette.append(el);
+      });
+      if(!matches.length){const empty=document.createElement('div');empty.className='flow-palette-empty';empty.textContent=procedures.length?'No custom blocks match this search.':'Create a custom block in the stage panel first.';palette.append(empty);}
+     }
+    }
    function portPosition(card,side){
     const port=card?.querySelector(side==='out'?'.output-port':'.input-port');
     if(!port)return null;
@@ -673,6 +736,7 @@
     });
    }
    function connectPort(node,side){
+    if(node.type==='procedureDef'){setStatus('Custom block definitions are standalone containers and cannot be wired.');return;}
     if(!wireMode){$('#graphStatus').textContent='Turn WIRE mode on to connect top-level blocks.';return;}
     if(side==='out'){
      pending=node.id;$('#graphStatus').textContent='Output selected. Click another top-level block input.';renderPorts();return;
@@ -706,7 +770,11 @@
       if(!def(type))return;
       if(isReporter(type)){$('#graphStatus').textContent='Reporter blocks must be dropped into an expression slot.';return;}
       if(eventTypes.has(type)){$('#graphStatus').textContent='Event blocks must start a top-level script.';return;}
-      target.push(make(type,20,20));
+      if(type==='callProcedure'){
+        const procedureId=e.dataTransfer.getData('application/x-nexus-procedure-id');
+        if(!procedures.some(procedure=>procedure.id===procedureId)){setStatus('This custom block no longer exists.');return;}
+        target.push(createProcedureCall(procedureId,20,20));
+       }else target.push(make(type,20,20));
      }
      save();render();$('#graphStatus').textContent=branch==='else'?'Block added to ELSE body.':'Block added to nested body.';
     });
@@ -750,7 +818,8 @@
     addExpressionDropHandlers(slot,owner.id,key);wrap.append(slot);return wrap;
    }
    function renderBlock(n,nested=false){
-    const d=def(n.type);if(!d)return null;
+    const procedure=procedures.find(item=>item.id===String(n.fields?.procedureId||''));
+     const d=def(n.type)||(n.type==='callProcedure'?{id:'callProcedure',cat:'myBlocks',label:'call custom block',fields:[]}:null);if(!d)return null;
     const card=document.createElement('div');
     card.className='graph-node '+d.cat+(nested?' nested-node':'')+(isReporter(n.type)?' reporter-node':'')+(containerTypes.has(n.type)?' graph-container':'');
     card.dataset.id=n.id;
@@ -758,7 +827,7 @@
     if(!nested){
      const top=document.createElement('button');top.className='graph-port input-port';top.dataset.node=n.id;top.dataset.side='in';top.title='Input connector';top.addEventListener('click',()=>connectPort(n,'in'));card.append(top);
     }
-    const title=document.createElement('div');title.className='graph-node-title';title.textContent=d.label;title.title='Drag this block into a control slot';title.draggable=true;
+    const title=document.createElement('div');title.className='graph-node-title';title.textContent=n.type==='procedureDef'?'define '+(procedure?.name||'missing custom block'):n.type==='callProcedure'?'call '+(procedure?.name||'missing custom block'):d.label;title.title='Drag this block into a control slot';title.draggable=true;
     title.addEventListener('dragstart',e=>{
      e.dataTransfer.setData('application/x-nexus-block',n.id);
      e.dataTransfer.effectAllowed='move';
@@ -819,11 +888,11 @@
     return card;
    }
    function render(){
-    nodeLayer.replaceChildren();
-    nodes.forEach(n=>{const card=renderBlock(n,false);if(card)nodeLayer.append(card);});
-    $('#graphEmpty').hidden=nodes.length>0;
-    $('#blockCount').textContent=countBlocks(nodes)+' BLOCKS · '+links.length+' WIRES';
-    renderPorts();
+     nodeLayer.replaceChildren();
+     nodes.forEach(n=>{const card=renderBlock(n,false);if(card)nodeLayer.append(card);});
+     $('#graphEmpty').hidden=nodes.length>0;
+     $('#blockCount').textContent=countBlocks(nodes)+' BLOCKS · '+links.length+' WIRES';
+     renderPorts();renderProcedureManager();
     if(typeof requestAnimationFrame==='function')requestAnimationFrame(drawWires);else drawWires();
    }
    function dropOnCanvas(e){
@@ -839,9 +908,15 @@
      moving.x=px;moving.y=py;nodes.push(moving);
     }else{
      const type=e.dataTransfer.getData('application/x-nexus-type')||e.dataTransfer.getData('text/plain');
-     if(!def(type))return;
-     if(isReporter(type)){$('#graphStatus').textContent='Reporter blocks must be placed in an expression slot.';return;}
-     nodes.push(make(type,px,py));
+      if(type==='callProcedure'){
+       const procedureId=e.dataTransfer.getData('application/x-nexus-procedure-id');
+       if(!procedures.some(procedure=>procedure.id===procedureId))return;
+       nodes.push(createProcedureCall(procedureId,px,py));
+      }else{
+       if(!def(type))return;
+       if(isReporter(type)){$('#graphStatus').textContent='Reporter blocks must be placed in an expression slot.';return;}
+       nodes.push(make(type,px,py));
+      }
     }
     save();render();$('#graphStatus').textContent='Block placed on workspace.';
    }
@@ -903,7 +978,15 @@
     switch(typeAliases[n.type]||n.type){
      case 'flag':log('🚩 Start');break;
      case 'key':log('⌨ Key handler: '+normalizeKeyName(f.key||'space'));break;
-     case 'move':{const steps=readNumber(f.steps,'steps');x+=Math.cos(angle*Math.PI/180)*steps;y+=Math.sin(angle*Math.PI/180)*steps;updateSprite();break;}
+      case 'procedureDef':throw Error('Custom block definitions cannot run directly. Use a call block.');
+      case 'callProcedure':{
+       const procedureId=String(f.procedureId||''),procedure=procedures.find(item=>item.id===procedureId);
+       const definition=nodes.find(block=>block.type==='procedureDef'&&String(block.fields?.procedureId||'')===procedureId);
+       if(!procedure||!definition)throw Error('Custom block "'+(procedure?.name||procedureId||'unknown')+'" has no definition.');
+       if(depth>=MAX_DEPTH)throw Error('Custom block call depth limit reached.');
+       log('↳ '+procedure.name+'()');await executeSequence(definition.children||[],depth+1);break;
+      }
+      case 'move':{const steps=readNumber(f.steps,'steps');x+=Math.cos(angle*Math.PI/180)*steps;y+=Math.sin(angle*Math.PI/180)*steps;updateSprite();break;}
      case 'turn':angle+=readNumber(f.degrees,'degrees');updateSprite();break;
      case 'goto':x=readNumber(f.x,'x');y=readNumber(f.y,'y');updateSprite();break;
      case 'glide':await animateSprite({x:readNumber(f.x,'x'),y:readNumber(f.y,'y')},f.duration);break;
@@ -1062,9 +1145,24 @@
    $('#flowStop').addEventListener('click',requestStop);
    $('#flowSave').addEventListener('click',()=>{save();log('✓ Project saved locally');});
    $('#flowNew').addEventListener('click',()=>{
-    if(confirm('Create a new empty project?')){nodes=[];links=[];vars=defaultVariables();pending=null;updateVars();save();render();out.textContent='New project created.';}
+    if(confirm('Create a new empty project?')){nodes=[];links=[];procedures=[];vars=defaultVariables();pending=null;updateVars();save();render();renderPalette();renderProcedureManager();out.textContent='New project created.';}
    });
    $('#stageReset').addEventListener('click',resetSprite);
+   $('#addProcedure').addEventListener('click',()=>{
+    if(running)return;
+    try{
+     const name=validateProcedureName($('#newProcedureName').value);
+     if(procedures.length>=50)throw Error('A project can contain at most 50 custom blocks.');
+     if(procedures.some(procedure=>procedure.name.toLowerCase()===name.toLowerCase()))throw Error('A custom block named "'+name+'" already exists.');
+     const procedure={id:'p'+uid().slice(1),name};procedures.push(procedure);
+     const definition=make('procedureDef',80+(procedures.length%3)*230,80+Math.floor((procedures.length-1)/3)*190);
+     definition.fields.procedureId=procedure.id;nodes.push(definition);
+     $('#newProcedureName').value='';save();render();renderPalette();renderProcedureManager();
+     setStatus('Created "'+name+'". Add statements to its DO slot, then call it from MY BLOCKS.');
+     log('Custom block created: '+name);
+    }catch(error){setStatus('Custom block error: '+error.message);}
+   });
+   $('#newProcedureName').addEventListener('keydown',event=>{if(event.key==='Enter')$('#addProcedure').click();});
    $('#addVariable').addEventListener('click',()=>{
     try{
      const name=validVariableName($('#newVariableName').value);
@@ -1080,7 +1178,7 @@
    $('#projectName').value=localStorage.getItem(KEY+'.name')||'My first project';
    $('#projectName').addEventListener('change',()=>localStorage.setItem(KEY+'.name',$('#projectName').value));
    category='events';root.querySelector('.category-button.events').classList.add('active');$('#blockSearch').addEventListener('input',renderPalette);
-   characterSelect.value=characterSelect.querySelector('option[value="'+CSS.escape(character)+'"]')?character:'🐱';character=characterSelect.value;characterSelect.addEventListener('change',()=>{if(running){characterSelect.value=character;return;}character=characterSelect.value;updateSprite();save();log('Character changed: '+characterSelect.options[characterSelect.selectedIndex].text);});renderPalette();render();updateSprite();updateVars();save();
+   characterSelect.value=characterSelect.querySelector('option[value="'+CSS.escape(character)+'"]')?character:'🐱';character=characterSelect.value;characterSelect.addEventListener('change',()=>{if(running){characterSelect.value=character;return;}character=characterSelect.value;updateSprite();save();log('Character changed: '+characterSelect.options[characterSelect.selectedIndex].text);});renderPalette();render();renderProcedureManager();updateSprite();updateVars();save();
   }
  };
 })();

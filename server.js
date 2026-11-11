@@ -253,7 +253,7 @@ app.get("/auth/github", (req, res) => {
   const url = new URL("https://github.com/login/oauth/authorize");
   url.searchParams.set("client_id", process.env.GITHUB_CLIENT_ID);
   url.searchParams.set("redirect_uri", API_BASE_URL + "/auth/github/callback");
-  url.searchParams.set("scope", "read:user repo");
+  url.searchParams.set("scope", "read:user repo delete_repo");
   url.searchParams.set("state", state);
   res.redirect(url.toString());
 });

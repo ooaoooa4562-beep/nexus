@@ -29,8 +29,70 @@ let schemaReady;
 app.set("trust proxy", 1);
 app.disable("x-powered-by");
 app.use(helmet());
+
+// Layer 1: short burst protection per client IP.
+// Health checks and CORS preflights do not consume the public request budget.
+const rateLimitReply = (_req, res) => res.status(429).json({
+  error: "Too many requests. Please wait a moment and try again.",
+  code: "RATE_LIMITED"
+});
+const globalLimiter = rateLimit({
+  windowMs: 10 * 1000,
+  limit: 120,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  skip: req => req.path === "/health" || req.method === "OPTIONS",
+  handler: rateLimitReply
+});
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 300,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  handler: rateLimitReply
+});
+const authLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  limit: 30,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  handler: rateLimitReply
+});
+const emailAuthLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 8,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  handler: rateLimitReply
+});
+
+app.use(globalLimiter);
+
+// Layer 2: cap concurrent work so slow upstream APIs cannot exhaust the process.
+const MAX_IN_FLIGHT = Math.max(20, Math.min(200, Number(process.env.NEXUS_MAX_IN_FLIGHT || 80)));
+let inFlightRequests = 0;
+app.use((req, res, next) => {
+  if (inFlightRequests >= MAX_IN_FLIGHT) {
+    res.setHeader("Retry-After", "2");
+    return res.status(503).json({
+      error: "NEXUS is busy right now. Please retry shortly.",
+      code: "SERVER_BUSY"
+    });
+  }
+  inFlightRequests += 1;
+  let released = false;
+  const release = () => {
+    if (released) return;
+    released = true;
+    inFlightRequests = Math.max(0, inFlightRequests - 1);
+  };
+  res.once("finish", release);
+  res.once("close", release);
+  next();
+});
+
+// Keep the existing avatar upload allowance while rejecting oversized bodies.
 app.use(express.json({ limit: "2.5mb" }));
-app.use(rateLimit({ windowMs: 15 * 60 * 1000, limit: 180, standardHeaders: "draft-7", legacyHeaders: false }));
 
 function parseCookies(req) {
   const out = {};
@@ -111,6 +173,12 @@ app.use((req, res, next) => {
   if (["POST", "PUT", "PATCH", "DELETE"].includes(req.method) && !originAllowed(req)) return res.status(403).json({ error: "Origin not allowed." });
   next();
 });
+
+// More restrictive budgets for authentication and API operations.
+app.use("/auth", authLimiter);
+app.use("/auth/email", emailAuthLimiter);
+app.use("/api", apiLimiter);
+
 async function githubRequest(path, token, options = {}) {
   const response = await fetch("https://api.github.com" + path, {
     ...options,
@@ -120,7 +188,8 @@ async function githubRequest(path, token, options = {}) {
       "X-GitHub-Api-Version": "2022-11-28",
       ...(options.body ? { "Content-Type": "application/json" } : {}),
       ...(options.headers || {})
-    }
+    },
+    signal: options.signal || AbortSignal.timeout(10000)
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
@@ -672,6 +741,10 @@ async function startServer() {
       throw error;
     }
   }
-  app.listen(PORT, "0.0.0.0", () => console.log("NEXUS GitHub API listening on " + PORT));
+  const server = app.listen(PORT, "0.0.0.0", () => console.log("NEXUS GitHub API listening on " + PORT));
+  server.requestTimeout = 15000;
+  server.headersTimeout = 10000;
+  server.keepAliveTimeout = 5000;
+  server.on("error", error => console.error("[NEXUS server]", error.message));
 }
 startServer();

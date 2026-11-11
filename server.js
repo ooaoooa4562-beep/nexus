@@ -65,18 +65,18 @@ app.use((req, res, next) => {
   next();
 });
 
-// Layer 1: short burst protection per client IP.
-// Repeated rate-limit violations trigger a temporary IP ban.
+// Global budget: no more than 5 backend requests per IP per rolling hour.
+// Health checks and CORS preflight requests are excluded so hosting and browsers work.
 const rateLimitReply = (req, res) => {
   recordIpViolation(clientIp(req));
   return res.status(429).json({
-    error: "Too many requests. Please wait a moment and try again.",
+    error: "Request limit reached: 5 requests per hour. Please try again later.",
     code: "RATE_LIMITED"
   });
 };
 const globalLimiter = rateLimit({
-  windowMs: 10 * 1000,
-  limit: 120,
+  windowMs: 60 * 60 * 1000,
+  limit: 5,
   standardHeaders: "draft-7",
   legacyHeaders: false,
   skip: req => req.path === "/health" || req.method === "OPTIONS",

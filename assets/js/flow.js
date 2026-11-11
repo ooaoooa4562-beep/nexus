@@ -941,7 +941,7 @@
    }
    canvas.addEventListener('dragover',e=>{e.preventDefault();if(e.dataTransfer)e.dataTransfer.dropEffect='copy';});
    canvas.addEventListener('drop',dropOnCanvas);
-   const setZoom=value=>{workspaceZoom=Math.max(.35,Math.min(2,Math.round(value*100)/100));canvas.style.zoom=String(workspaceZoom);$('#flowZoomLabel').textContent=Math.round(workspaceZoom*100)+'%';};
+   const setZoom=value=>{workspaceZoom=Math.max(.35,Math.min(2,Math.round(value*100)/100));nodeLayer.style.zoom=String(workspaceZoom);$('#flowZoomLabel').textContent=Math.round(workspaceZoom*100)+'%';};
    $('#flowZoomIn').addEventListener('click',()=>setZoom(workspaceZoom+.1));
    $('#flowZoomOut').addEventListener('click',()=>setZoom(workspaceZoom-.1));
    $('#flowCenterView').addEventListener('click',()=>{canvas.scrollTo({left:0,top:0,behavior:'smooth'});setZoom(1);});

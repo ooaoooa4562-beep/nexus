@@ -55,7 +55,6 @@
 - `assets/js/app.js`
 - `assets/js/terminal.js`
 - `assets/js/storage.js`
-- `assets/js/flow.js`
 - `assets/js/monitor.js`
 - `assets/js/network.js`
 - `assets/js/extensions.js`

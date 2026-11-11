@@ -333,7 +333,7 @@
  }
  function variableFieldMode(blockType){
   const type=typeAliases[blockType]||blockType;
-  return ['change','add','subtract','multiply','divide','if','ifElse','repeatUntil'].includes(type)?'number':'any';
+  return ['change','add','subtract','multiply','divide','if','ifElse','while','repeatUntil'].includes(type)?'number':'any';
  }
  function parseExpression(source,variables={},label='expression'){
   const input=String(source??'').trim();

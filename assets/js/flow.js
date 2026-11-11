@@ -327,6 +327,7 @@
   if(!['number','text','boolean'].includes(targetType))throw Error('Unknown variable type "'+targetType+'".');
   if(!Object.prototype.hasOwnProperty.call(variables,variableName))throw Error('Variable "'+variableName+'" does not exist.');
   const current=readVariableRecord(variables,variableName);
+  if(current.constant)throw Error('Cannot change the type of constant "'+variableName+'".');
   const converted=convertVariableValue(current.value,current.type,targetType);
   variables[variableName]={type:targetType,value:converted,constant:current.constant===true};
   return variables[variableName];

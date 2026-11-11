@@ -728,8 +728,7 @@
       el.append(add,star);palette.append(el);
      });
      if(!filtered.length){const empty=document.createElement('div');empty.className='flow-palette-empty';empty.textContent=category==='lists'?'List blocks are scheduled for the next interpreter pass.':category==='audio'?'Audio blocks are scheduled for the next interpreter pass.':category==='network'?'Network blocks are scheduled for the next interpreter pass.':category==='favorites'?'No favorite blocks yet. Press ☆ beside a block to save it.':'No blocks match this search.';palette.append(empty);}
-     if(category==='myBlocks'){
-     if(category==='myBlocks'){
+     if(category==='myBlocks'||category==='functions'){
       const matches=procedures.filter(procedure=>!query||('call '+procedure.name).toLowerCase().includes(query));
       matches.forEach(procedure=>{
        const el=document.createElement('button');el.className='code-block myBlocks graph-library-block';el.draggable=true;el.textContent='call '+procedure.name;

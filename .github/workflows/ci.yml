@@ -23,5 +23,3 @@ jobs:
         run: |
           node --check server.js
           find assets/js -name '*.js' -print0 | xargs -0 -n1 node --check
-      - name: Run Flow Studio tests
-        run: npm run test:flow

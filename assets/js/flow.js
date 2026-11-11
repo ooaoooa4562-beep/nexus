@@ -471,6 +471,9 @@
    const MAX_STEPS=100000,MAX_DEPTH=40;
    const $=s=>root.querySelector(s),canvas=$('#graphCanvas'),nodeLayer=$('#graphNodes'),wireSvg=$('#graphWires'),palette=$('#scratchPalette'),out=$('#scratchOutput'),sprite=$('#stageSprite'),bubble=$('#stageBubble');
    const characterSelect=$('#stageCharacter');
+   let selectedBlockId=null,workspaceZoom=1,history=[],historyIndex=-1,restoringHistory=false;
+   const snapshot=()=>JSON.stringify({nodes,links,procedures,variables:vars,character});
+   const updateHistoryButtons=()=>{const u=$('#flowUndo'),r=$('#flowRedo');if(u)u.disabled=historyIndex<=0;if(r)r.disabled=historyIndex<0||historyIndex>=history.length-1;};
    if(root._flowLifecycleObserver)root._flowLifecycleObserver.disconnect();
    const lifecycleObserver=typeof MutationObserver==='function'?new MutationObserver(()=>{
     if(running&&(root.hidden||!$('#flowRun'))){stopFlag=true;if(runAbort)runAbort.abort();}
@@ -483,10 +486,16 @@
    const countBlocks=list=>list.reduce((sum,n)=>sum+countBlock(n),0);
    const save=()=>{
     try{
+     const current=snapshot();
+     if(!restoringHistory&&history[historyIndex]!==current){history=history.slice(0,historyIndex+1);history.push(current);if(history.length>100)history.shift();historyIndex=history.length-1;}
      localStorage.setItem(KEY,JSON.stringify({version:6,nodes,links,procedures,variables:vars,character}));
-     $('#blockCount').textContent=countBlocks(nodes)+' BLOCKS · '+links.length+' WIRES';
+     const count=$('#blockCount');if(count)count.textContent=countBlocks(nodes)+' BLOCKS · '+links.length+' WIRES';
+     const state=$('#flowSaveState');if(state)state.textContent='✓ SAVED LOCALLY';
+     updateHistoryButtons();
     }catch(e){log('Save error: '+e.message);}
    };
+   function applyHistory(index){if(index<0||index>=history.length)return;restoringHistory=true;const data=JSON.parse(history[index]);nodes=data.nodes||[];links=data.links||[];procedures=data.procedures||[];vars=data.variables||defaultVariables();character=data.character||'🐱';historyIndex=index;selectedBlockId=null;updateVars();render();renderPalette();updateSprite();saveWithoutHistory();restoringHistory=false;updateHistoryButtons();}
+   function saveWithoutHistory(){localStorage.setItem(KEY,JSON.stringify({version:6,nodes,links,procedures,variables:vars,character}));const state=$('#flowSaveState');if(state)state.textContent='✓ SAVED LOCALLY';}
    function renderVariableManager(){
     const list=$('#flowVariableList'),options=$('#flowVariableOptions');
     if(!list||!options)return;
@@ -823,7 +832,8 @@
     const card=document.createElement('div');
     card.className='graph-node '+d.cat+(nested?' nested-node':'')+(isReporter(n.type)?' reporter-node':'')+(containerTypes.has(n.type)?' graph-container':'');
     card.dataset.id=n.id;
-    if(!nested){card.style.left=n.x+'px';card.style.top=n.y+'px';}
+    if(!nested){card.style.left=n.x+'px';card.style.top=n.y+'px';if(selectedBlockId===n.id)card.classList.add('flow-selected');}
+    card.addEventListener('click',e=>{if(e.target.closest('button,input,select'))return;selectedBlockId=n.id;render();renderInspector();});
     if(!nested){
      const top=document.createElement('button');top.className='graph-port input-port';top.dataset.node=n.id;top.dataset.side='in';top.title='Input connector';top.addEventListener('click',()=>connectPort(n,'in'));card.append(top);
     }
@@ -876,7 +886,7 @@
       const sx=e.clientX,sy=e.clientY,ox=n.x,oy=n.y;
       card.setPointerCapture(e.pointerId);
       const move=ev=>{
-       n.x=Math.max(0,ox+ev.clientX-sx);n.y=Math.max(0,oy+ev.clientY-sy);try{const p=JSON.parse(localStorage.getItem('nexus.settings.v1')||'{}').extras||{};if(p.flowSnapGrid){n.x=Math.round(n.x/20)*20;n.y=Math.round(n.y/20)*20;}}catch{}
+       n.x=ox+(ev.clientX-sx)/workspaceZoom;n.y=oy+(ev.clientY-sy)/workspaceZoom;try{const p=JSON.parse(localStorage.getItem('nexus.settings.v1')||'{}').extras||{};if(p.flowSnapGrid){n.x=Math.round(n.x/20)*20;n.y=Math.round(n.y/20)*20;}}catch{}
        card.style.left=n.x+'px';card.style.top=n.y+'px';drawWires();
       };
       const up=()=>{card.removeEventListener('pointermove',move);card.removeEventListener('pointerup',up);card.removeEventListener('pointercancel',up);save();};
@@ -894,12 +904,21 @@
      $('#blockCount').textContent=countBlocks(nodes)+' BLOCKS · '+links.length+' WIRES';
      renderPorts();renderProcedureManager();
     if(typeof requestAnimationFrame==='function')requestAnimationFrame(drawWires);else drawWires();
+    renderInspector();
+   }
+   function renderInspector(){
+    const panel=$('#flowInspector');if(!panel)return;panel.replaceChildren();
+    const block=selectedBlockId?findBlock(selectedBlockId):null;
+    if(!block){const empty=document.createElement('div');empty.className='flow2-inspector-empty';empty.textContent='Select a block on the workspace or choose a character below.';panel.append(empty);return;}
+    const d=def(block.type)||{label:block.type,fields:[]};const heading=document.createElement('b');heading.textContent=d.label;heading.style.cssText='display:block;font-size:11px;margin-bottom:10px;color:#e7eaf4';panel.append(heading);
+    (d.fields||[]).forEach(([key,fallback])=>{const label=document.createElement('label');label.style.cssText='display:grid;gap:5px;margin:8px 0;color:#98a5bb;font:9px var(--mono)';label.textContent=key.toUpperCase();let input=document.createElement('input');input.type='text';input.value=block.fields?.[key]??fallback;input.style.cssText='width:100%;padding:7px 8px;border:1px solid #3a455b;border-radius:5px;background:#222938;color:#e5eaf4';input.addEventListener('change',()=>{block.fields[key]=input.value;save();render();});label.append(input);panel.append(label);});
+    const hint=document.createElement('small');hint.textContent='Block ID: '+block.id;hint.style.cssText='display:block;margin-top:12px;color:#77849a;font:8px var(--mono)';panel.append(hint);
    }
    function dropOnCanvas(e){
     e.preventDefault();
     const blockId=e.dataTransfer.getData('application/x-nexus-block');
     const rect=canvas.getBoundingClientRect();
-    let px=Math.max(8,e.clientX-rect.left+canvas.scrollLeft-105),py=Math.max(8,e.clientY-rect.top+canvas.scrollTop-25);
+    let px=Math.max(8,(e.clientX-rect.left+canvas.scrollLeft-105)/workspaceZoom),py=Math.max(8,(e.clientY-rect.top+canvas.scrollTop-25)/workspaceZoom);
     try{const p=JSON.parse(localStorage.getItem('nexus.settings.v1')||'{}').extras||{};if(p.flowSnapGrid){px=Math.round(px/20)*20;py=Math.round(py/20)*20;}}catch{}
     if(blockId){
      const block=findBlock(blockId);if(!block)return;
@@ -922,6 +941,11 @@
    }
    canvas.addEventListener('dragover',e=>{e.preventDefault();if(e.dataTransfer)e.dataTransfer.dropEffect='copy';});
    canvas.addEventListener('drop',dropOnCanvas);
+   const setZoom=value=>{workspaceZoom=Math.max(.35,Math.min(2,Math.round(value*100)/100));canvas.style.zoom=String(workspaceZoom);$('#flowZoomLabel').textContent=Math.round(workspaceZoom*100)+'%';};
+   $('#flowZoomIn').addEventListener('click',()=>setZoom(workspaceZoom+.1));
+   $('#flowZoomOut').addEventListener('click',()=>setZoom(workspaceZoom-.1));
+   $('#flowCenterView').addEventListener('click',()=>{canvas.scrollTo({left:0,top:0,behavior:'smooth'});setZoom(1);});
+   canvas.addEventListener('pointerdown',e=>{if(e.target!==canvas&&e.target.id!=='graphEmpty')return;const sx=e.clientX,sy=e.clientY,left=canvas.scrollLeft,top=canvas.scrollTop;const move=ev=>{canvas.scrollLeft=left-(ev.clientX-sx);canvas.scrollTop=top-(ev.clientY-sy);};const up=()=>{canvas.removeEventListener('pointermove',move);canvas.removeEventListener('pointerup',up);canvas.removeEventListener('pointercancel',up);};canvas.setPointerCapture(e.pointerId);canvas.addEventListener('pointermove',move);canvas.addEventListener('pointerup',up);canvas.addEventListener('pointercancel',up);});
    cats.forEach(([id,name])=>{
     const b=document.createElement('button');b.className='category-button '+id;b.textContent=name;
     b.addEventListener('click',()=>{
@@ -1141,6 +1165,8 @@
     renderPorts();
    });
    $('#deleteLinks').addEventListener('click',()=>{links=[];pending=null;save();render();$('#graphStatus').textContent='All top-level wires removed.';});
+   $('#flowUndo').addEventListener('click',()=>applyHistory(historyIndex-1));
+   $('#flowRedo').addEventListener('click',()=>applyHistory(historyIndex+1));
    $('#flowRun').addEventListener('click',run);
    $('#flowStop').addEventListener('click',requestStop);
    $('#flowSave').addEventListener('click',()=>{save();log('✓ Project saved locally');});

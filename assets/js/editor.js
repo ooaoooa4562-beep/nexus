@@ -27,7 +27,7 @@
   const createFile=async()=>{if(!state.repo){notice('Choose a repository from the selector above.',true);return;}const path=prompt('New file path (example: src/main.py):');if(!path)return;try{const d=await request('/api/files',{method:'POST',body:JSON.stringify({repository:state.repo,path,content:'',branch:state.branch||undefined,message:'Create '+path+' via NEXUS Code Editor'})});notice('Created '+d.path);await loadTree();await openFile(path);}catch(e){notice(e.message,true);}};
   const createFolder=async()=>{if(!state.repo){notice('Select a repository in Terminal first.',true);return;}const path=prompt('New folder path (example: src/utils):');if(!path)return;try{const d=await request('/api/files',{method:'POST',body:JSON.stringify({repository:state.repo,path:path.replace(/\/$/,'')+'/.gitkeep',content:'',branch:state.branch||undefined,message:'Create folder '+path+' via NEXUS Code Editor'})});notice('Created folder '+path);await loadTree();}catch(e){notice(e.message,true);}};
   const manageGithub=async()=>{
-   const choice=prompt('GITHUB MANAGER\\n1 — Create repository\\n2 — Edit repository settings\\n3 — Delete repository\\n4 — Create branch\\n5 — Delete branch\\n\\nEnter 1–5:');
+   const choice=prompt('GITHUB MANAGER\n1 — Create repository\n2 — Edit repository settings\n3 — Delete repository\n4 — Create branch\n5 — Delete branch\n\nEnter 1–5:');
    if(!choice)return;
    try{
     if(choice==='1'){
@@ -36,7 +36,7 @@
      const isPrivate=confirm('Create as PRIVATE? Choose Cancel for PUBLIC.');
      const autoInit=confirm('Initialize with a README?');
      const d=await request('/api/repos',{method:'POST',body:JSON.stringify({name,description,private:isPrivate,autoInit})});
-     state.repo=d.repository;state.branch='';localStorage.setItem('nexus.github.repository',state.repo);localStorage.removeItem('nexus.github.branch');state.tabs=[];state.active=null;persistTabs();renderTabs();setRepoLabel();await loadRepositories();$('#ideRepoPicker').value=state.repo;await loadTree();notice('Created repository '+d.repository);
+     state.repo=d.repository;state.branch='';localStorage.setItem('nexus.github.repository',state.repo);localStorage.removeItem('nexus.github.branch');state.tabs=[];state.active=null;persistTabs();renderTabs();$('#codeEditor').hidden=true;$('#ideWelcome').hidden=false;setRepoLabel();await loadRepositories();$('#ideRepoPicker').value=state.repo;await loadTree();notice('Created repository '+d.repository);
      if(d.htmlUrl)window.open(d.htmlUrl,'_blank','noopener');
      return;
     }
@@ -61,16 +61,16 @@
      const name=prompt('New branch name (example: feature/login):');if(!name)return;
      const from=prompt('Create from branch (leave blank for current/default):',state.branch)||undefined;
      const d=await request('/api/branches',{method:'POST',body:JSON.stringify({repository:state.repo,name,from})});
-     state.branch=d.branch;localStorage.setItem('nexus.github.branch',d.branch);setRepoLabel();state.tabs=[];state.active=null;persistTabs();renderTabs();await loadTree();notice('Created and switched to '+d.branch);return;
+     state.branch=d.branch;localStorage.setItem('nexus.github.branch',d.branch);setRepoLabel();state.tabs=[];state.active=null;persistTabs();renderTabs();$('#codeEditor').hidden=true;$('#ideWelcome').hidden=false;await loadTree();notice('Created and switched to '+d.branch);return;
     }
     if(choice==='5'){
      const d=await request('/api/branches?repository='+encodeURIComponent(state.repo));
      const branches=d.branches||[];if(!branches.length){notice('No branches found.');return;}
-     const name=prompt('Branch to delete (default branch cannot be deleted):\\n'+branches.map(b=>b.name+(b.protected?' [protected]':'')).join('\\n'));if(!name)return;
+     const name=prompt('Branch to delete (default branch cannot be deleted):\n'+branches.map(b=>b.name+(b.protected?' [protected]':'')).join('\n'));if(!name)return;
      if(!branches.some(b=>b.name===name)){notice('Branch not found: '+name,true);return;}
      if(!confirm('Delete branch '+name+'? This cannot be undone.'))return;
      await request('/api/branches?repository='+encodeURIComponent(state.repo)+'&name='+encodeURIComponent(name),{method:'DELETE'});
-     if(state.branch===name){state.branch='';localStorage.removeItem('nexus.github.branch');setRepoLabel();state.tabs=[];state.active=null;persistTabs();renderTabs();await loadTree();}
+     if(state.branch===name){state.branch='';localStorage.removeItem('nexus.github.branch');setRepoLabel();state.tabs=[];state.active=null;persistTabs();renderTabs();$('#codeEditor').hidden=true;$('#ideWelcome').hidden=false;await loadTree();}
      notice('Deleted branch '+name);return;
     }
     notice('Choose a number from 1 to 5.',true);

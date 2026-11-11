@@ -898,6 +898,8 @@
     return card;
    }
    function render(){
+     nodeLayer.style.width=Math.max(12000,...nodes.map(n=>(Number(n.x)||0)+2600))+'px';
+     nodeLayer.style.height=Math.max(9000,...nodes.map(n=>(Number(n.y)||0)+1800))+'px';
      nodeLayer.replaceChildren();
      nodes.forEach(n=>{const card=renderBlock(n,false);if(card)nodeLayer.append(card);});
      $('#graphEmpty').hidden=nodes.length>0;

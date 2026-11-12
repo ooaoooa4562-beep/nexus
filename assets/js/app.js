@@ -67,7 +67,7 @@
      if(!requests.incoming.length)empty(incoming,'No incoming requests.');
      requests.outgoing.forEach(r=>outgoing.append(userCard(r.user,'PENDING',null,'WAITING')));
      if(!requests.outgoing.length)empty(outgoing,'No outgoing requests.');
-     friends.friends.forEach(u=>friendBox.append(userCard(u,'REMOVE',async()=>{if(!confirm('Remove '+u.displayName+' from your friends?'))return;try{await apiCall('/api/social/friends/'+encodeURIComponent(u.id),{method:'DELETE'});setStatus('Friend removed.');await refreshSocial();}catch(e){setStatus(e.message,true);}})));
+     friends.friends.forEach(u=>friendBox.append(userCard(u,'REMOVE',async()=>{if(!await NEXUSDialogs.confirm('Remove '+u.displayName+' from your friends?',{title:'Remove friend',danger:true,confirmText:'Remove'}))return;try{await apiCall('/api/social/friends/'+encodeURIComponent(u.id),{method:'DELETE'});setStatus('Friend removed.');await refreshSocial();}catch(e){setStatus(e.message,true);}})));
      if(!friends.friends.length)empty(friendBox,'Your friends will appear here.');
     }catch(e){setStatus(e.message,true);}
    }

@@ -65,18 +65,18 @@ app.use((req, res, next) => {
   next();
 });
 
-// Global budget: no more than 5 backend requests per IP per rolling hour.
-// Health checks and CORS preflight requests are excluded so hosting and browsers work.
+// Short burst protection only; no restrictive hourly request quota.
+// Health checks and CORS preflight requests are excluded.
 const rateLimitReply = (req, res) => {
   recordIpViolation(clientIp(req));
   return res.status(429).json({
-    error: "Request limit reached: 5 requests per hour. Please try again later.",
+    error: "Too many requests. Please wait a moment and try again.",
     code: "RATE_LIMITED"
   });
 };
 const globalLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000,
-  limit: 5,
+  windowMs: 10 * 1000,
+  limit: 120,
   standardHeaders: "draft-7",
   legacyHeaders: false,
   skip: req => req.path === "/health" || req.method === "OPTIONS",

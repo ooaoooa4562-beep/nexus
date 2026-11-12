@@ -651,6 +651,8 @@ function requireSocialUser(req, res, next) {
 
 const dns = require("node:dns").promises;
 const net = require("node:net");
+const http = require("node:http");
+const https = require("node:https");
 let monitorSchemaReady;
 async function ensureMonitorSchema() {
   if (!pool) throw Object.assign(new Error("Persistent monitoring requires DATABASE_URL on the Render service."), { status: 503 });
@@ -673,6 +675,7 @@ function publicMonitorAddress(address) {
   if(net.isIP(address)===6){
     const value=address.toLowerCase();
     if(value.startsWith("::ffff:"))return publicMonitorAddress(value.slice(7));
+    if(value.startsWith("2001:db8:")||value.startsWith("2001:10:")||value.startsWith("2002:"))return false;
     const first=parseInt(value.split(":")[0]||"0",16);
     return first>=0x2000&&first<=0x3fff;
   }
@@ -712,16 +715,40 @@ async function persistMonitorCheck(monitor,result) {
   } catch(error){await client.query("ROLLBACK").catch(()=>{});throw error;}
   finally{client.release();}
 }
+async function requestMonitorTarget(target,checkKeyword) {
+  const url=new URL(target),host=url.hostname.replace(/^\[|\]$/g,"");
+  const addresses=await dns.lookup(host,{all:true,verbatim:true});
+  if(!addresses.length||addresses.some(item=>!publicMonitorAddress(item.address)))throw new Error("The website resolved to a private or reserved address.");
+  const transport=url.protocol==="https:"?https:http;
+  return await new Promise((resolve,reject)=>{
+    let body="",total=0,settled=false;
+    const req=transport.request(url,{method:"GET",headers:{"User-Agent":"NEXUS-Monitor/1.0","Accept":"text/html,application/json,text/plain,*/*"},lookup:(_hostname,options,callback)=>{
+      const candidates=addresses.filter(item=>!options.family||item.family===options.family);
+      const selected=candidates[0]||addresses[0];
+      if(options.all)callback(null,candidates.length?candidates:addresses);
+      else callback(null,selected.address,selected.family);
+    }},response=>{
+      response.on("data",chunk=>{
+        if(checkKeyword&&total<512*1024){const part=chunk.subarray(0,512*1024-total);body+=part.toString("utf8");}
+        total+=chunk.length;
+      });
+      response.on("end",()=>{if(!settled){settled=true;resolve({statusCode:response.statusCode||0,body});}});
+      response.on("error",error=>{if(!settled){settled=true;reject(error);}});
+    });
+    req.setTimeout(10000,()=>req.destroy(Object.assign(new Error("Request timed out after 10 seconds."),{name:"TimeoutError"})));
+    req.on("error",error=>{if(!settled){settled=true;reject(error);}});
+    req.end();
+  });
+}
 async function runMonitorCheck(monitor) {
   const started=Date.now();let result={status:"down",statusCode:null,latencyMs:0,error:""};
   try {
     const target=await validateMonitorUrl(monitor.url);
-    const response=await fetch(target,{method:"GET",redirect:"manual",signal:AbortSignal.timeout(10000),headers:{"User-Agent":"NEXUS-Monitor/1.0","Accept":"text/html,application/json,text/plain,*/*"}});
-    result.statusCode=response.status;
-    if(monitor.keyword&&response.status>=200&&response.status<400){const body=await limitedResponseText(response);if(!body.toLowerCase().includes(String(monitor.keyword).toLowerCase()))result.error="Expected keyword was not found.";}
-    else await response.body?.cancel().catch(()=>{});
-    result.latencyMs=Date.now()-started;result.status=response.status>=200&&response.status<400&&!result.error?"up":"down";
-    if(result.status==="down"&&!result.error)result.error="HTTP "+response.status;
+    const response=await requestMonitorTarget(target,Boolean(monitor.keyword));
+    result.statusCode=response.statusCode;
+    if(monitor.keyword&&response.statusCode>=200&&response.statusCode<400&&!response.body.toLowerCase().includes(String(monitor.keyword).toLowerCase()))result.error="Expected keyword was not found.";
+    result.latencyMs=Date.now()-started;result.status=response.statusCode>=200&&response.statusCode<400&&!result.error?"up":"down";
+    if(result.status==="down"&&!result.error)result.error="HTTP "+response.statusCode;
   } catch(error){result.latencyMs=Date.now()-started;result.error=error.name==="TimeoutError"||error.name==="AbortError"?"Request timed out after 10 seconds.":String(error.message||"Request failed").slice(0,240);}
   await persistMonitorCheck(monitor,result);
   return result;

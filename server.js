@@ -842,6 +842,30 @@ app.post("/api/monitor/cron",async(req,res)=>{
   catch(error){res.status(500).json({error:"Scheduled monitor checks failed."});}
 });
 
+app.post("/api/network/inspect",async(req,res)=>{
+  try {
+    const target=await validateMonitorUrl((req.body||{}).url);
+    const url=new URL(target),host=url.hostname.replace(/^\\[|\\]$/g,"");
+    const records=await dns.lookup(host,{all:true,verbatim:true});
+    const started=Date.now();
+    const response=await requestMonitorTarget(target,false);
+    res.json({
+      ok:true,
+      target,
+      host,
+      addresses:[...new Set(records.map(item=>item.address))],
+      protocol:url.protocol.replace(":","").toUpperCase(),
+      statusCode:response.statusCode,
+      latencyMs:Date.now()-started,
+      reachable:response.statusCode>=200&&response.statusCode<500,
+      checkedAt:new Date().toISOString()
+    });
+  } catch(error) {
+    res.status(error.status||400).json({error:String(error.message||"Network inspection failed.").slice(0,240)});
+  }
+});
+
+
 app.get("/api/profile", requireSocialUser, (req, res) => res.json({ profile: publicUser(req.nexusUser) }));
 app.put("/api/profile", requireSocialUser, async (req, res) => {
   try {

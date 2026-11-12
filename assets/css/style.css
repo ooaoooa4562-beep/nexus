@@ -446,3 +446,31 @@ body.editor-fullscreen .ide-terminal-dock[hidden]{display:none!important}
  body.editor-fullscreen .ide-editor-actions button{font-size:7px;padding:4px}
  body.editor-fullscreen .ide-statusbar{flex-wrap:nowrap;overflow:hidden}
 }
+
+/* NEXUS custom dialog system — replaces native browser prompt/confirm/alert */
+.nx-dialog-backdrop{position:fixed;inset:0;z-index:100000;display:grid;place-items:center;padding:20px;background:rgba(3,7,15,.72);backdrop-filter:blur(10px);opacity:0;transition:opacity .16s ease}
+.nx-dialog-backdrop.is-open{opacity:1}
+.nx-dialog{width:min(440px,100%);padding:22px;border:1px solid var(--ds-line-strong,#35445f);border-radius:17px;background:var(--user-panel,var(--ds-panel,#151a25));color:var(--ds-text,#eef2ff);box-shadow:0 28px 90px #0009,0 0 0 1px #ffffff08;transform:translateY(10px) scale(.985);transition:transform .18s cubic-bezier(.2,.8,.2,1);font-family:Inter,system-ui,sans-serif}
+.nx-dialog-backdrop.is-open .nx-dialog{transform:translateY(0) scale(1)}
+.nx-dialog-top{display:flex;align-items:center;gap:9px;margin-bottom:22px}
+.nx-dialog-mark{display:grid;place-items:center;width:29px;height:29px;border:1px solid color-mix(in srgb,var(--user-accent,#9b7bff) 55%,transparent);border-radius:9px;color:var(--user-accent,#b69aff);font-weight:800;font-size:14px}
+.nx-dialog-mark span{color:var(--user-accent,#b69aff)}
+.nx-dialog-kicker{font:9px 'DM Mono',monospace;letter-spacing:1.3px;color:var(--ds-muted,#8794aa)}
+.nx-dialog-x{margin-left:auto;width:30px;height:30px;border:1px solid var(--ds-line,#30394a);border-radius:8px;background:transparent;color:var(--ds-muted,#9ba8bd);font-size:19px;cursor:pointer}
+.nx-dialog-icon{display:grid;place-items:center;width:36px;height:36px;margin-bottom:13px;border-radius:11px;background:color-mix(in srgb,var(--user-accent,#9b7bff) 15%,transparent);color:var(--user-accent,#b69aff);font-weight:700}
+.nx-dialog:has(.is-danger) .nx-dialog-icon{background:#f05c701c;color:#ff8292}
+.nx-dialog h2{margin:0 0 8px;font-size:18px;letter-spacing:-.35px;color:var(--ds-text,#f2f4fb)}
+.nx-dialog-message{margin:0;color:var(--ds-muted,#9ba8bd);font-size:12px;line-height:1.7;white-space:pre-wrap;overflow-wrap:anywhere}
+.nx-dialog-input{width:100%;height:43px;margin-top:18px;padding:0 13px;border:1px solid var(--user-accent,#9274e8);border-radius:10px;outline:0;background:var(--user-bg,var(--ds-bg,#0c1018));color:var(--ds-text,#f2f4fb);font:12px 'DM Mono',monospace;box-shadow:0 0 0 3px color-mix(in srgb,var(--user-accent,#9274e8) 13%,transparent)}
+.nx-dialog-input:focus{border-color:var(--user-accent,#b69aff);box-shadow:0 0 0 4px color-mix(in srgb,var(--user-accent,#9274e8) 18%,transparent)}
+.nx-dialog-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:22px}
+.nx-dialog-actions button{min-width:88px;height:36px;padding:0 14px;border:1px solid var(--ds-line-strong,#3a465c);border-radius:9px;font-size:11px;font-weight:650;cursor:pointer;transition:transform .15s,background .15s,border-color .15s}
+.nx-dialog-actions button:hover{transform:translateY(-1px)}
+.nx-dialog-cancel{background:transparent;color:var(--ds-text,#e8edf8)}
+.nx-dialog-submit{border-color:var(--user-accent,#9676ed)!important;background:var(--user-accent,#9676ed);color:white}
+.nx-dialog-submit.is-danger{border-color:#d94d65!important;background:#d94d65}
+body.light-mode .nx-dialog{background:#fff;color:#243149;border-color:#d7e0ed}
+body.light-mode .nx-dialog h2{color:#243149}
+body.light-mode .nx-dialog-input{background:#f6f8fc;color:#243149}
+body.light-mode .nx-dialog-cancel{color:#34445e}
+@media(max-width:520px){.nx-dialog{padding:19px;border-radius:14px}.nx-dialog-backdrop{padding:14px}.nx-dialog-actions button{flex:1}}

@@ -1169,7 +1169,7 @@ app.get("/api/storage/files/:id/download", requireStorageUser, driveRequireConfi
   try {
     const file = await driveGetOwned(req.storageOwner, req.params.id);
     if (!file || file.is_folder || file.trashed_at) return res.status(404).json({ error: "File not found." });
-    res.json({ url: await driveSignedUrl(file.object_path, 180), name: file.name, mimeType: file.mime_type });
+    res.json({ url: await driveSignedUrl(file.object_path, 180), downloadUrl: (await driveSignedUrl(file.object_path, 180)) + "?download=" + encodeURIComponent(file.name), name: file.name, mimeType: file.mime_type });
   } catch (error) { res.status(error.status || 500).json({ error: error.message || "Could not prepare download." }); }
 });
 app.patch("/api/storage/files/:id", requireStorageUser, driveRequireConfig, async (req, res) => {

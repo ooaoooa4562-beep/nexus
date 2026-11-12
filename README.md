@@ -10,9 +10,11 @@
 - Runs inside the browser; it is not an operating-system shell.
 
 ### Storage
-- Create, edit, search and delete text records.
-- Import and export JSON.
-- Data persists in browser localStorage, not on a server.
+- Private cloud file storage backed by the Supabase `nexus-drive` bucket.
+- Create folders, upload/download files, search, preview images/PDF/text, star, rename and move items to Trash.
+- Share individual files with expiring links; restore or permanently delete items.
+- Per-account isolation is enforced by the NEXUS backend. Upload limit: 50 MB per file.
+- Existing browser-local records remain available for export and can be uploaded as a JSON archive.
 
 ### Code Editor
 - GitHub repository explorer with directory navigation.
@@ -67,7 +69,7 @@ Open `index.html` in a modern browser. No local build step is required. GitHub P
 ## Limitations
 - Terminal is a browser command simulator, not an operating-system shell.
 - Arithmetic expressions remain Number-only; Text and Boolean values must be handled through compatible reporters and typed assignments.
-- Storage records are local to the browser profile. Clearing site data may remove them.
+- Cloud Storage requires `SUPABASE_SECRET_KEY` on the Render backend. Keep this key server-side; never add it to GitHub Pages or commit it.
 - Dashboard activity metrics are illustrative.
 - The code editor currently supports text files up to 1 MB and uses GitHub as its file backend.
 

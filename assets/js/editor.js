@@ -22,19 +22,19 @@
   const openFolder=(path,row)=>loadTree(path,row);
   const openFile=async path=>{let tab=state.tabs.find(t=>t.path===path);if(tab){activate(path);return;}try{state.loading=true;updateStatus();const d=await request('/api/file?repository='+encodeURIComponent(state.repo)+'&path='+encodeURIComponent(path)+(state.branch?'&branch='+encodeURIComponent(state.branch):''));tab={path:d.path,sha:d.sha,content:d.content,savedContent:d.content,dirty:false};state.tabs.push(tab);state.files.push({name:path.split('/').pop(),path,type:'file'});activate(path);persistTabs();}catch(e){notice(e.message,true);}finally{state.loading=false;updateStatus();}};
   const activate=path=>{const tab=state.tabs.find(t=>t.path===path);if(!tab)return;state.active=path;$('#ideWelcome').hidden=true;$('#codeEditor').hidden=false;if(state.editor){state.editor.setValue(tab.content,-1);state.editor.session.setMode('ace/mode/'+modeFor(path));state.editor.clearSelection();}renderTabs();updateStatus();if(state.editor)state.editor.focus();};
-  const closeTab=path=>{const tab=state.tabs.find(t=>t.path===path);if(!tab)return;if((pref('workspaceConfirmClose')||tab.dirty)&&!confirm((tab.dirty?'Discard unsaved changes in ':'Close ')+path+'?'))return;state.tabs=state.tabs.filter(t=>t.path!==path);if(state.active===path){state.active=state.tabs.length?state.tabs[state.tabs.length-1].path:null;if(state.active)activate(state.active);else{$('#codeEditor').hidden=true;$('#ideWelcome').hidden=false;renderTabs();updateStatus();}}else renderTabs();};
-  const save=async()=>{const tab=selected();if(!tab||!tab.dirty)return;try{state.loading=true;updateStatus();let content=currentText();if(pref('editorFormatOnSave'))content=content.split('\\n').map(line=>line.replace(/[ \\t]+$/,'')).join('\\n').replace(/\\n*$/,'\\n');if(content!==currentText()){state.editor.setValue(content,-1);tab.content=content;}if(pref('githubDiffPreview')){const before=String(tab.savedContent||'').split('\\n'),after=content.split('\\n');let changed=0;for(let i=0;i<Math.max(before.length,after.length);i++)if(before[i]!==after[i])changed++;if(!confirm('Diff preview: '+changed+' changed lines in '+tab.path+'. Continue with GitHub save?'))return;}const d=await request('/api/files',{method:'PUT',body:JSON.stringify({repository:state.repo,path:tab.path,content,sha:tab.sha,branch:state.branch||undefined,message:'Update '+tab.path+' via NEXUS Code Editor'})});tab.sha=d.sha;tab.content=currentText();tab.savedContent=tab.content;tab.dirty=false;notice('Saved '+tab.path+' to GitHub');await loadTree();}catch(e){notice(e.message,true);}finally{state.loading=false;updateStatus();renderTabs();}};
-  const createFile=async()=>{if(!state.repo){notice('Choose a repository from the selector above.',true);return;}const path=prompt('New file path (example: src/main.py):');if(!path)return;try{const d=await request('/api/files',{method:'POST',body:JSON.stringify({repository:state.repo,path,content:'',branch:state.branch||undefined,message:'Create '+path+' via NEXUS Code Editor'})});notice('Created '+d.path);await loadTree();await openFile(path);}catch(e){notice(e.message,true);}};
-  const createFolder=async()=>{if(!state.repo){notice('Select a repository in Terminal first.',true);return;}const path=prompt('New folder path (example: src/utils):');if(!path)return;try{const d=await request('/api/files',{method:'POST',body:JSON.stringify({repository:state.repo,path:path.replace(/\/$/,'')+'/.gitkeep',content:'',branch:state.branch||undefined,message:'Create folder '+path+' via NEXUS Code Editor'})});notice('Created folder '+path);await loadTree();}catch(e){notice(e.message,true);}};
+  const closeTab=async path=>{const tab=state.tabs.find(t=>t.path===path);if(!tab)return;if((pref('workspaceConfirmClose')||tab.dirty)&&!await NEXUSDialogs.confirm((tab.dirty?'Discard unsaved changes in ':'Close ')+path+'?',{title:tab.dirty?'Unsaved changes':'Close file',danger:tab.dirty,confirmText:tab.dirty?'Discard':'Close'}))return;state.tabs=state.tabs.filter(t=>t.path!==path);if(state.active===path){state.active=state.tabs.length?state.tabs[state.tabs.length-1].path:null;if(state.active)activate(state.active);else{$('#codeEditor').hidden=true;$('#ideWelcome').hidden=false;renderTabs();updateStatus();}}else renderTabs();};
+  const save=async()=>{const tab=selected();if(!tab||!tab.dirty)return;try{state.loading=true;updateStatus();let content=currentText();if(pref('editorFormatOnSave'))content=content.split('\\n').map(line=>line.replace(/[ \\t]+$/,'')).join('\\n').replace(/\\n*$/,'\\n');if(content!==currentText()){state.editor.setValue(content,-1);tab.content=content;}if(pref('githubDiffPreview')){const before=String(tab.savedContent||'').split('\\n'),after=content.split('\\n');let changed=0;for(let i=0;i<Math.max(before.length,after.length);i++)if(before[i]!==after[i])changed++;if(!await NEXUSDialogs.confirm('Diff preview: '+changed+' changed lines in '+tab.path+'. Continue with GitHub save?',{title:'Review changes',confirmText:'Save to GitHub'}))return;}const d=await request('/api/files',{method:'PUT',body:JSON.stringify({repository:state.repo,path:tab.path,content,sha:tab.sha,branch:state.branch||undefined,message:'Update '+tab.path+' via NEXUS Code Editor'})});tab.sha=d.sha;tab.content=currentText();tab.savedContent=tab.content;tab.dirty=false;notice('Saved '+tab.path+' to GitHub');await loadTree();}catch(e){notice(e.message,true);}finally{state.loading=false;updateStatus();renderTabs();}};
+  const createFile=async()=>{if(!state.repo){notice('Choose a repository from the selector above.',true);return;}const path=await NEXUSDialogs.prompt('Choose a path for the new file.', '', {title:'Create file',placeholder:'src/main.py',confirmText:'Create'});if(!path)return;try{const d=await request('/api/files',{method:'POST',body:JSON.stringify({repository:state.repo,path,content:'',branch:state.branch||undefined,message:'Create '+path+' via NEXUS Code Editor'})});notice('Created '+d.path);await loadTree();await openFile(path);}catch(e){notice(e.message,true);}};
+  const createFolder=async()=>{if(!state.repo){notice('Select a repository in Terminal first.',true);return;}const path=await NEXUSDialogs.prompt('Choose a path for the new folder.', '', {title:'Create folder',placeholder:'src/utils',confirmText:'Create'});if(!path)return;try{const d=await request('/api/files',{method:'POST',body:JSON.stringify({repository:state.repo,path:path.replace(/\/$/,'')+'/.gitkeep',content:'',branch:state.branch||undefined,message:'Create folder '+path+' via NEXUS Code Editor'})});notice('Created folder '+path);await loadTree();}catch(e){notice(e.message,true);}};
   const manageGithub=async()=>{
    const choice=prompt('GITHUB MANAGER\n1 — Create repository\n2 — Edit repository settings\n3 — Delete repository\n4 — Create branch\n5 — Delete branch\n\nEnter 1–5:');
    if(!choice)return;
    try{
     if(choice==='1'){
-     const name=prompt('New repository name (without owner):');if(!name)return;
-     const description=prompt('Short description (optional):')||'';
-     const isPrivate=confirm('Create as PRIVATE? Choose Cancel for PUBLIC.');
-     const autoInit=confirm('Initialize with a README?');
+     const name=await NEXUSDialogs.prompt('Enter a name for your repository.', '', {title:'New repository',placeholder:'my-project',confirmText:'Next'});if(!name)return;
+     const description=await NEXUSDialogs.prompt('Add a short description (optional).', '', {title:'Repository description',placeholder:'What is this project about?'})||'';
+     const isPrivate=await NEXUSDialogs.confirm('A private repository is visible only to you and invited collaborators. Choose Cancel to create a public repository.',{title:'Repository visibility',confirmText:'Private'});
+     const autoInit=await NEXUSDialogs.confirm('Create the repository with an initial README file?',{title:'Initialize repository',confirmText:'Add README'});
      const d=await request('/api/repos',{method:'POST',body:JSON.stringify({name,description,private:isPrivate,autoInit})});
      state.repo=d.repository;state.branch='';localStorage.setItem('nexus.github.repository',state.repo);localStorage.removeItem('nexus.github.branch');state.tabs=[];state.active=null;persistTabs();renderTabs();$('#codeEditor').hidden=true;$('#ideWelcome').hidden=false;setRepoLabel();await loadRepositories();$('#ideRepoPicker').value=state.repo;await loadTree();notice('Created repository '+d.repository);
      if(d.htmlUrl)window.open(d.htmlUrl,'_blank','noopener');
@@ -43,23 +43,23 @@
     if(!state.repo){notice('Select a repository first.',true);return;}
     if(choice==='2'){
      const current=await request('/api/repo?repository='+encodeURIComponent(state.repo));
-     const name=prompt('Repository name:',current.name);if(name===null)return;
-     const description=prompt('Description:',current.description);if(description===null)return;
-     const homepage=prompt('Homepage URL (leave blank to clear):',current.homepage);if(homepage===null)return;
-     const visibility=prompt('Visibility: private or public',current.private?'private':'public');if(visibility===null)return;
+     const name=await NEXUSDialogs.prompt('Update the repository name.',current.name,{title:'Edit repository',placeholder:'repository-name'});if(name===null)return;
+     const description=await NEXUSDialogs.prompt('Update the repository description.',current.description,{title:'Edit description'});if(description===null)return;
+     const homepage=await NEXUSDialogs.prompt('Set a homepage URL, or leave it blank to clear it.',current.homepage,{title:'Repository homepage',placeholder:'https://example.com'});if(homepage===null)return;
+     const visibility=await NEXUSDialogs.prompt('Enter either private or public.',current.private?'private':'public',{title:'Repository visibility',placeholder:'private / public'});if(visibility===null)return;
      if(!['private','public'].includes(visibility.trim().toLowerCase())){notice('Visibility must be private or public.',true);return;}
      const d=await request('/api/repos',{method:'PATCH',body:JSON.stringify({repository:state.repo,name:name.trim(),description,homepage,private:visibility.trim().toLowerCase()==='private'})});
      const old=state.repo;state.repo=d.repository;localStorage.setItem('nexus.github.repository',state.repo);setRepoLabel();await loadRepositories();$('#ideRepoPicker').value=state.repo;await loadTree();notice('Updated '+old+' → '+d.repository);return;
     }
     if(choice==='3'){
-     const confirmation=prompt('This permanently deletes '+state.repo+' and its contents. Type the exact repository name to confirm:');
+     const confirmation=await NEXUSDialogs.prompt('This permanently deletes '+state.repo+' and all its contents. Type the exact repository name to continue.', '', {title:'Delete repository',placeholder:state.repo,confirmText:'Delete'});
      if(confirmation!==state.repo)return;
      await request('/api/repos',{method:'DELETE',body:JSON.stringify({repository:state.repo,confirmRepository:confirmation})});
      state.repo='';state.branch='';state.tabs=[];state.active=null;localStorage.removeItem('nexus.github.repository');localStorage.removeItem('nexus.github.branch');persistTabs();renderTabs();setRepoLabel();await loadRepositories();$('#ideTree').innerHTML='<div class="ide-empty">Repository deleted. Select or create another repository.</div>';$('#codeEditor').hidden=true;$('#ideWelcome').hidden=false;notice('Deleted repository '+confirmation);return;
     }
     if(choice==='4'){
-     const name=prompt('New branch name (example: feature/login):');if(!name)return;
-     const from=prompt('Create from branch (leave blank for current/default):',state.branch)||undefined;
+     const name=await NEXUSDialogs.prompt('Enter a name for the new branch.', '', {title:'Create branch',placeholder:'feature/login',confirmText:'Create'});if(!name)return;
+     const from=await NEXUSDialogs.prompt('Choose the source branch, or leave blank for the current/default branch.',state.branch,{title:'Branch source',placeholder:'main'})||undefined;
      const d=await request('/api/branches',{method:'POST',body:JSON.stringify({repository:state.repo,name,from})});
      state.branch=d.branch;localStorage.setItem('nexus.github.branch',d.branch);setRepoLabel();state.tabs=[];state.active=null;persistTabs();renderTabs();$('#codeEditor').hidden=true;$('#ideWelcome').hidden=false;await loadTree();notice('Created and switched to '+d.branch);return;
     }
@@ -68,7 +68,7 @@
      const branches=d.branches||[];if(!branches.length){notice('No branches found.');return;}
      const name=prompt('Branch to delete (default branch cannot be deleted):\n'+branches.map(b=>b.name+(b.protected?' [protected]':'')).join('\n'));if(!name)return;
      if(!branches.some(b=>b.name===name)){notice('Branch not found: '+name,true);return;}
-     if(!confirm('Delete branch '+name+'? This cannot be undone.'))return;
+     if(!await NEXUSDialogs.confirm('Delete branch '+name+'? This cannot be undone.',{title:'Delete branch',danger:true,confirmText:'Delete branch'}))return;
      await request('/api/branches?repository='+encodeURIComponent(state.repo)+'&name='+encodeURIComponent(name),{method:'DELETE'});
      if(state.branch===name){state.branch='';localStorage.removeItem('nexus.github.branch');setRepoLabel();state.tabs=[];state.active=null;persistTabs();renderTabs();$('#codeEditor').hidden=true;$('#ideWelcome').hidden=false;await loadTree();}
      notice('Deleted branch '+name);return;

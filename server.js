@@ -648,6 +648,173 @@ function requireSocialUser(req, res, next) {
     res.status(error.status || 500).json({ error: error.status === 503 ? error.message : "Could not load your NEXUS account. Check database configuration." });
   });
 }
+
+const dns = require("node:dns").promises;
+const net = require("node:net");
+let monitorSchemaReady;
+async function ensureMonitorSchema() {
+  if (!pool) throw Object.assign(new Error("Persistent monitoring requires DATABASE_URL on the Render service."), { status: 503 });
+  if (!monitorSchemaReady) monitorSchemaReady = pool.query(
+    "CREATE TABLE IF NOT EXISTS nexus_monitors (id BIGSERIAL PRIMARY KEY, owner_github_id TEXT NOT NULL REFERENCES nexus_users(github_id) ON DELETE CASCADE, name VARCHAR(80) NOT NULL, url TEXT NOT NULL, interval_seconds INTEGER NOT NULL DEFAULT 300 CHECK (interval_seconds IN (300,600,900,3600)), keyword TEXT NOT NULL DEFAULT '', enabled BOOLEAN NOT NULL DEFAULT TRUE, last_status TEXT NOT NULL DEFAULT 'pending' CHECK (last_status IN ('pending','up','down')), last_status_code INTEGER, last_latency_ms INTEGER, last_error TEXT NOT NULL DEFAULT '', last_checked_at TIMESTAMPTZ, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW());" +
+    "CREATE INDEX IF NOT EXISTS nexus_monitors_owner_idx ON nexus_monitors(owner_github_id,created_at DESC);" +
+    "CREATE INDEX IF NOT EXISTS nexus_monitors_due_idx ON nexus_monitors(enabled,last_checked_at);" +
+    "CREATE TABLE IF NOT EXISTS nexus_monitor_checks (id BIGSERIAL PRIMARY KEY, monitor_id BIGINT NOT NULL REFERENCES nexus_monitors(id) ON DELETE CASCADE, status TEXT NOT NULL CHECK (status IN ('up','down')), status_code INTEGER, latency_ms INTEGER, error TEXT NOT NULL DEFAULT '', checked_at TIMESTAMPTZ NOT NULL DEFAULT NOW());" +
+    "CREATE INDEX IF NOT EXISTS nexus_monitor_checks_history_idx ON nexus_monitor_checks(monitor_id,checked_at DESC);" +
+    "CREATE TABLE IF NOT EXISTS nexus_monitor_incidents (id BIGSERIAL PRIMARY KEY, monitor_id BIGINT NOT NULL REFERENCES nexus_monitors(id) ON DELETE CASCADE, reason TEXT NOT NULL DEFAULT '', started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), resolved_at TIMESTAMPTZ);"
+  ).catch(error => { monitorSchemaReady = null; throw error; });
+  await monitorSchemaReady;
+}
+function publicMonitorAddress(address) {
+  if (net.isIP(address) === 4) {
+    const p=address.split(".").map(Number),a=p[0],b=p[1],c=p[2];
+    if(a===0||a===10||a===127||a>=224||(a===169&&b===254)||(a===172&&b>=16&&b<=31)||(a===192&&(b===168||(b===0&&c<=2)))||(a===100&&b>=64&&b<=127)||(a===198&&(b===18||b===19||b===51))||(a===203&&b===0&&c===113))return false;
+    return true;
+  }
+  if(net.isIP(address)===6){
+    const value=address.toLowerCase();
+    if(value.startsWith("::ffff:"))return publicMonitorAddress(value.slice(7));
+    const first=parseInt(value.split(":")[0]||"0",16);
+    return first>=0x2000&&first<=0x3fff;
+  }
+  return false;
+}
+async function validateMonitorUrl(value) {
+  let url;
+  try { url=new URL(String(value||"").trim()); } catch { throw Object.assign(new Error("Enter a valid website URL."),{status:400}); }
+  const host=url.hostname.replace(/^\[|\]$/g,"");
+  if(!["http:","https:"].includes(url.protocol)||url.username||url.password||(url.port&&!["80","443"].includes(url.port))||!host||host==="localhost"||host.endsWith(".local")||host.endsWith(".internal"))
+    throw Object.assign(new Error("Only public HTTP/HTTPS websites on ports 80 and 443 can be monitored."),{status:400});
+  let addresses;
+  try { addresses=await dns.lookup(host,{all:true,verbatim:true}); } catch { throw Object.assign(new Error("The website hostname could not be resolved."),{status:400}); }
+  if(!addresses.length||addresses.some(item=>!publicMonitorAddress(item.address)))throw Object.assign(new Error("Private, local and reserved network addresses cannot be monitored."),{status:400});
+  url.hash="";
+  return url.toString();
+}
+async function limitedResponseText(response,maxBytes=512*1024) {
+  if(!response.body)return "";
+  const reader=response.body.getReader(),chunks=[];let total=0;
+  try { while(total<maxBytes){const part=await reader.read();if(part.done)break;const chunk=part.value.subarray(0,maxBytes-total);chunks.push(Buffer.from(chunk));total+=chunk.byteLength;if(chunk.byteLength<part.value.byteLength)break;} }
+  finally { await reader.cancel().catch(()=>{}); }
+  return Buffer.concat(chunks).toString("utf8");
+}
+async function persistMonitorCheck(monitor,result) {
+  const client=await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const current=await client.query("SELECT last_status FROM nexus_monitors WHERE id=$1 FOR UPDATE",[monitor.id]);
+    if(!current.rows.length){await client.query("ROLLBACK");return;}
+    const previous=current.rows[0].last_status;
+    await client.query("INSERT INTO nexus_monitor_checks (monitor_id,status,status_code,latency_ms,error) VALUES ($1,$2,$3,$4,$5)",[monitor.id,result.status,result.statusCode,result.latencyMs,result.error]);
+    await client.query("UPDATE nexus_monitors SET last_status=$2,last_status_code=$3,last_latency_ms=$4,last_error=$5,last_checked_at=NOW(),updated_at=NOW() WHERE id=$1",[monitor.id,result.status,result.statusCode,result.latencyMs,result.error]);
+    if(result.status==="down"&&previous!=="down")await client.query("INSERT INTO nexus_monitor_incidents (monitor_id,reason) VALUES ($1,$2)",[monitor.id,result.error||("HTTP "+result.statusCode)]);
+    else if(result.status==="up"&&previous==="down")await client.query("UPDATE nexus_monitor_incidents SET resolved_at=NOW() WHERE monitor_id=$1 AND resolved_at IS NULL",[monitor.id]);
+    await client.query("COMMIT");
+  } catch(error){await client.query("ROLLBACK").catch(()=>{});throw error;}
+  finally{client.release();}
+}
+async function runMonitorCheck(monitor) {
+  const started=Date.now();let result={status:"down",statusCode:null,latencyMs:0,error:""};
+  try {
+    const target=await validateMonitorUrl(monitor.url);
+    const response=await fetch(target,{method:"GET",redirect:"manual",signal:AbortSignal.timeout(10000),headers:{"User-Agent":"NEXUS-Monitor/1.0","Accept":"text/html,application/json,text/plain,*/*"}});
+    result.statusCode=response.status;
+    if(monitor.keyword&&response.status>=200&&response.status<400){const body=await limitedResponseText(response);if(!body.toLowerCase().includes(String(monitor.keyword).toLowerCase()))result.error="Expected keyword was not found.";}
+    else await response.body?.cancel().catch(()=>{});
+    result.latencyMs=Date.now()-started;result.status=response.status>=200&&response.status<400&&!result.error?"up":"down";
+    if(result.status==="down"&&!result.error)result.error="HTTP "+response.status;
+  } catch(error){result.latencyMs=Date.now()-started;result.error=error.name==="TimeoutError"||error.name==="AbortError"?"Request timed out after 10 seconds.":String(error.message||"Request failed").slice(0,240);}
+  await persistMonitorCheck(monitor,result);
+  return result;
+}
+async function runDueMonitorChecks() {
+  if(!pool)return {checked:0};
+  await ensureMonitorSchema();
+  const client=await pool.connect();let due=[];
+  try {
+    await client.query("BEGIN");
+    const selected=await client.query("SELECT * FROM nexus_monitors WHERE enabled=TRUE AND (last_checked_at IS NULL OR last_checked_at<=NOW()-make_interval(secs=>interval_seconds)) ORDER BY last_checked_at NULLS FIRST LIMIT 10 FOR UPDATE SKIP LOCKED");
+    due=selected.rows;
+    for(const item of due)await client.query("UPDATE nexus_monitors SET last_checked_at=NOW() WHERE id=$1",[item.id]);
+    await client.query("COMMIT");
+  } catch(error){await client.query("ROLLBACK").catch(()=>{});throw error;}
+  finally{client.release();}
+  const outcomes=await Promise.all(due.map(item=>runMonitorCheck(item).catch(error=>{console.error("[NEXUS monitor check]",item.id,error.message);return null;})));
+  return {checked:outcomes.filter(Boolean).length};
+}
+app.get("/api/monitors",requireSocialUser,async(req,res)=>{
+  try {
+    await ensureMonitorSchema();
+    const result=await pool.query("SELECT m.id,m.name,m.url,m.interval_seconds,m.keyword,m.enabled,m.last_status,m.last_status_code,m.last_latency_ms,m.last_error,m.last_checked_at,m.created_at,COALESCE(s.uptime_pct,100)::numeric(5,2) AS uptime_24h,COALESCE(s.checks_count,0)::int AS checks_24h,COALESCE(i.open_count,0)::int AS open_incidents FROM nexus_monitors m LEFT JOIN LATERAL (SELECT ROUND(100.0*COUNT(*) FILTER(WHERE status='up')/NULLIF(COUNT(*),0),2) AS uptime_pct,COUNT(*) AS checks_count FROM nexus_monitor_checks c WHERE c.monitor_id=m.id AND c.checked_at>NOW()-INTERVAL '24 hours') s ON TRUE LEFT JOIN LATERAL (SELECT COUNT(*) AS open_count FROM nexus_monitor_incidents x WHERE x.monitor_id=m.id AND x.resolved_at IS NULL) i ON TRUE WHERE m.owner_github_id=$1 ORDER BY m.created_at DESC",[req.nexusUser.github_id]);
+    res.json({monitors:result.rows});
+  } catch(error){res.status(error.status||500).json({error:error.message||"Could not load monitors."});}
+});
+app.post("/api/monitors",requireSocialUser,async(req,res)=>{
+  try {
+    await ensureMonitorSchema();
+    const body=req.body||{},name=String(body.name||"").trim(),keyword=String(body.keyword||"").trim();
+    if(!name||name.length>80)return res.status(400).json({error:"Monitor name must contain 1–80 characters."});
+    if(keyword.length>100)return res.status(400).json({error:"Keyword must be 100 characters or fewer."});
+    const interval=Number(body.intervalSeconds||300);
+    if(![300,600,900,3600].includes(interval))return res.status(400).json({error:"Choose a check interval of 5, 10, 15 or 60 minutes."});
+    const url=await validateMonitorUrl(body.url);
+    const saved=await pool.query("INSERT INTO nexus_monitors (owner_github_id,name,url,interval_seconds,keyword) VALUES ($1,$2,$3,$4,$5) RETURNING id,name,url,interval_seconds,keyword,enabled,last_status,last_checked_at",[req.nexusUser.github_id,name,url,interval,keyword]);
+    res.status(201).json({ok:true,monitor:saved.rows[0]});
+  } catch(error){res.status(error.status||500).json({error:error.message||"Could not create monitor."});}
+});
+app.patch("/api/monitors/:id",requireSocialUser,async(req,res)=>{
+  try {
+    await ensureMonitorSchema();
+    if(!/^\d+$/.test(req.params.id))return res.status(400).json({error:"Invalid monitor ID."});
+    const body=req.body||{},fields=[],values=[req.params.id,req.nexusUser.github_id];
+    if(typeof body.enabled==="boolean"){values.push(body.enabled);fields.push("enabled=$"+values.length);}
+    if(typeof body.name==="string"){const name=body.name.trim();if(!name||name.length>80)return res.status(400).json({error:"Monitor name must contain 1–80 characters."});values.push(name);fields.push("name=$"+values.length);}
+    if(body.intervalSeconds!==undefined){const interval=Number(body.intervalSeconds);if(![300,600,900,3600].includes(interval))return res.status(400).json({error:"Invalid check interval."});values.push(interval);fields.push("interval_seconds=$"+values.length);}
+    if(typeof body.keyword==="string"){if(body.keyword.length>100)return res.status(400).json({error:"Keyword must be 100 characters or fewer."});values.push(body.keyword.trim());fields.push("keyword=$"+values.length);}
+    if(!fields.length)return res.status(400).json({error:"No monitor settings supplied."});
+    const result=await pool.query("UPDATE nexus_monitors SET "+fields.join(",")+",updated_at=NOW() WHERE id=$1 AND owner_github_id=$2 RETURNING id,enabled,name,interval_seconds,keyword",values);
+    if(!result.rows.length)return res.status(404).json({error:"Monitor not found."});
+    res.json({ok:true,monitor:result.rows[0]});
+  } catch(error){res.status(error.status||500).json({error:error.message||"Could not update monitor."});}
+});
+app.delete("/api/monitors/:id",requireSocialUser,async(req,res)=>{
+  try {
+    await ensureMonitorSchema();
+    if(!/^\d+$/.test(req.params.id))return res.status(400).json({error:"Invalid monitor ID."});
+    const result=await pool.query("DELETE FROM nexus_monitors WHERE id=$1 AND owner_github_id=$2 RETURNING id",[req.params.id,req.nexusUser.github_id]);
+    if(!result.rows.length)return res.status(404).json({error:"Monitor not found."});
+    res.json({ok:true,deleted:result.rows[0].id});
+  } catch(error){res.status(error.status||500).json({error:error.message||"Could not delete monitor."});}
+});
+app.post("/api/monitors/:id/check",requireSocialUser,async(req,res)=>{
+  try {
+    await ensureMonitorSchema();
+    if(!/^\d+$/.test(req.params.id))return res.status(400).json({error:"Invalid monitor ID."});
+    const found=await pool.query("SELECT * FROM nexus_monitors WHERE id=$1 AND owner_github_id=$2",[req.params.id,req.nexusUser.github_id]);
+    if(!found.rows.length)return res.status(404).json({error:"Monitor not found."});
+    const result=await runMonitorCheck(found.rows[0]);res.json({ok:true,result});
+  } catch(error){res.status(error.status||500).json({error:error.message||"Monitor check failed."});}
+});
+app.get("/api/monitors/:id/history",requireSocialUser,async(req,res)=>{
+  try {
+    await ensureMonitorSchema();
+    if(!/^\d+$/.test(req.params.id))return res.status(400).json({error:"Invalid monitor ID."});
+    const owned=await pool.query("SELECT id FROM nexus_monitors WHERE id=$1 AND owner_github_id=$2",[req.params.id,req.nexusUser.github_id]);
+    if(!owned.rows.length)return res.status(404).json({error:"Monitor not found."});
+    const [checks,incidents]=await Promise.all([
+      pool.query("SELECT status,status_code,latency_ms,error,checked_at FROM nexus_monitor_checks WHERE monitor_id=$1 ORDER BY checked_at DESC LIMIT 50",[req.params.id]),
+      pool.query("SELECT reason,started_at,resolved_at FROM nexus_monitor_incidents WHERE monitor_id=$1 ORDER BY started_at DESC LIMIT 20",[req.params.id])
+    ]);
+    res.json({checks:checks.rows,incidents:incidents.rows});
+  } catch(error){res.status(error.status||500).json({error:error.message||"Could not load monitor history."});}
+});
+app.post("/api/monitor/cron",async(req,res)=>{
+  const secret=String(process.env.MONITOR_CRON_SECRET||"");
+  if(!secret)return res.status(503).json({error:"Monitor cron secret is not configured."});
+  if(!safeEqual(req.headers["x-monitor-secret"],secret))return res.status(403).json({error:"Forbidden."});
+  try{res.json({ok:true,...await runDueMonitorChecks()});}
+  catch(error){res.status(500).json({error:"Scheduled monitor checks failed."});}
+});
+
 app.get("/api/profile", requireSocialUser, (req, res) => res.json({ profile: publicUser(req.nexusUser) }));
 app.put("/api/profile", requireSocialUser, async (req, res) => {
   try {
@@ -779,6 +946,8 @@ async function startServer() {
       throw error;
     }
   }
+  const monitorTimer = setInterval(() => runDueMonitorChecks().catch(error => console.error("[NEXUS monitor scheduler]", error.message)), 30_000);
+  monitorTimer.unref();
   const server = app.listen(PORT, "0.0.0.0", () => console.log("NEXUS GitHub API listening on " + PORT));
   server.requestTimeout = 15000;
   server.headersTimeout = 10000;

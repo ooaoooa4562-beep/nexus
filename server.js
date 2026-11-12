@@ -982,6 +982,261 @@ async function migrateExistingDataToNeon() {
   }
 }
 
+
+const DRIVE_BUCKET = "nexus-drive";
+const SUPABASE_URL = String(process.env.SUPABASE_URL || "https://lpxtfybphywzocywdynu.supabase.co").replace(/\/+$/, "");
+function driveConfigured() { return Boolean(process.env.SUPABASE_SECRET_KEY); }
+function storageOwnerKey(session) {
+  if (session.githubId) return "github:" + String(session.githubId);
+  if (session.googleId) return "google:" + String(session.googleId);
+  if (session.email) return "email:" + crypto.createHash("sha256").update(String(session.email).trim().toLowerCase()).digest("hex");
+  throw Object.assign(new Error("This account does not have a supported storage identity. Sign in again."), { status: 401 });
+}
+function requireStorageUser(req, res, next) {
+  const session = getSession(req);
+  if (!session) return res.status(401).json({ error: "Sign in to NEXUS to use cloud storage.", code: "AUTH_REQUIRED" });
+  try { req.storageSession = session; req.storageOwner = storageOwnerKey(session); next(); }
+  catch (error) { res.status(error.status || 401).json({ error: error.message }); }
+}
+function driveRequireConfig(req, res, next) {
+  if (!driveConfigured()) return res.status(503).json({ error: "Cloud Storage is not configured yet. Add SUPABASE_SECRET_KEY to the Render environment.", code: "STORAGE_NOT_CONFIGURED" });
+  next();
+}
+function driveHeaders(extra = {}) {
+  const key = process.env.SUPABASE_SECRET_KEY || "";
+  return { apikey: key, Authorization: "Bearer " + key, ...extra };
+}
+async function driveRest(path, options = {}) {
+  if (!driveConfigured()) throw Object.assign(new Error("Cloud Storage is not configured on the server."), { status: 503 });
+  const response = await fetch(SUPABASE_URL + path, {
+    ...options,
+    headers: driveHeaders({ ...(options.body && !(options.body instanceof Buffer) ? { "Content-Type": "application/json" } : {}), ...(options.headers || {}) }),
+    signal: options.signal || AbortSignal.timeout(20000)
+  });
+  const raw = await response.text();
+  let data = null;
+  try { data = raw ? JSON.parse(raw) : null; } catch { data = raw; }
+  if (!response.ok) {
+    const message = data && (data.message || data.error || data.msg) || "Cloud storage request failed (" + response.status + ").";
+    throw Object.assign(new Error(String(message).slice(0, 220)), { status: response.status >= 400 && response.status < 500 ? response.status : 502 });
+  }
+  return data;
+}
+function drivePath(path) { return String(path).split("/").map(encodeURIComponent).join("/"); }
+function driveName(value) {
+  const name = String(value || "").trim();
+  if (!name || name.length > 255 || /[\/\\\u0000-\u001f]/.test(name) || name === "." || name === "..")
+    throw Object.assign(new Error("File name must be 1–255 characters and cannot contain slashes."), { status: 400 });
+  return name;
+}
+function driveQuery(values) {
+  const params = new URLSearchParams(values);
+  return "?" + params.toString();
+}
+async function driveGetOwned(owner, id) {
+  const rows = await driveRest("/rest/v1/nexus_drive_files" + driveQuery({
+    select: "*", id: "eq." + id, owner_key: "eq." + owner, limit: "1"
+  }));
+  return Array.isArray(rows) ? rows[0] || null : null;
+}
+async function driveParent(owner, parentId) {
+  if (!parentId) return null;
+  if (typeof parentId !== "string" || !/^[0-9a-f-]{36}$/i.test(parentId))
+    throw Object.assign(new Error("Invalid destination folder."), { status: 400 });
+  const folder = await driveGetOwned(owner, parentId);
+  if (!folder || !folder.is_folder || folder.trashed_at) throw Object.assign(new Error("Destination folder was not found."), { status: 404 });
+  return folder;
+}
+async function driveInsert(row) {
+  const rows = await driveRest("/rest/v1/nexus_drive_files", {
+    method: "POST", headers: { Prefer: "return=representation" }, body: JSON.stringify(row)
+  });
+  return Array.isArray(rows) ? rows[0] : rows;
+}
+async function drivePatch(owner, id, patch) {
+  const rows = await driveRest("/rest/v1/nexus_drive_files" + driveQuery({
+    id: "eq." + id, owner_key: "eq." + owner, select: "*"
+  }), { method: "PATCH", headers: { Prefer: "return=representation" }, body: JSON.stringify({ ...patch, updated_at: new Date().toISOString() }) });
+  return Array.isArray(rows) ? rows[0] || null : null;
+}
+async function driveDeleteObject(path) {
+  if (!path) return;
+  await driveRest("/storage/v1/object/" + DRIVE_BUCKET, {
+    method: "DELETE", body: JSON.stringify({ prefixes: [path] })
+  });
+}
+async function driveDeleteTree(owner, id, depth = 0) {
+  if (depth > 40) throw Object.assign(new Error("Folder nesting is too deep to delete safely."), { status: 400 });
+  const item = await driveGetOwned(owner, id);
+  if (!item) return false;
+  if (item.is_folder) {
+    const children = await driveRest("/rest/v1/nexus_drive_files" + driveQuery({
+      select: "id", owner_key: "eq." + owner, parent_id: "eq." + id, limit: "1000"
+    }));
+    for (const child of (children || [])) await driveDeleteTree(owner, child.id, depth + 1);
+  } else if (item.object_path) {
+    await driveDeleteObject(item.object_path);
+  }
+  await driveRest("/rest/v1/nexus_drive_files" + driveQuery({ id: "eq." + id, owner_key: "eq." + owner }), { method: "DELETE" });
+  return true;
+}
+async function driveSignedUrl(path, expiresIn = 180) {
+  const result = await driveRest("/storage/v1/object/sign/" + DRIVE_BUCKET + "/" + drivePath(path), {
+    method: "POST", body: JSON.stringify({ expiresIn })
+  });
+  const signed = result && (result.signedURL || result.signedUrl);
+  if (!signed) throw new Error("Could not create a secure file link.");
+  return signed.startsWith("http") ? signed : SUPABASE_URL + signed;
+}
+app.get("/api/storage/status", requireStorageUser, (req, res) => {
+  res.json({ configured: driveConfigured(), provider: "Supabase Storage", bucket: DRIVE_BUCKET, maxFileBytes: 50 * 1024 * 1024 });
+});
+app.get("/api/storage/files", requireStorageUser, driveRequireConfig, async (req, res) => {
+  try {
+    const owner = req.storageOwner, view = String(req.query.view || "files"), parent = String(req.query.parent || "");
+    const values = { select: "*", owner_key: "eq." + owner, order: "is_folder.desc,name.asc", limit: "1000" };
+    if (view === "trash") values.trashed_at = "not.is.null";
+    else {
+      values.trashed_at = "is.null";
+      if (view === "starred") values.is_starred = "eq.true";
+      else if (parent) { await driveParent(owner, parent); values.parent_id = "eq." + parent; }
+      else values.parent_id = "is.null";
+    }
+    const files = await driveRest("/rest/v1/nexus_drive_files" + driveQuery(values));
+    const usage = await driveRest("/rest/v1/nexus_drive_files" + driveQuery({
+      select: "size_bytes", owner_key: "eq." + owner, is_folder: "eq.false", trashed_at: "is.null", limit: "1000"
+    }));
+    const usedBytes = (usage || []).reduce((sum, item) => sum + Number(item.size_bytes || 0), 0);
+    res.json({ files: files || [], usedBytes, fileCount: (usage || []).length, maxFileBytes: 50 * 1024 * 1024 });
+  } catch (error) { res.status(error.status || 500).json({ error: error.message || "Could not list cloud files." }); }
+});
+app.get("/api/storage/search", requireStorageUser, driveRequireConfig, async (req, res) => {
+  try {
+    const q = String(req.query.q || "").trim().slice(0, 100);
+    if (!q) return res.json({ files: [] });
+    const files = await driveRest("/rest/v1/nexus_drive_files" + driveQuery({
+      select: "*", owner_key: "eq." + req.storageOwner, trashed_at: "is.null",
+      name: "ilike.*" + q.replace(/[\\*%_,()]/g, " ") + "*", order: "updated_at.desc", limit: "100"
+    }));
+    res.json({ files: files || [] });
+  } catch (error) { res.status(error.status || 500).json({ error: error.message || "Search failed." }); }
+});
+app.post("/api/storage/folders", requireStorageUser, driveRequireConfig, async (req, res) => {
+  try {
+    const name = driveName((req.body || {}).name), parentId = (req.body || {}).parentId || null;
+    await driveParent(req.storageOwner, parentId);
+    const folder = await driveInsert({ owner_key: req.storageOwner, parent_id: parentId, name, is_folder: true });
+    res.status(201).json({ ok: true, file: folder });
+  } catch (error) { res.status(error.status || 500).json({ error: error.message || "Could not create folder." }); }
+});
+app.post("/api/storage/upload", requireStorageUser, driveRequireConfig, express.raw({ type: "application/octet-stream", limit: "50mb" }), async (req, res) => {
+  let objectPath = "";
+  try {
+    if (!Buffer.isBuffer(req.body) || !req.body.length) return res.status(400).json({ error: "Choose a non-empty file to upload." });
+    if (req.body.length > 50 * 1024 * 1024) return res.status(413).json({ error: "Files are limited to 50 MB each." });
+    let name = "";
+    try { name = decodeURIComponent(String(req.headers["x-file-name"] || "")); } catch { name = ""; }
+    name = driveName(name);
+    const parentId = String(req.headers["x-parent-id"] || "") || null;
+    await driveParent(req.storageOwner, parentId);
+    const mime = String(req.headers["x-file-type"] || "application/octet-stream").slice(0, 150);
+    const id = crypto.randomUUID();
+    const ownerFolder = crypto.createHash("sha256").update(req.storageOwner).digest("hex").slice(0, 28);
+    objectPath = ownerFolder + "/" + id + "/" + name;
+    await driveRest("/storage/v1/object/" + DRIVE_BUCKET + "/" + drivePath(objectPath), {
+      method: "POST", headers: { "Content-Type": mime, "x-upsert": "false", "cache-control": "3600" }, body: req.body
+    });
+    const file = await driveInsert({
+      id, owner_key: req.storageOwner, parent_id: parentId, name, object_path: objectPath,
+      mime_type: mime, size_bytes: req.body.length, is_folder: false
+    });
+    res.status(201).json({ ok: true, file });
+  } catch (error) {
+    if (objectPath) await driveDeleteObject(objectPath).catch(() => {});
+    res.status(error.status || 500).json({ error: error.message || "Upload failed." });
+  }
+});
+app.get("/api/storage/files/:id/download", requireStorageUser, driveRequireConfig, async (req, res) => {
+  try {
+    const file = await driveGetOwned(req.storageOwner, req.params.id);
+    if (!file || file.is_folder || file.trashed_at) return res.status(404).json({ error: "File not found." });
+    res.json({ url: await driveSignedUrl(file.object_path, 180), name: file.name, mimeType: file.mime_type });
+  } catch (error) { res.status(error.status || 500).json({ error: error.message || "Could not prepare download." }); }
+});
+app.patch("/api/storage/files/:id", requireStorageUser, driveRequireConfig, async (req, res) => {
+  try {
+    const file = await driveGetOwned(req.storageOwner, req.params.id);
+    if (!file) return res.status(404).json({ error: "File not found." });
+    const body = req.body || {}, patch = {};
+    if (body.name !== undefined) patch.name = driveName(body.name);
+    if (typeof body.is_starred === "boolean") patch.is_starred = body.is_starred;
+    if (body.parentId !== undefined) {
+      await driveParent(req.storageOwner, body.parentId || null);
+      if (file.is_folder && body.parentId === file.id) return res.status(400).json({ error: "A folder cannot be moved into itself." });
+      patch.parent_id = body.parentId || null;
+    }
+    if (!Object.keys(patch).length) return res.status(400).json({ error: "No changes supplied." });
+    const saved = await drivePatch(req.storageOwner, req.params.id, patch);
+    if (!saved) return res.status(404).json({ error: "File not found." });
+    res.json({ ok: true, file: saved });
+  } catch (error) { res.status(error.status || 500).json({ error: error.message || "Could not update file." }); }
+});
+app.post("/api/storage/files/:id/trash", requireStorageUser, driveRequireConfig, async (req, res) => {
+  try {
+    const file = await driveGetOwned(req.storageOwner, req.params.id);
+    if (!file) return res.status(404).json({ error: "File not found." });
+    const saved = await drivePatch(req.storageOwner, req.params.id, { trashed_at: new Date().toISOString() });
+    res.json({ ok: true, file: saved });
+  } catch (error) { res.status(error.status || 500).json({ error: error.message || "Could not move item to trash." }); }
+});
+app.post("/api/storage/files/:id/restore", requireStorageUser, driveRequireConfig, async (req, res) => {
+  try {
+    const file = await driveGetOwned(req.storageOwner, req.params.id);
+    if (!file || !file.trashed_at) return res.status(404).json({ error: "Trashed item not found." });
+    const saved = await drivePatch(req.storageOwner, req.params.id, { trashed_at: null });
+    res.json({ ok: true, file: saved });
+  } catch (error) { res.status(error.status || 500).json({ error: error.message || "Could not restore item." }); }
+});
+app.delete("/api/storage/files/:id", requireStorageUser, driveRequireConfig, async (req, res) => {
+  try {
+    const deleted = await driveDeleteTree(req.storageOwner, req.params.id);
+    if (!deleted) return res.status(404).json({ error: "File not found." });
+    res.json({ ok: true, deleted: req.params.id });
+  } catch (error) { res.status(error.status || 500).json({ error: error.message || "Could not permanently delete item." }); }
+});
+app.post("/api/storage/files/:id/share", requireStorageUser, driveRequireConfig, async (req, res) => {
+  try {
+    const file = await driveGetOwned(req.storageOwner, req.params.id);
+    if (!file || file.is_folder || file.trashed_at) return res.status(404).json({ error: "File not found." });
+    const token = crypto.randomBytes(32).toString("base64url");
+    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+    const expiresDays = Number((req.body || {}).expiresDays || 7);
+    const expiresAt = expiresDays === 0 ? null : new Date(Date.now() + Math.max(1, Math.min(365, expiresDays)) * 86400000).toISOString();
+    await driveRest("/rest/v1/nexus_drive_shares", {
+      method: "POST", headers: { Prefer: "return=minimal" },
+      body: JSON.stringify({ file_id: file.id, owner_key: req.storageOwner, token_hash: tokenHash, permission: "view", expires_at: expiresAt })
+    });
+    res.status(201).json({ ok: true, url: API_BASE_URL + "/api/storage/share/" + token, expiresAt });
+  } catch (error) { res.status(error.status || 500).json({ error: error.message || "Could not create share link." }); }
+});
+app.get("/api/storage/share/:token", driveRequireConfig, async (req, res) => {
+  try {
+    const token = String(req.params.token || "");
+    if (!/^[A-Za-z0-9_-]{40,60}$/.test(token)) return res.status(404).send("Share link not found.");
+    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+    const rows = await driveRest("/rest/v1/nexus_drive_shares" + driveQuery({
+      select: "file_id,owner_key,expires_at", token_hash: "eq." + tokenHash, limit: "1"
+    }));
+    const share = Array.isArray(rows) ? rows[0] : null;
+    if (!share || (share.expires_at && new Date(share.expires_at).getTime() <= Date.now())) return res.status(404).send("This share link has expired or is unavailable.");
+    const file = await driveGetOwned(share.owner_key, share.file_id);
+    if (!file || file.is_folder || file.trashed_at) return res.status(404).send("This file is no longer shared.");
+    const url = await driveSignedUrl(file.object_path, 120);
+    res.setHeader("Cache-Control", "no-store");
+    res.redirect(302, url);
+  } catch (error) { res.status(error.status || 500).send("Could not open this shared file."); }
+});
+
 app.use((error, _req, res, _next) => {
   console.error("[NEXUS API]", error.message);
   res.status(500).json({ error: "Internal server error." });

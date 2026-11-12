@@ -19,7 +19,7 @@
     prompt:(message,defaultValue='',options={})=>open({kind:'prompt',title:options.title||'Enter a value',message,value:defaultValue,placeholder:options.placeholder||'',confirmText:options.confirmText||'Continue',cancelText:options.cancelText||'Cancel'}),
     confirm:(message,options={})=>open({kind:'confirm',title:options.title||'Confirm action',message,confirmText:options.confirmText||'Confirm',cancelText:options.cancelText||'Cancel',danger:!!options.danger}),
     alert:(message,options={})=>open({kind:'alert',title:options.title||'Notice',message,confirmText:options.confirmText||'Got it'}),
-    guard:(event,message,options={})=>{const el=event.currentTarget;if(el.dataset.nxDialogReplay==='1'){delete el.dataset.nxDialogReplay;return true;}event.preventDefault();event.stopImmediatePropagation();api.confirm(message,options).then(ok=>{if(ok){el.dataset.nxDialogReplay='1';el.click();}});return false;}
+    guard:(event,message,options={})=>{const el=event.currentTarget;if(el.dataset.nxDialogReplay==='1')return true;event.preventDefault();event.stopImmediatePropagation();api.confirm(message,options).then(ok=>{if(ok){el.dataset.nxDialogReplay='1';el.click();queueMicrotask(()=>delete el.dataset.nxDialogReplay);}});return false;}
   };
   window.NEXUSDialogs=api;
 })();

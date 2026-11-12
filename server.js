@@ -1121,6 +1121,15 @@ app.get("/api/storage/search", requireStorageUser, driveRequireConfig, async (re
     res.json({ files: files || [] });
   } catch (error) { res.status(error.status || 500).json({ error: error.message || "Search failed." }); }
 });
+app.get("/api/storage/folders", requireStorageUser, driveRequireConfig, async (req, res) => {
+  try {
+    const folders = await driveRest("/rest/v1/nexus_drive_files" + driveQuery({
+      select: "id,name,parent_id", owner_key: "eq." + req.storageOwner,
+      is_folder: "eq.true", trashed_at: "is.null", order: "name.asc", limit: "1000"
+    }));
+    res.json({ folders: folders || [] });
+  } catch (error) { res.status(error.status || 500).json({ error: error.message || "Could not list folders." }); }
+});
 app.post("/api/storage/folders", requireStorageUser, driveRequireConfig, async (req, res) => {
   try {
     const name = driveName((req.body || {}).name), parentId = (req.body || {}).parentId || null;
@@ -1173,6 +1182,13 @@ app.patch("/api/storage/files/:id", requireStorageUser, driveRequireConfig, asyn
     if (body.parentId !== undefined) {
       await driveParent(req.storageOwner, body.parentId || null);
       if (file.is_folder && body.parentId === file.id) return res.status(400).json({ error: "A folder cannot be moved into itself." });
+      if (file.is_folder && body.parentId) {
+        let cursor = await driveGetOwned(req.storageOwner, body.parentId), depth = 0;
+        while (cursor && depth++ < 40) {
+          if (cursor.id === file.id) return res.status(400).json({ error: "A folder cannot be moved inside one of its own subfolders." });
+          cursor = cursor.parent_id ? await driveGetOwned(req.storageOwner, cursor.parent_id) : null;
+        }
+      }
       patch.parent_id = body.parentId || null;
     }
     if (!Object.keys(patch).length) return res.status(400).json({ error: "No changes supplied." });
@@ -1261,7 +1277,7 @@ async function startServer() {
   const monitorTimer = setInterval(() => runDueMonitorChecks().catch(error => console.error("[NEXUS monitor scheduler]", error.message)), 30_000);
   monitorTimer.unref();
   const server = app.listen(PORT, "0.0.0.0", () => console.log("NEXUS GitHub API listening on " + PORT));
-  server.requestTimeout = 15000;
+  server.requestTimeout = 120000;
   server.headersTimeout = 10000;
   server.keepAliveTimeout = 5000;
   server.on("error", error => console.error("[NEXUS server]", error.message));

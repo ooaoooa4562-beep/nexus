@@ -27,7 +27,7 @@
   const createFile=async()=>{if(!state.repo){notice('Choose a repository from the selector above.',true);return;}const path=await NEXUSDialogs.prompt('Choose a path for the new file.', '', {title:'Create file',placeholder:'src/main.py',confirmText:'Create'});if(!path)return;try{const d=await request('/api/files',{method:'POST',body:JSON.stringify({repository:state.repo,path,content:'',branch:state.branch||undefined,message:'Create '+path+' via NEXUS Code Editor'})});notice('Created '+d.path);await loadTree();await openFile(path);}catch(e){notice(e.message,true);}};
   const createFolder=async()=>{if(!state.repo){notice('Select a repository in Terminal first.',true);return;}const path=await NEXUSDialogs.prompt('Choose a path for the new folder.', '', {title:'Create folder',placeholder:'src/utils',confirmText:'Create'});if(!path)return;try{const d=await request('/api/files',{method:'POST',body:JSON.stringify({repository:state.repo,path:path.replace(/\/$/,'')+'/.gitkeep',content:'',branch:state.branch||undefined,message:'Create folder '+path+' via NEXUS Code Editor'})});notice('Created folder '+path);await loadTree();}catch(e){notice(e.message,true);}};
   const manageGithub=async()=>{
-   const choice=prompt('GITHUB MANAGER\n1 — Create repository\n2 — Edit repository settings\n3 — Delete repository\n4 — Create branch\n5 — Delete branch\n\nEnter 1–5:');
+   const choice=await NEXUSDialogs.prompt('Choose an action: 1 create repository · 2 edit settings · 3 delete repository · 4 create branch · 5 delete branch.','',{title:'GitHub manager',placeholder:'Enter 1–5'});
    if(!choice)return;
    try{
     if(choice==='1'){
@@ -66,7 +66,7 @@
     if(choice==='5'){
      const d=await request('/api/branches?repository='+encodeURIComponent(state.repo));
      const branches=d.branches||[];if(!branches.length){notice('No branches found.');return;}
-     const name=prompt('Branch to delete (default branch cannot be deleted):\n'+branches.map(b=>b.name+(b.protected?' [protected]':'')).join('\n'));if(!name)return;
+     const name=await NEXUSDialogs.prompt('Enter the exact branch name to delete. Protected and default branches cannot be deleted.','',{title:'Delete branch',placeholder:branches.map(b=>b.name).join(', ')});if(!name)return;
      if(!branches.some(b=>b.name===name)){notice('Branch not found: '+name,true);return;}
      if(!await NEXUSDialogs.confirm('Delete branch '+name+'? This cannot be undone.',{title:'Delete branch',danger:true,confirmText:'Delete branch'}))return;
      await request('/api/branches?repository='+encodeURIComponent(state.repo)+'&name='+encodeURIComponent(name),{method:'DELETE'});

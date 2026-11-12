@@ -973,6 +973,12 @@ async function startServer() {
       throw error;
     }
   }
+  // Initialize the social tables before monitor tables, which reference nexus_users.
+  if (pool) {
+    await ensureSchema();
+    await ensureMonitorSchema();
+    console.log("[NEXUS database] social and monitor schemas ready");
+  }
   const monitorTimer = setInterval(() => runDueMonitorChecks().catch(error => console.error("[NEXUS monitor scheduler]", error.message)), 30_000);
   monitorTimer.unref();
   const server = app.listen(PORT, "0.0.0.0", () => console.log("NEXUS GitHub API listening on " + PORT));

@@ -6,7 +6,7 @@
 <title>NEXUS — Developer Workspace</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/css/style.css?v=3.4.3">
+<link rel="stylesheet" href="assets/css/style.css?v=3.4.4">
 </head>
 <body>
 <div class="app-shell">
@@ -51,7 +51,7 @@
 <main class="main-content">
  <header class="topbar">
   <div class="topbar-left"><button class="mobile-menu" id="mobileMenu" aria-label="Toggle navigation">☰</button><div class="breadcrumbs"><span>NEXUS</span><i>/</i><b id="breadcrumb">Overview</b></div><span class="workspace-context"><i></i> PERSONAL WORKSPACE</span></div>
-  <div class="topbar-actions"><label class="global-search"><span>⌕</span><input id="globalSearch" placeholder="Search workspace..." aria-label="Search modules"><kbd>Ctrl K</kbd></label><span class="clock" id="clock">--:--:--</span><button class="icon-button" id="themeButton" title="Toggle appearance">◐</button><button class="top-avatar" id="topProfile" title="Open profile">N</button></div>
+  <div class="topbar-actions"><label class="global-search"><span>⌕</span><input id="globalSearch" placeholder="Search workspace..." aria-label="Search modules"><kbd>Ctrl K</kbd></label><span class="clock" id="clock">--:--:--</span><div class="pull-cord-switch" id="pullCordSwitch" title="Pull to change appearance"><div class="pull-lamp"><span class="pull-cap"></span><span class="pull-shade"></span><span class="pull-bulb"></span></div><svg class="pull-rope" viewBox="0 0 44 54" aria-hidden="true"><path id="pullRopePath" d="M22 0 Q22 24 22 43"></path></svg><button class="pull-handle" id="pullHandle" type="button" aria-label="Pull cord to toggle light and dark theme"><span></span></button></div><button class="icon-button" id="themeButton" title="Toggle appearance" hidden aria-hidden="true" tabindex="-1">◐</button><button class="top-avatar" id="topProfile" title="Open profile">N</button></div>
  </header>
  <div class="workspace-content">
   <section class="page active-page dashboard-page" id="overview">
@@ -98,5 +98,5 @@
 </main>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.6/ace.js"></script><script src="assets/js/dialogs.js?v=1.0.1"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.6/ext-language_tools.js"></script>
-<script src="assets/js/editor.js?v=1.4.6"></script><script src="assets/js/monitor.js?v=1.2.0"></script><script src="assets/js/network.js?v=1.2.0"></script><script src="assets/js/extensions.js?v=1.1.2"></script><script src="assets/js/motion.js?v=1.2.0"></script><script src="assets/js/preferences.js?v=1.0.6"></script><script src="assets/js/app.js?v=1.8.8"></script>
+<script src="assets/js/editor.js?v=1.4.6"></script><script src="assets/js/monitor.js?v=1.2.0"></script><script src="assets/js/network.js?v=1.2.0"></script><script src="assets/js/extensions.js?v=1.1.2"></script><script src="assets/js/motion.js?v=1.2.0"></script><script src="assets/js/preferences.js?v=1.0.6"></script><script src="assets/js/app.js?v=1.8.8"></script><script src="assets/js/pull-cord.js?v=1.0.0"></script>
 </body></html>

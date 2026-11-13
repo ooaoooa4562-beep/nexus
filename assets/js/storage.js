@@ -2,7 +2,7 @@
  const api=window.NEXUSModules=window.NEXUSModules||{};
  const API='https://nexus-github-api.onrender.com';
  const state={view:'files',parent:null,stack:[],files:[],usedBytes:0,configured:false,loading:false,query:'',list:false};
- const $=(root,selector)=>root.querySelector(selector);
+ const $=(selector,root)=>root.querySelector(selector);
  const bytes=n=>{n=Number(n)||0;if(n<1024)return n+' B';if(n<1048576)return(n/1024).toFixed(1)+' KB';if(n<1073741824)return(n/1048576).toFixed(1)+' MB';return(n/1073741824).toFixed(2)+' GB';};
  const date=s=>s?new Date(s).toLocaleDateString(undefined,{day:'numeric',month:'short',year:'numeric'}):'';
  const escapeHtml=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));

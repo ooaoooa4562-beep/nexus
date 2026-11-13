@@ -78,10 +78,11 @@
   function finish(event) {
     if (!pointer || (event && event.pointerId !== pointer.id)) return;
     const moved = pointer.moved;
+    const tugged = pullY >= 14;
     pointer = null;
     release();
     // A short tap acts like a normal switch; a deliberate downward tug also toggles it.
-    if (moved < 7 || pullY >= 14) toggle();
+    if (moved < 7 || tugged) toggle();
   }
   handle.addEventListener('pointerup', finish);
   handle.addEventListener('pointercancel', finish);

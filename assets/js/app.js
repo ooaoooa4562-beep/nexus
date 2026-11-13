@@ -10,7 +10,7 @@
   }
   return rawFetch(input,options);
  };
- const files={terminal:'terminal.js?v=1.0.2',storage:'storage.js?v=2.0.0',monitor:'monitor.js',network:'network.js?v=1.3.0',extensions:'extensions.js',editor:'editor.js'};
+ const files={terminal:'terminal.js?v=1.0.2',storage:'storage.js?v=2.0.1',monitor:'monitor.js',network:'network.js?v=1.3.0',extensions:'extensions.js',editor:'editor.js'};
  const ensure=(id,file)=>{window.NEXUSModules=window.NEXUSModules||{};if(window.NEXUSModules[id])return Promise.resolve();return new Promise((ok,no)=>{const s=document.createElement('script');s.src=new URL(file,base).href;s.onload=()=>window.NEXUSModules&&window.NEXUSModules[id]?ok():no(Error(id+' did not register'));s.onerror=()=>no(Error('Could not load '+file));document.head.append(s);});};
  Promise.all(Object.entries(files).map(([id,file])=>ensure(id,file))).then(start).catch(e=>{console.error('[NEXUS]',e);start(e);});
  async function start(loadError){

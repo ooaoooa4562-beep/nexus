@@ -23,8 +23,8 @@
   }
 
   function draw(x = pullX, y = pullY) {
-    const endY = 43 + y;
-    rope.setAttribute('d', `M22 0 Q${22 + x * .55} ${18 + y * .45} ${22 + x} ${endY}`);
+    const endY = 25 + y;
+    rope.setAttribute('d', `M22 0 Q${22 + x * .55} ${10 + y * .45} ${22 + x} ${endY}`);
     handle.style.transform = `translate(-50%, ${y}px)`;
     if (lamp) lamp.style.transform = `rotate(${Math.max(-.22, Math.min(.22, x * .012))}rad)`;
   }

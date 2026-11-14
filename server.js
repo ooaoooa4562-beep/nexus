@@ -1148,7 +1148,8 @@ app.post("/api/storage/upload", requireStorageUser, driveRequireConfig, express.
     name = driveName(name);
     const parentId = String(req.headers["x-parent-id"] || "") || null;
     await driveParent(req.storageOwner, parentId);
-    const mime = String(req.headers["x-file-type"] || "application/octet-stream").slice(0, 150);
+    const rawMime = String(req.headers["x-file-type"] || "application/octet-stream").trim().toLowerCase();
+    const mime = /^[a-z0-9!#const mime = String(req.headers["x-file-type"] || "application/octet-stream").slice(0, 150);^_.+-]+\/[a-z0-9!#const mime = String(req.headers["x-file-type"] || "application/octet-stream").slice(0, 150);^_.+-]+$/.test(rawMime) ? rawMime.slice(0, 150) : "application/octet-stream";
     const id = crypto.randomUUID();
     const ownerFolder = crypto.createHash("sha256").update(req.storageOwner).digest("hex").slice(0, 28);
     objectPath = ownerFolder + "/" + id + "/" + name;

@@ -420,6 +420,33 @@ app.get("/api/repo", requireSession, async (req, res) => {
     res.json({ repository: repo.full_name, name: repo.name, description: repo.description || "", homepage: repo.homepage || "", private: repo.private, archived: repo.archived, defaultBranch: repo.default_branch, htmlUrl: repo.html_url, permissions: repo.permissions || {} });
   } catch (error) { safeError(res, error); }
 });
+
+app.get("/api/repo-activity", requireSession, async (req, res) => {
+  try {
+    const repository=req.query.repository, branch=String(req.query.branch||"");
+    if(!validRepoName(repository)) return res.status(400).json({error:"Repository must use owner/name format."});
+    const commits=await githubRequest("/repos/"+repository+"/commits?sha="+encodeURIComponent(branch)+"&per_page=20",req.github.accessToken);
+    const files={};
+    let latest=null;
+    for(const item of (Array.isArray(commits)?commits:[]).slice(0,20)){
+      const detail=await githubRequest("/repos/"+repository+"/commits/"+item.sha,req.github.accessToken);
+      const message=String(item.commit?.message||"").split("\n")[0];
+      if(!latest) latest={message,author:item.commit?.author?.name||item.author?.login||"GitHub",date:item.commit?.author?.date||item.commit?.committer?.date||null};
+      for(const file of (detail.files||[])) if(!files[file.filename]) files[file.filename]={message,date:item.commit?.author?.date||item.commit?.committer?.date||null};
+    }
+    res.json({count:Array.isArray(commits)?commits.length:0,latest,files});
+  } catch(error){safeError(res,error);}
+});
+app.get("/api/tags", requireSession, async (req,res)=>{
+  try{const repository=req.query.repository;if(!validRepoName(repository))return res.status(400).json({error:"Repository must use owner/name format."});const tags=await githubRequest("/repos/"+repository+"/tags?per_page=100",req.github.accessToken);res.json({tags:(tags||[]).map(t=>({name:t.name,sha:t.commit?.sha}))});}catch(error){safeError(res,error);}
+});
+app.post("/api/tags", requireSession, async (req,res)=>{
+  try{const body=req.body||{},repository=body.repository,name=String(body.name||"").trim(),branch=String(body.branch||"");if(!validRepoName(repository)||!validBranchName(name))return res.status(400).json({error:"Repository and valid tag name are required."});const repo=await githubRequest("/repos/"+repository,req.github.accessToken);const source=branch||repo.default_branch;const base=await githubRequest("/repos/"+repository+"/branches/"+encodeURIComponent(source),req.github.accessToken);const result=await githubRequest("/repos/"+repository+"/git/refs",req.github.accessToken,{method:"POST",body:JSON.stringify({ref:"refs/tags/"+name,sha:base.commit.sha})});res.status(201).json({ok:true,tag:name,sha:result.object.sha});}catch(error){safeError(res,error);}
+});
+app.post("/api/upload", requireSession, async (req,res)=>{
+  try{const body=req.body||{},repository=body.repository,path=body.path,branch=String(body.branch||"");if(!validRepoName(repository)||!validPath(path))return res.status(400).json({error:"Repository and valid file path are required."});if(typeof body.contentBase64!=="string"||body.contentBase64.length>1400000||!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(body.contentBase64))return res.status(400).json({error:"File must be valid base64 and no larger than 1 MB."});const repo=await githubRequest("/repos/"+repository,req.github.accessToken);const target=branch||repo.default_branch;const result=await githubRequest("/repos/"+repository+"/contents/"+path.split("/").map(encodeURIComponent).join("/"),req.github.accessToken,{method:"PUT",body:JSON.stringify({message:body.message||("Add "+path),content:body.contentBase64,branch:target})});res.status(201).json({ok:true,path,sha:result.content?.sha,branch:target});}catch(error){safeError(res,error);}
+});
+
 app.post("/api/repos", requireSession, async (req, res) => {
   try {
     const body = req.body || {}, name = String(body.name || "").trim();

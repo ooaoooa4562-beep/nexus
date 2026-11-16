@@ -562,3 +562,33 @@ body.light-mode .nx-dialog-cancel{color:#34445e}
 @media(prefers-reduced-motion:reduce){.drive-upload-stage,.drive-upload-arc,.drive-upload-symbol,.drive-upload-check,.drive-upload-glow{animation:none!important;transition:none!important}}
 
 .drive-upload-symbol[hidden],.drive-upload-check[hidden],.drive-upload-file[hidden]{display:none!important}
+
+/* GitHub-style repository browser */
+.repo-browser{margin:22px 0 24px;border:1px solid var(--line);border-radius:12px;background:var(--surface);overflow:hidden;color:var(--text)}
+.repo-browser[hidden]{display:none!important}
+.repo-browser-head{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 20px;border-bottom:1px solid var(--line)}
+.repo-title-line{display:flex;align-items:center;gap:12px;min-width:0}
+.repo-avatar{display:grid;place-items:center;width:38px;height:38px;border-radius:50%;background:linear-gradient(145deg,#f3a38c,#b85f58);color:#fff;font-size:23px}
+.repo-title-line h2{display:inline-block;margin:0 9px 0 0;font-size:20px;font-weight:650;letter-spacing:-.5px}
+.repo-visibility{display:inline-flex;align-items:center;border:1px solid var(--line-strong);border-radius:20px;padding:2px 9px;color:var(--muted);font-size:11px}
+.repo-browser-head>a{color:var(--muted);font-size:12px;text-decoration:none}.repo-browser-head>a:hover{color:var(--accent)}
+.repo-browser-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;border-bottom:1px solid var(--line);background:var(--surface-2)}
+.repo-branch-tools,.repo-file-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.repo-browser button,.repo-browser select{min-height:34px;padding:0 11px;border:1px solid var(--line-strong);border-radius:7px;background:var(--surface);color:var(--text);font:inherit;font-size:12px;cursor:pointer}
+.repo-browser button:hover{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,var(--surface))}
+.repo-browser .primary-button{border-color:#238636;background:#238636;color:white}.repo-browser .primary-button:hover{background:#2ea043}
+.repo-count{margin-left:5px;color:var(--muted);font-size:12px}
+.repo-file-table{margin:14px 18px 18px;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.repo-last-commit{display:flex;align-items:center;gap:9px;min-height:43px;padding:8px 13px;background:var(--surface-2);border-bottom:1px solid var(--line);font-size:12px;min-width:0}
+.repo-commit-avatar{display:grid;place-items:center;width:23px;height:23px;border-radius:50%;background:#d98270;color:#fff;font-weight:700}
+.repo-last-commit b{font-weight:650}.repo-last-commit>span:nth-of-type(2){overflow:hidden;color:var(--muted);text-overflow:ellipsis;white-space:nowrap}
+.repo-commit-count{margin-left:auto;color:var(--muted);white-space:nowrap}
+.repo-file-row{display:grid;grid-template-columns:minmax(160px,1.1fr) minmax(120px,1fr) 100px;align-items:center;gap:14px;min-height:41px;padding:0 13px;border-bottom:1px solid var(--line);font-size:12px}
+.repo-file-row:last-child{border-bottom:0}.repo-file-row:hover{background:color-mix(in srgb,var(--accent) 5%,var(--surface))}
+.repo-file-name{display:flex;align-items:center;gap:10px;min-width:0;text-align:left;border:0!important;background:transparent!important;padding:0!important;font-size:12px!important;font-weight:600}
+.repo-file-name span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.repo-file-icon{width:15px;color:var(--muted);text-align:center}
+.repo-file-message{overflow:hidden;color:var(--muted);text-overflow:ellipsis;white-space:nowrap}
+.repo-file-row time{text-align:right;color:var(--muted);font-size:11px;white-space:nowrap}
+.repo-loading{padding:20px;color:var(--muted);font-size:12px;text-align:center}
+@media(max-width:700px){.repo-browser-head,.repo-browser-toolbar{align-items:flex-start;flex-direction:column}.repo-browser-head{gap:10px}.repo-browser-toolbar{gap:12px}.repo-branch-tools,.repo-file-actions{width:100%}.repo-file-row{grid-template-columns:minmax(120px,1fr) minmax(80px,.8fr);gap:8px}.repo-file-row time{display:none}.repo-file-table{margin:10px}.repo-last-commit{font-size:11px}.repo-commit-count{display:none}}

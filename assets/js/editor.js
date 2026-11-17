@@ -88,7 +88,7 @@
    try{
     const [meta,tree,branches]=await Promise.all([
      request('/api/repo?repository='+encodeURIComponent(state.repo)),
-     request('/api/tree?repository='+encodeURIComponent(state.repo)+'&branch='+encodeURIComponent(state.branch||'')),
+     request('/api/repo-tree?repository='+encodeURIComponent(state.repo)+'&branch='+encodeURIComponent(state.branch||'')),
      request('/api/branches?repository='+encodeURIComponent(state.repo))
     ]);
     $('#repoBrowserName').textContent=meta.repository||state.repo;

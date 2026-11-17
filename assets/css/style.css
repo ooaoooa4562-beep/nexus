@@ -592,3 +592,6 @@ body.light-mode .nx-dialog-cancel{color:#34445e}
 .repo-file-row time{text-align:right;color:var(--muted);font-size:11px;white-space:nowrap}
 .repo-loading{padding:20px;color:var(--muted);font-size:12px;text-align:center}
 @media(max-width:700px){.repo-browser-head,.repo-browser-toolbar{align-items:flex-start;flex-direction:column}.repo-browser-head{gap:10px}.repo-browser-toolbar{gap:12px}.repo-branch-tools,.repo-file-actions{width:100%}.repo-file-row{grid-template-columns:minmax(120px,1fr) minmax(80px,.8fr);gap:8px}.repo-file-row time{display:none}.repo-file-table{margin:10px}.repo-last-commit{font-size:11px}.repo-commit-count{display:none}}
+
+/* Per-file last update indicator in Explorer */
+.ide-tree-item{display:flex;align-items:center;gap:6px}.ide-tree-label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ide-file-updated{flex:0 0 auto;border:0;background:transparent;color:var(--muted);font-size:10px;line-height:1;padding:2px 4px;border-radius:4px;opacity:.68;cursor:pointer}.ide-tree-item:hover .ide-file-updated,.ide-file-updated:focus-visible{opacity:1;color:var(--accent)}.ide-file-updated:disabled{opacity:.5;cursor:wait}

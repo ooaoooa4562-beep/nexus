@@ -546,6 +546,35 @@ app.get("/api/tree", requireSession, async (req, res) => {
     res.json({ repository, branch, path, items: result.map(item => ({ name: item.name, path: item.path, type: item.type, size: item.size, sha: item.sha })) });
   } catch (error) { safeError(res, error); }
 });
+
+app.get("/api/repo-tree", requireSession, async (req,res)=>{
+  try{
+    const repository=req.query.repository;
+    const requestedPath=typeof req.query.path==="string"?req.query.path:"";
+    if(!validRepoName(repository))return res.status(400).json({error:"Repository must use owner/name format."});
+    if(requestedPath&&!validPath(requestedPath))return res.status(400).json({error:"Invalid directory path."});
+    const repo=await githubRequest("/repos/"+repository,req.github.accessToken);
+    const branch=typeof req.query.branch==="string"&&req.query.branch.trim()?req.query.branch.trim():repo.default_branch;
+    const branchInfo=await githubRequest("/repos/"+repository+"/branches/"+encodeURIComponent(branch),req.github.accessToken);
+    const tree=await githubRequest("/repos/"+repository+"/git/trees/"+branchInfo.commit.sha+"?recursive=1",req.github.accessToken);
+    const prefix=requestedPath?requestedPath+"/":"";
+    const children=new Map();
+    for(const entry of (tree.tree||[])){
+      if(!entry.path.startsWith(prefix))continue;
+      const remainder=entry.path.slice(prefix.length);
+      if(!remainder)continue;
+      const slash=remainder.indexOf("/");
+      if(slash>=0){
+        const name=remainder.slice(0,slash);
+        if(!children.has(name))children.set(name,{name,path:prefix+name,type:"dir",size:0});
+      }else if(entry.type==="blob"){
+        children.set(remainder,{name:remainder,path:entry.path,type:"file",size:entry.size||0,sha:entry.sha});
+      }
+    }
+    res.json({repository,branch,path:requestedPath,items:[...children.values()].sort((a,b)=>a.type===b.type?a.name.localeCompare(b.name):a.type==="dir"?-1:1),truncated:Boolean(tree.truncated)});
+  }catch(error){safeError(res,error);}
+});
+
 app.get("/api/file", requireSession, async (req, res) => {
   try {
     const repository = req.query.repository, path = req.query.path;

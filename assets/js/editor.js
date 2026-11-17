@@ -98,7 +98,7 @@
     (branches.branches||[]).forEach(b=>{const o=document.createElement('option');o.value=b.name;o.textContent=b.name;select.append(o);});
     if(!select.options.length){const o=document.createElement('option');o.value=state.branch||'';o.textContent=state.branch||'main';select.append(o);}
     select.value=state.branch||meta.defaultBranch||select.options[0]?.value||'';
-    const tagData=await request('/api/tags?repository='+encodeURIComponent(state.repo));$('#repoCounts').textContent=(branches.branches||[]).length+' Branches · '+(tagData.tags||[]).length+' Tags';
+    $('#repoCounts').textContent=(branches.branches||[]).length+' Branches · Tags';
     const rows=$('#repoFileRows');rows.replaceChildren();
     const items=(tree.items||[]).sort((a,b)=>a.type===b.type?a.name.localeCompare(b.name):a.type==='dir'?-1:1);
     if(!items.length){rows.innerHTML='<div class="repo-loading">This repository is empty.</div>';return;}
@@ -110,6 +110,7 @@
      const time=document.createElement('time');time.textContent='—';
      row.append(name,msg,time);rows.append(row);
     });
+    try{const tagData=await request('/api/tags?repository='+encodeURIComponent(state.repo));$('#repoCounts').textContent=(branches.branches||[]).length+' Branches · '+(tagData.tags||[]).length+' Tags';}catch(e){$('#repoCounts').textContent=(branches.branches||[]).length+' Branches · Tags unavailable';}
     try{
      const activity=await request('/api/repo-activity?repository='+encodeURIComponent(state.repo)+'&branch='+encodeURIComponent(state.branch||meta.defaultBranch||''));
      $('#repoCommitMessage').textContent=activity.latest?.message||'No commits yet';

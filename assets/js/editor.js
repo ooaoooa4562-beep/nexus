@@ -81,22 +81,22 @@
   const quickOpen=()=>{const panel=$('#ideQuickOpen');panel.hidden=!panel.hidden;if(!panel.hidden){$('#ideQuickInput').value='';renderQuick();$('#ideQuickInput').focus();}};
   const renderQuick=()=>{const q=$('#ideQuickInput').value.toLowerCase(),box=$('#ideQuickResults');box.replaceChildren();state.files.filter(f=>f.type==='file'&&(f.path.toLowerCase().includes(q))).slice(0,30).forEach(f=>{const b=document.createElement('button');b.textContent=f.path;b.onclick=()=>{panelClose();openFile(f.path);};box.append(b);});};
   const panelClose=()=>{$('#ideQuickOpen').hidden=true;};
-  const pythonRuntime={worker:null,ready:false,busy:false,sequence:0,timer:null};
+  const pythonRuntime={worker:null,workerUrl:null,ready:false,busy:false,sequence:0,timer:null};
   const pyOut=$('#idePythonOutput'),pyState=$('#idePythonState'),runButton=$('#ideRunPython'),stopButton=$('#ideStopPython');
   const consoleWrite=(value,kind='stdout')=>{const line=document.createElement('span');line.className='ide-python-'+kind;line.textContent=String(value);pyOut.append(line);pyOut.scrollTop=pyOut.scrollHeight;};
   const consoleReset=()=>{pyOut.replaceChildren();};
   const setPythonBusy=busy=>{pythonRuntime.busy=busy;runButton.disabled=busy;stopButton.disabled=!busy;pyState.textContent=busy?'RUNNING':'IDLE';};
-  const stopPython=message=>{if(pythonRuntime.timer)clearTimeout(pythonRuntime.timer);pythonRuntime.timer=null;if(pythonRuntime.worker){pythonRuntime.worker.terminate();pythonRuntime.worker=null;}pythonRuntime.ready=false;setPythonBusy(false);if(message)consoleWrite(message,'system');};
+  const stopPython=message=>{if(pythonRuntime.timer)clearTimeout(pythonRuntime.timer);pythonRuntime.timer=null;if(pythonRuntime.worker){pythonRuntime.worker.terminate();pythonRuntime.worker=null;}if(pythonRuntime.workerUrl){URL.revokeObjectURL(pythonRuntime.workerUrl);pythonRuntime.workerUrl=null;}pythonRuntime.ready=false;setPythonBusy(false);if(message)consoleWrite(message,'system');};
   const ensurePython=()=>new Promise((resolve,reject)=>{
    if(pythonRuntime.worker&&pythonRuntime.ready)return resolve(pythonRuntime.worker);
    const source=`self.postMessage({type:'status',text:'Downloading Python runtime…'});
 importScripts('https://cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodide.js');
 (async()=>{try{const py=await loadPyodide({stdout:s=>self.postMessage({type:'stdout',text:s}),stderr:s=>self.postMessage({type:'stderr',text:s})});self.py=py;self.postMessage({type:'ready'});}catch(e){self.postMessage({type:'fatal',text:String(e&&e.message||e)});}})();
 self.onmessage=async e=>{const m=e.data||{};if(m.type!=='run'||!self.py)return;try{self.py.globals.set('__nexus_source__',m.code);await self.py.runPythonAsync("exec(compile(__nexus_source__, '<nexus>', 'exec'))");self.postMessage({type:'done'});}catch(err){self.postMessage({type:'error',text:String(err&&err.message||err)});}};`;
-   const blob=new Blob([source],{type:'text/javascript'}),url=URL.createObjectURL(blob),worker=new Worker(url);URL.revokeObjectURL(url);pythonRuntime.worker=worker;
+   const blob=new Blob([source],{type:'text/javascript'}),url=URL.createObjectURL(blob),worker=new Worker(url);pythonRuntime.workerUrl=url;pythonRuntime.worker=worker;
    const failTimer=setTimeout(()=>{worker.terminate();pythonRuntime.worker=null;pythonRuntime.ready=false;reject(new Error('Python runtime initialization timed out. Check your internet connection and try again.'));},90000);
-   worker.onmessage=e=>{const m=e.data||{};if(m.type==='ready'){clearTimeout(failTimer);pythonRuntime.ready=true;resolve(worker);}else if(m.type==='fatal'){clearTimeout(failTimer);pythonRuntime.worker=null;reject(new Error(m.text));}};
-   worker.onerror=e=>{clearTimeout(failTimer);pythonRuntime.worker=null;reject(new Error(e.message||'Could not start Python worker.'));};
+   worker.onmessage=e=>{const m=e.data||{};if(m.type==='ready'){clearTimeout(failTimer);pythonRuntime.ready=true;resolve(worker);}else if(m.type==='fatal'){clearTimeout(failTimer);pythonRuntime.worker=null;if(pythonRuntime.workerUrl){URL.revokeObjectURL(pythonRuntime.workerUrl);pythonRuntime.workerUrl=null;}reject(new Error(m.text));}};
+   worker.onerror=e=>{clearTimeout(failTimer);pythonRuntime.worker=null;if(pythonRuntime.workerUrl){URL.revokeObjectURL(pythonRuntime.workerUrl);pythonRuntime.workerUrl=null;}reject(new Error(e.message||'Could not start Python worker.'));};
   });
   const runPython=async()=>{
    const tab=selected();if(!tab){notice('Open a Python (.py) file before running.',true);return;}
@@ -104,7 +104,7 @@ self.onmessage=async e=>{const m=e.data||{};if(m.type!=='run'||!self.py)return;t
    if(pythonRuntime.busy)return;
    const code=currentText();if(!code.trim()){notice('The Python file is empty.',true);return;}
    $('#idePythonConsole').hidden=false;consoleReset();consoleWrite('NEXUS Python Runtime · Pyodide 0.27.7','system');consoleWrite('File: '+tab.path,'system');consoleWrite('Initializing isolated Python worker…','system');setPythonBusy(true);
-   try{const worker=await ensurePython();worker.onmessage=e=>{const m=e.data||{};if(m.type==='stdout')consoleWrite(m.text);else if(m.type==='stderr')consoleWrite(m.text,'stderr');else if(m.type==='status')consoleWrite(m.text,'system');else if(m.type==='error'){consoleWrite(m.text,'stderr');if(/ModuleNotFoundError|No module named/.test(m.text)){const match=m.text.match(/No module named ['"]([^'"]+)['"]/);if(match)consoleWrite("Missing dependency detected: "+match[1]+". Package installation will be added to the NEXUS terminal in the next stage.",'system');}setPythonBusy(false);}else if(m.type==='done'){consoleWrite('Process finished with exit code 0.','success');setPythonBusy(false);}};
+   try{const worker=await ensurePython();worker.onmessage=e=>{const m=e.data||{};if(m.type==='stdout')consoleWrite(m.text);else if(m.type==='stderr')consoleWrite(m.text,'stderr');else if(m.type==='status')consoleWrite(m.text,'system');else if(m.type==='error'){if(pythonRuntime.timer)clearTimeout(pythonRuntime.timer);pythonRuntime.timer=null;consoleWrite(m.text,'stderr');if(/ModuleNotFoundError|No module named/.test(m.text)){const match=m.text.match(/No module named ['"]([^'"]+)['"]/);if(match)consoleWrite("Missing dependency detected: "+match[1]+". Package installation will be added to the NEXUS terminal in the next stage.",'system');}setPythonBusy(false);}else if(m.type==='done'){if(pythonRuntime.timer)clearTimeout(pythonRuntime.timer);pythonRuntime.timer=null;consoleWrite('Process finished with exit code 0.','success');setPythonBusy(false);}};
     worker.postMessage({type:'run',code});
     pythonRuntime.timer=setTimeout(()=>{if(pythonRuntime.busy)stopPython('Execution stopped: 15-second safety limit reached.');},15000);
    }catch(err){consoleWrite('Python runtime error: '+err.message,'stderr');setPythonBusy(false);}

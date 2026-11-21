@@ -421,7 +421,22 @@ app.get("/api/repo", requireSession, async (req, res) => {
   } catch (error) { safeError(res, error); }
 });
 
-app.get("/api/file-last-updated", requireSession, async (req,res)=>{try{const repository=req.query.repository,path=req.query.path,branch=String(req.query.branch||"");if(!validRepoName(repository)||!validPath(path))return res.status(400).json({error:"Repository and valid file path are required."});const repo=await githubRequest("/repos/"+repository,req.github.accessToken);const ref=branch||repo.default_branch;const commits=await githubRequest("/repos/"+repository+"/commits?path="+encodeURIComponent(path)+"&sha="+encodeURIComponent(ref)+"&per_page=1",req.github.accessToken);const latest=Array.isArray(commits)?commits[0]:null;res.json({date:latest?.commit?.author?.date||latest?.commit?.committer?.date||null,message:String(latest?.commit?.message||"").split("\n")[0]||null,author:latest?.commit?.author?.name||latest?.author?.login||null,sha:latest?.sha||null});}catch(error){safeError(res,error);}});
+app.get("/api/file-last-updated", requireSession, async (req,res)=>{
+  try {
+    const repository=req.query.repository;
+    const path=typeof req.query.path==="string"?req.query.path:"";
+    const branch=typeof req.query.branch==="string"?req.query.branch.trim():"";
+    if(!validRepoName(repository)||!validPath(path)) return res.status(400).json({error:"Repository and valid file path are required."});
+    const repo=await githubRequest("/repos/"+repository,req.github.accessToken);
+    const query=new URLSearchParams({path,sha:branch||repo.default_branch,per_page:"1"});
+    const commits=await githubRequest("/repos/"+repository+"/commits?"+query.toString(),req.github.accessToken);
+    const latest=Array.isArray(commits)?commits[0]:null;
+    if(!latest) return res.json({date:null,message:null,author:null,sha:null});
+    const date=latest.commit?.author?.date||latest.commit?.committer?.date||null;
+    res.set("Cache-Control","private, max-age=30");
+    res.json({date,message:String(latest.commit?.message||"").split("\\n")[0]||null,author:latest.commit?.author?.name||latest.author?.login||null,sha:latest.sha||null,url:latest.html_url||null});
+  } catch(error) { safeError(res,error); }
+});
 app.get("/api/repo-activity", requireSession, async (req, res) => {
   try {
     const repository=req.query.repository, branch=String(req.query.branch||"");

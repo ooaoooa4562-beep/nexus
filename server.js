@@ -362,7 +362,7 @@ app.get("/auth/github", (req, res) => {
   const url = new URL("https://github.com/login/oauth/authorize");
   url.searchParams.set("client_id", process.env.GITHUB_CLIENT_ID);
   url.searchParams.set("redirect_uri", API_BASE_URL + "/auth/github/callback");
-  url.searchParams.set("scope", "read:user repo delete_repo");
+  url.searchParams.set("scope", "read:user user:email repo delete_repo workflow read:org project read:packages write:packages");
   url.searchParams.set("state", state);
   res.redirect(url.toString());
 });
@@ -1357,6 +1357,44 @@ app.get("/api/storage/share/:token", driveRequireConfig, async (req, res) => {
     res.setHeader("Cache-Control", "no-store");
     res.redirect(302, url);
   } catch (error) { res.status(error.status || 500).send("Could not open this shared file."); }
+});
+
+
+// Unified GitHub API gateway for the NEXUS GitHub Hub.
+// Paths are allow-listed; OAuth tokens never leave this server.
+function validGitHubApiPath(value) {
+  if (typeof value !== "string" || value.length > 1800 || !value.startsWith("/") || value.startsWith("//")) return false;
+  if (/[\\\u0000-\u001f]/.test(value) || value.includes("..") || value.includes("#")) return false;
+  const pathname = value.split("?")[0];
+  if (!/^\/(?:user(?:\/[A-Za-z0-9._-]+)*|users\/[A-Za-z0-9-]+(?:\/[A-Za-z0-9._-]+)*|repos\/[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)*|orgs\/[A-Za-z0-9-]+(?:\/[A-Za-z0-9._-]+)*|graphql)$/.test(pathname)) return false;
+  if (/\/(?:secrets|dependabot\/secrets|codespaces\/secrets|hooks|keys|public-keys|installations|billing|audit-log)(?:\/|$)/i.test(pathname)) return false;
+  return true;
+}
+app.all("/api/github/proxy", requireSession, async (req, res) => {
+  try {
+    const path = String(req.query.path || req.body?.path || "");
+    const method = String(req.body?.method || req.method || "GET").toUpperCase();
+    if (!validGitHubApiPath(path)) return res.status(400).json({ error: "This GitHub API endpoint is not available through NEXUS." });
+    if (!["GET", "POST", "PATCH", "PUT", "DELETE"].includes(method)) return res.status(405).json({ error: "Unsupported GitHub API method." });
+    if (method !== "GET" && !["POST", "PATCH", "PUT", "DELETE"].includes(req.method)) return res.status(405).json({ error: "Write requests must use POST to the NEXUS gateway." });
+    const body = req.body?.payload;
+    if (body !== undefined && Buffer.byteLength(JSON.stringify(body)) > 500_000) return res.status(413).json({ error: "GitHub API payload is too large." });
+    const data = await githubRequest(path, req.github.accessToken, {
+      method,
+      ...(body !== undefined && method !== "GET" && method !== "DELETE" ? { body: JSON.stringify(body) } : {})
+    });
+    res.json({ data });
+  } catch (error) { safeError(res, error); }
+});
+app.post("/api/github/graphql", requireSession, async (req, res) => {
+  try {
+    const query = String(req.body?.query || "");
+    if (!query || query.length > 100_000) return res.status(400).json({ error: "A GraphQL query between 1 and 100,000 characters is required." });
+    const variables = req.body?.variables && typeof req.body.variables === "object" ? req.body.variables : {};
+    const data = await githubRequest("/graphql", req.github.accessToken, { method: "POST", body: JSON.stringify({ query, variables }) });
+    if (data.errors?.length) return res.status(422).json({ error: data.errors.map(item => item.message).join("; "), data: data.data || null });
+    res.json({ data: data.data });
+  } catch (error) { safeError(res, error); }
 });
 
 app.use((error, _req, res, _next) => {

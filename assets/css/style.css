@@ -595,3 +595,6 @@ body.light-mode .nx-dialog-cancel{color:#34445e}
 
 /* Per-file last update indicator in Explorer */
 .ide-tree-item{display:flex;align-items:center;gap:6px}.ide-tree-label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ide-file-updated{flex:0 0 auto;border:0;background:transparent;color:var(--muted);font-size:10px;line-height:1;padding:2px 4px;border-radius:4px;opacity:.68;cursor:pointer}.ide-tree-item:hover .ide-file-updated,.ide-file-updated:focus-visible{opacity:1;color:var(--accent)}.ide-file-updated:disabled{opacity:.5;cursor:wait}
+
+/* Explorer rows keep the timestamp action separate from file activation */
+.ide-tree-item{display:flex;align-items:center;gap:6px;cursor:pointer}.ide-tree-item:focus-visible{outline:1px solid var(--accent);outline-offset:-1px}.ide-tree-label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ide-file-updated{flex:0 0 auto;min-width:28px;border:0;background:transparent;color:var(--muted);font-size:10px;line-height:1;padding:3px 4px;border-radius:4px;opacity:.8;cursor:pointer}.ide-tree-item:hover .ide-file-updated,.ide-file-updated:focus-visible{opacity:1;color:var(--accent);background:var(--surface-2)}.ide-file-updated:disabled{opacity:.5;cursor:wait}

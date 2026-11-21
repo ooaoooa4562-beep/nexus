@@ -619,3 +619,5 @@ body.light-mode .nx-dialog-cancel{color:#34445e}
 .ide-python-console pre{flex:1;overflow:auto;margin:0;padding:10px 12px;font:10px/1.65 var(--mono);white-space:pre-wrap;overflow-wrap:anywhere;color:#d5deec}
 .ide-python-stdout{display:block;color:#d5deec}.ide-python-stderr{display:block;color:#ff8d96}.ide-python-system{display:block;color:#8da8d6}.ide-python-success{display:block;color:#83d9ad}
 @media(max-width:760px){.ide-editor-actions{gap:4px;overflow-x:auto}.ide-editor-actions button{white-space:nowrap;font-size:8px}.ide-python-console{height:160px}}
+
+.terminal-hints button[data-term-command^="python"],.terminal-hints button[data-term-command^="pip"]{border-color:#35694f;color:#9de0b8}

@@ -1,103 +1,165 @@
 <!doctype html>
 <html lang="en" data-theme="dark">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#17191f"><meta name="description" content="NEXUS — Developer workspace">
-<title>NEXUS — Developer Workspace</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/css/style.css?v=3.6.0">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0b1020">
+<meta name="description" content="NEXUS — a crafted workspace for code, repositories, tools and systems.">
+<title>NEXUS — Built for the work</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/style.css?v=4.0.0">
+<link rel="stylesheet" href="assets/css/atelier.css?v=1.0.0">
 </head>
 <body>
 <div class="app-shell">
-<aside class="sidebar" id="sidebar">
- <a class="brand" href="#overview"><span class="brand-mark"><i></i><i></i><i></i><i></i></span><span class="brand-copy">NEXUS<small>CREATIVE DEV ENVIRONMENT</small></span><span class="brand-version">3.1</span></a>
- <div class="sidebar-toolbar">
-  <label class="sidebar-filter"><span>⌕</span><input id="sidebarFilter" type="search" placeholder="Filter modules…" aria-label="Filter sidebar modules"><kbd>/</kbd></label>
-  <button class="sidebar-collapse" id="sidebarCollapse" type="button" title="Collapse sidebar" aria-label="Collapse sidebar">‹</button>
- </div>
- <div class="sidebar-scroll" id="sidebarScroll">
-  <div class="sidebar-group">
-   <button class="side-label side-group-toggle" type="button" data-group="workspace" aria-expanded="true"><span>WORKSPACE</span><i>⌄</i></button>
-   <nav class="navigation" data-nav-group="workspace">
-    <a class="nav-link active" href="#overview" data-page="overview" title="Overview — workspace dashboard"><span class="nav-icon">⌂</span><span class="nav-text">Overview</span><kbd>⌘1</kbd></a>
-    <a class="nav-link" href="#editor" data-page="editor" title="Code Editor — edit repository files"><span class="nav-icon">&lt;/&gt;</span><span class="nav-text">Code Editor</span><kbd>⌘2</kbd></a>
-    <a class="nav-link" href="#github" data-page="github" title="GitHub Hub — repositories and collaboration"><span class="nav-icon">◈</span><span class="nav-text">GitHub Hub</span></a>
-    <a class="nav-link" href="#terminal" data-page="terminal" title="Terminal — commands and Git tools"><span class="nav-icon">›_</span><span class="nav-text">Terminal</span><kbd>⌘3</kbd></a>
-    <a class="nav-link" href="#storage" data-page="storage" title="Storage — local files and data"><span class="nav-icon">▤</span><span class="nav-text">Storage</span></a>
-   </nav>
+ <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+  <a class="brand" href="#overview" aria-label="NEXUS home">
+   <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+   <span class="brand-copy">NEXUS<small>BUILT FOR THE WORK</small></span>
+   <span class="brand-version">4.0</span>
+  </a>
+  <div class="sidebar-toolbar">
+   <label class="sidebar-filter"><span aria-hidden="true">⌕</span><input id="sidebarFilter" type="search" placeholder="Find a tool…" aria-label="Filter navigation"><kbd>/</kbd></label>
+   <button class="sidebar-collapse" id="sidebarCollapse" type="button" title="Collapse navigation" aria-label="Collapse navigation">‹</button>
   </div>
-  <div class="sidebar-group">
-   <button class="side-label side-group-toggle" type="button" data-group="system" aria-expanded="true"><span>SYSTEM</span><i>⌄</i></button>
-   <nav class="navigation" data-nav-group="system">
-    <a class="nav-link" href="#monitor" data-page="monitor" title="Monitor — diagnostics"><span class="nav-icon">◷</span><span class="nav-text">Monitor</span></a>
-    <a class="nav-link" href="#network" data-page="network" title="Network — connectivity"><span class="nav-icon">⌁</span><span class="nav-text">Network</span></a>
-    <a class="nav-link" href="#extensions" data-page="extensions" title="Extensions — module manager"><span class="nav-icon">⊞</span><span class="nav-text">Extensions</span></a>
-   </nav>
+  <div class="sidebar-scroll" id="sidebarScroll">
+   <div class="sidebar-group">
+    <button class="side-label side-group-toggle" type="button" data-group="build" aria-expanded="true"><span>BUILD</span><i>⌄</i></button>
+    <nav class="navigation" data-nav-group="build">
+     <a class="nav-link active" href="#overview" data-page="overview"><span class="nav-icon">00</span><span class="nav-text">Overview</span><kbd>⌘ 1</kbd></a>
+     <a class="nav-link" href="#editor" data-page="editor"><span class="nav-icon">⌘</span><span class="nav-text">Code Editor</span><kbd>⌘ 2</kbd></a>
+     <a class="nav-link" href="#terminal" data-page="terminal"><span class="nav-icon">$_</span><span class="nav-text">Terminal</span><kbd>⌘ 3</kbd></a>
+     <a class="nav-link" href="#github" data-page="github"><span class="nav-icon">GH</span><span class="nav-text">GitHub Hub</span></a>
+    </nav>
+   </div>
+   <div class="sidebar-group">
+    <button class="side-label side-group-toggle" type="button" data-group="manage" aria-expanded="true"><span>MANAGE</span><i>⌄</i></button>
+    <nav class="navigation" data-nav-group="manage">
+     <a class="nav-link" href="#storage" data-page="storage"><span class="nav-icon">▤</span><span class="nav-text">Storage</span></a>
+     <a class="nav-link" href="#monitor" data-page="monitor"><span class="nav-icon">◷</span><span class="nav-text">Monitor</span></a>
+     <a class="nav-link" href="#network" data-page="network"><span class="nav-icon">⌁</span><span class="nav-text">Network</span></a>
+     <a class="nav-link" href="#extensions" data-page="extensions"><span class="nav-icon">⊞</span><span class="nav-text">Extensions</span></a>
+    </nav>
+   </div>
+   <div class="sidebar-group">
+    <button class="side-label side-group-toggle" type="button" data-group="personal" aria-expanded="true"><span>PERSONAL</span><i>⌄</i></button>
+    <nav class="navigation" data-nav-group="personal">
+     <a class="nav-link" href="#profile" data-page="profile"><span class="nav-icon">◉</span><span class="nav-text">Your profile</span></a>
+     <a class="nav-link" href="#settings" data-page="settings"><span class="nav-icon">⚙</span><span class="nav-text">Preferences</span></a>
+    </nav>
+   </div>
+   <div class="sidebar-filter-empty" id="sidebarFilterEmpty" hidden>No matching tools</div>
   </div>
-  <div class="sidebar-group">
-   <button class="side-label side-group-toggle" type="button" data-group="personal" aria-expanded="true"><span>PERSONAL</span><i>⌄</i></button>
-   <nav class="navigation" data-nav-group="personal">
-    <a class="nav-link" href="#profile" data-page="profile" title="My profile"><span class="nav-icon">◉</span><span class="nav-text">My profile</span></a>
-    <a class="nav-link" href="#settings" data-page="settings" title="Settings"><span class="nav-icon">⚙</span><span class="nav-text">Settings</span></a>
-   </nav>
+  <div class="sidebar-bottom">
+   <div class="system-card">
+    <div class="system-card-top"><span class="pulse"></span> NEXUS ENGINE</div>
+    <strong>Workspace standing by</strong>
+    <small>INTERFACE <b>4.0 / ATELIER</b></small>
+   </div>
+   <a class="profile" href="#profile" data-page="profile">
+    <img class="avatar" id="sidebarAvatar" alt="" hidden>
+    <span class="avatar avatar-fallback" id="sidebarAvatarFallback">N</span>
+    <span class="profile-meta"><b id="sidebarName">Operator</b><small>Personal workspace</small></span>
+    <span class="profile-menu">···</span>
+   </a>
   </div>
-  <div class="sidebar-filter-empty" id="sidebarFilterEmpty" hidden>No matching modules</div>
- </div>
- <div class="sidebar-bottom">
-  <div class="system-card"><div class="system-card-top"><span class="pulse"></span> NEXUS CORE</div><strong>Workspace operational</strong><small>VERSION <b>1.0.0</b></small></div>
-  <a class="profile" href="#profile" data-page="profile"><img class="avatar" id="sidebarAvatar" alt="" hidden><span class="avatar avatar-fallback" id="sidebarAvatarFallback">N</span><span class="profile-meta"><b id="sidebarName">Operator</b><small>Local profile</small></span><span class="profile-menu">···</span></a>
- </div>
-</aside>
-<main class="main-content">
- <header class="topbar">
-  <div class="topbar-left"><button class="mobile-menu" id="mobileMenu" aria-label="Toggle navigation">☰</button><div class="breadcrumbs"><span>NEXUS</span><i>/</i><b id="breadcrumb">Overview</b></div><span class="workspace-context"><i></i> PERSONAL WORKSPACE</span></div>
-  <div class="topbar-actions"><label class="global-search"><span>⌕</span><input id="globalSearch" placeholder="Search workspace..." aria-label="Search modules"><kbd>Ctrl K</kbd></label><span class="clock" id="clock">--:--:--</span><div class="pull-cord-switch" id="pullCordSwitch" title="Pull to change appearance"><div class="pull-lamp"><span class="pull-cap"></span><span class="pull-shade"></span><span class="pull-bulb"></span></div><svg class="pull-rope" viewBox="0 0 44 34" aria-hidden="true"><path id="pullRopePath" d="M22 0 Q22 24 22 43"></path></svg><button class="pull-handle" id="pullHandle" type="button" aria-label="Pull cord to toggle light and dark theme"><span></span></button></div><button class="icon-button" id="themeButton" title="Toggle appearance" hidden aria-hidden="true" tabindex="-1">◐</button><button class="top-avatar" id="topProfile" title="Open profile">N</button></div>
- </header>
- <div class="workspace-content">
-  <section class="page active-page dashboard-page" id="overview">
-   <div class="dashboard-welcome">
-    <div class="welcome-copy"><div class="eyebrow"><span class="eyebrow-line"></span> YOUR CREATIVE WORKSPACE</div>
-     <h1>Welcome back, <span id="welcomeName">Operator.</span></h1>
-     <p class="subtitle">Everything you need to build, experiment and ship — in one workspace.</p>
-     <div class="welcome-actions"><button class="primary-button" data-open-page="editor"><span>&lt;/&gt;</span> Open Code Editor <b>↗</b></button></div>
+ </aside>
+ <main class="main-content">
+  <header class="topbar">
+   <div class="topbar-left">
+    <button class="mobile-menu" id="mobileMenu" type="button" aria-label="Open navigation" aria-expanded="false">☰</button>
+    <div class="breadcrumbs"><span>NEXUS</span><i>/</i><b id="breadcrumb">Overview</b></div>
+    <span class="workspace-context"><i></i> PERSONAL WORKSPACE</span>
+   </div>
+   <div class="topbar-actions">
+    <label class="global-search"><span aria-hidden="true">⌕</span><input id="globalSearch" type="search" placeholder="Jump to anything…" aria-label="Search workspace"><kbd>⌘ K</kbd></label>
+    <span class="clock" id="clock">--:--:--</span>
+    <button class="icon-button" id="themeButton" type="button" title="Switch light and dark appearance" aria-label="Toggle appearance">◐</button>
+    <button class="top-avatar" id="topProfile" type="button" title="Open your profile" aria-label="Open your profile">N</button>
+   </div>
+  </header>
+
+  <div class="workspace-content">
+   <section class="page active-page dashboard-page" id="overview">
+    <div class="dashboard-welcome">
+     <div class="welcome-copy">
+      <div class="eyebrow"><span class="eyebrow-line"></span> YOUR SPACE. YOUR PACE.</div>
+      <h1>Make room for<br><span>great work.</span></h1>
+      <p class="subtitle">Welcome back, <b id="welcomeName">Operator.</b> Your tools, code and systems are right where you need them.</p>
+      <div class="welcome-actions">
+       <button class="primary-button" type="button" data-open-page="editor"><span>⌘</span> Open workspace <b>↗</b></button>
+       <button class="secondary-button" type="button" data-open-command-palette>⌕ Find a tool <kbd>⌘ K</kbd></button>
+      </div>
+     </div>
+     <div class="welcome-orbit" aria-hidden="true">
+      <div class="orbit-ring orbit-one"></div><div class="orbit-ring orbit-two"></div>
+      <div class="orbit-core"><span>N</span><small>STUDIO</small></div>
+      <i class="orbit-dot dot-one"></i><i class="orbit-dot dot-two"></i><i class="orbit-dot dot-three"></i>
+     </div>
+     <div class="welcome-date"><small id="dateLabel">LOCAL SESSION</small><b id="welcomeClock">--:--:--</b></div>
     </div>
-    <div class="welcome-orbit" aria-hidden="true"><div class="orbit-ring orbit-one"></div><div class="orbit-ring orbit-two"></div><div class="orbit-core"><span>N</span><small>CORE</small></div><i class="orbit-dot dot-one"></i><i class="orbit-dot dot-two"></i><i class="orbit-dot dot-three"></i></div>
-    <div class="welcome-date"><small id="dateLabel">LOCAL SESSION</small><b id="welcomeClock">--:--:--</b></div>
-   </div>
-   <div class="dashboard-stats">
-    <article class="stat-tile"><span class="stat-icon stat-blue">&lt;/&gt;</span><div><small>AVAILABLE MODULES</small><strong>06</strong><em><i></i> Ready to use</em></div><span class="stat-spark spark-blue">▁▃▂▅▄▆</span></article>
-    <article class="stat-tile"><span class="stat-icon stat-violet">&lt;/&gt;</span><div><small>CREATIVE TOOLS</small><strong>01</strong><em>Code Editor</em></div><span class="stat-spark spark-violet">▂▄▃▆▅▇</span></article>
-    <article class="stat-tile"><span class="stat-icon stat-green">▤</span><div><small>STORAGE MODE</small><strong>LOCAL</strong><em><i></i> Browser vault</em></div><span class="stat-spark spark-green">▁▂▄▃▅▆</span></article>
-    <article class="stat-tile"><span class="stat-icon stat-cyan">⌁</span><div><small>WORKSPACE STATUS</small><strong>READY</strong><em><i></i> Core initialized</em></div><span class="stat-spark spark-cyan">▂▃▅▄▆▇</span></article>
-   </div>
-   <div class="dashboard-main-grid">
-    <section class="dashboard-panel launch-panel"><div class="dashboard-panel-head"><div><div class="eyebrow">PICK UP WHERE YOU LEFT OFF</div><h2>Quick launch</h2></div><span class="panel-counter">01 — 02</span></div>
-     <div class="launch-grid">
-      <button class="launch-card launch-editor" data-open-page="editor"><span class="launch-card-top"><i>&lt;/&gt;</i><b>01</b></span><strong>Code Editor</strong><small>Write code and browse your GitHub repositories.</small><span class="launch-open">OPEN EDITOR <b>↗</b></span></button>
-      <button class="launch-card launch-terminal" data-open-page="terminal"><span class="launch-card-top"><i>›_</i><b>02</b></span><strong>Terminal</strong><small>Run commands and manage your workspace.</small><span class="launch-open">OPEN TERMINAL <b>↗</b></span></button>
+
+    <div class="dashboard-stats">
+     <article class="stat-tile"><span class="stat-icon stat-blue">⌘</span><div><small>WORKSPACE MODULES</small><strong>07</strong><em><i></i> Ready to open</em></div><span class="stat-spark spark-blue">01 02 03</span></article>
+     <article class="stat-tile"><span class="stat-icon stat-violet">Py</span><div><small>PYTHON ENGINE</small><strong>WASM</strong><em>Browser runtime</em></div><span class="stat-spark spark-violet">Py 3</span></article>
+     <article class="stat-tile"><span class="stat-icon stat-green">GH</span><div><small>ACTIVE REPOSITORY</small><strong id="activeRepoName">Not selected</strong><em id="activeRepoState">GITHUB WORKSPACE</em></div><span class="stat-spark spark-green">git</span></article>
+     <article class="stat-tile"><span class="stat-icon stat-cyan">◷</span><div><small>LOCAL SESSION</small><strong>ACTIVE</strong><em><i></i> This browser</em></div><span class="stat-spark spark-cyan">● ● ●</span></article>
+    </div>
+
+    <div class="dashboard-main-grid">
+     <section class="dashboard-panel launch-panel">
+      <div class="dashboard-panel-head"><div><div class="eyebrow">START WITH AN INTENTION</div><h2>Pick up and build</h2></div><span class="panel-counter">01 — 04</span></div>
+      <div class="launch-grid">
+       <button class="launch-card launch-editor" type="button" data-open-page="editor"><span class="launch-card-top"><i>⌘</i><b>01 / CODE</b></span><strong>Code Editor</strong><small>Open files, write code and work with your repositories.</small><span class="launch-open">OPEN EDITOR <b>↗</b></span></button>
+       <button class="launch-card launch-terminal" type="button" data-open-page="terminal"><span class="launch-card-top"><i>$_</i><b>02 / SHELL</b></span><strong>Terminal</strong><small>Run commands, Python scripts and package tools.</small><span class="launch-open">OPEN TERMINAL <b>↗</b></span></button>
+       <button class="launch-card launch-github" type="button" data-open-page="github"><span class="launch-card-top"><i>GH</i><b>03 / SOURCE</b></span><strong>GitHub Hub</strong><small>Repositories, branches, issues and collaboration.</small><span class="launch-open">OPEN GITHUB <b>↗</b></span></button>
+       <button class="launch-card launch-storage" type="button" data-open-page="storage"><span class="launch-card-top"><i>▤</i><b>04 / FILES</b></span><strong>Storage</strong><small>Keep files, folders and project assets together.</small><span class="launch-open">OPEN STORAGE <b>↗</b></span></button>
+      </div>
+     </section>
+     <section class="dashboard-panel activity-panel">
+      <div class="dashboard-panel-head"><div><div class="eyebrow">A QUIET RECORD OF YOUR WORK</div><h2>Recent activity</h2></div><button class="text-button" id="clearLog" type="button">CLEAR LOG</button></div>
+      <div class="event-list" id="eventList">
+       <div class="event-item"><span class="event-icon success">✓</span><span><b>Workspace initialized</b><small>NEXUS is ready for your next session</small></span><time>NOW</time></div>
+       <div class="event-item"><span class="event-icon info">↗</span><span><b>Atelier interface loaded</b><small>Your workspace has a fresh coat of paint</small></span><time>NOW</time></div>
+      </div>
+      <div class="activity-foot"><span class="activity-pulse"></span> ACTIVITY IS STORED IN THIS SESSION</div>
+     </section>
+    </div>
+
+    <section class="dashboard-tools">
+     <div class="dashboard-panel-head"><div><div class="eyebrow">THE REST OF YOUR WORKBENCH</div><h2>Systems and utilities</h2></div><span class="panel-counter">03 MODULES</span></div>
+     <div class="tool-list">
+      <a href="#monitor" data-page="monitor"><span class="tool-symbol tool-green">◷</span><span><b>Monitor</b><small>Uptime and incidents</small></span><i>↗</i></a>
+      <a href="#network" data-page="network"><span class="tool-symbol tool-blue">⌁</span><span><b>Network</b><small>Connectivity diagnostics</small></span><i>↗</i></a>
+      <a href="#extensions" data-page="extensions"><span class="tool-symbol tool-violet">⊞</span><span><b>Extensions</b><small>Workspace capabilities</small></span><i>↗</i></a>
      </div>
     </section>
-    <section class="dashboard-panel activity-panel"><div class="dashboard-panel-head"><div><div class="eyebrow">LIVE WORKSPACE FEED</div><h2>Recent activity</h2></div><button class="text-button" id="clearLog">CLEAR LOG</button></div>
-     <div class="event-list" id="eventList"><div class="event-item"><span class="event-icon success">✓</span><span><b>Workspace initialized</b><small>NEXUS Core is ready</small></span><time>NOW</time></div><div class="event-item"><span class="event-icon info">↗</span><span><b>Local environment loaded</b><small>Modules are available</small></span><time>NOW</time></div></div>
-     <div class="activity-foot"><span class="activity-pulse"></span> ACTIVITY IS STORED IN THIS SESSION</div>
-    </section>
-   </div>
-   <section class="dashboard-tools"><div class="dashboard-panel-head"><div><div class="eyebrow">YOUR TOOLKIT</div><h2>Workspace modules</h2></div><span class="panel-counter">07 MODULES</span></div>
-    <div class="tool-list">
-     <a href="#storage" data-page="storage"><span class="tool-symbol tool-cyan">▤</span><span><b>Storage</b><small>Local data vault</small></span><i>↗</i></a>
-     <a href="#monitor" data-page="monitor"><span class="tool-symbol tool-green">◷</span><span><b>Monitor</b><small>System diagnostics</small></span><i>↗</i></a>
-     <a href="#network" data-page="network"><span class="tool-symbol tool-blue">⌁</span><span><b>Network</b><small>Connectivity tools</small></span><i>↗</i></a>
-     <a href="#extensions" data-page="extensions"><span class="tool-symbol tool-violet">⊞</span><span><b>Extensions</b><small>Manage modules</small></span><i>↗</i></a>
-    </div>
+    <footer class="dashboard-footer"><span>NEXUS / ATELIER <i>•</i> INTERFACE 4.0</span><span>MADE FOR THE MAKING <b>✳</b></span></footer>
    </section>
-   <footer class="dashboard-footer"><span>NEXUS WORKSPACE <i>•</i> VERSION 1.0.0</span><span>MAKE SOMETHING GREAT <b>✳</b></span></footer>
-  </section>
-  <section class="page module-page" id="modulePage" hidden></section>
- </div>
- <div class="command-palette" id="commandPalette" hidden><div class="command-box"><input id="commandInput" placeholder="Type a command or search a module..." autocomplete="off"><div id="commandResults"></div><small>ESC TO CLOSE · ENTER TO OPEN</small></div></div>
-</main>
+   <section class="page module-page" id="modulePage" hidden></section>
+  </div>
+  <div class="command-palette" id="commandPalette" hidden>
+   <div class="command-box" role="dialog" aria-modal="true" aria-label="Command launcher">
+    <input id="commandInput" placeholder="Where would you like to go?" autocomplete="off" aria-label="Search commands">
+    <div id="commandResults"></div>
+    <small>ESC TO CLOSE · ENTER TO OPEN · CTRL / ⌘ K TO SEARCH</small>
+   </div>
+  </div>
+ </main>
 </div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.6/ace.js"></script><script src="assets/js/dialogs.js?v=1.0.1"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.6/ext-language_tools.js"></script>
-<script src="assets/js/python-runtime.js?v=1.0.0"></script><script src="assets/js/editor.js?v=1.8.0"></script><script src="assets/js/monitor.js?v=1.2.0"></script><script src="assets/js/network.js?v=1.2.0"></script><script src="assets/js/extensions.js?v=1.1.2"></script><script src="assets/js/motion.js?v=1.2.0"></script><script src="assets/js/preferences.js?v=1.0.6"></script><script src="assets/js/app.js?v=1.8.9"></script><script src="assets/js/pull-cord.js?v=1.0.0"></script>
-</body></html>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.6/ace.js"></script>
+<script src="assets/js/dialogs.js?v=1.0.1"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.6/ext-language_tools.js"></script>
+<script src="assets/js/python-runtime.js?v=1.0.0"></script>
+<script src="assets/js/editor.js?v=1.8.0"></script>
+<script src="assets/js/monitor.js?v=1.2.0"></script>
+<script src="assets/js/network.js?v=1.2.0"></script>
+<script src="assets/js/extensions.js?v=1.1.2"></script>
+<script src="assets/js/motion.js?v=1.2.0"></script>
+<script src="assets/js/preferences.js?v=1.0.6"></script>
+<script src="assets/js/app.js?v=4.0.0"></script>
+<script src="assets/js/atelier.js?v=1.0.0"></script>
+</body>
+</html>

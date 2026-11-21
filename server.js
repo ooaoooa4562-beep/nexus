@@ -25,6 +25,8 @@ const MAX_AVATAR_BYTES = 1024 * 1024;
 const pool = process.env.DATABASE_URL ? new Pool({ connectionString: process.env.DATABASE_URL, ssl: process.env.DATABASE_SSL === "false" ? false : { rejectUnauthorized: false }, max: 5, connectionTimeoutMillis: 8000 }) : null;
 const authPool = (process.env.AUTH_DATABASE_URL || process.env.NEON_DATABASE_URL) ? new Pool({ connectionString: process.env.AUTH_DATABASE_URL || process.env.NEON_DATABASE_URL, ssl: process.env.AUTH_DATABASE_SSL === "false" ? false : { rejectUnauthorized: false }, max: 3, connectionTimeoutMillis: 8000 }) : null;
 let schemaReady;
+let repoTrackingSchemaReady;
+const repoTrackingFallback = new Map();
 
 app.set("trust proxy", 1);
 app.disable("x-powered-by");
@@ -421,21 +423,50 @@ app.get("/api/repo", requireSession, async (req, res) => {
   } catch (error) { safeError(res, error); }
 });
 
-app.get("/api/file-last-updated", requireSession, async (req,res)=>{
-  try {
-    const repository=req.query.repository;
-    const path=typeof req.query.path==="string"?req.query.path:"";
-    const branch=typeof req.query.branch==="string"?req.query.branch.trim():"";
-    if(!validRepoName(repository)||!validPath(path)) return res.status(400).json({error:"Repository and valid file path are required."});
-    const repo=await githubRequest("/repos/"+repository,req.github.accessToken);
-    const query=new URLSearchParams({path,sha:branch||repo.default_branch,per_page:"1"});
-    const commits=await githubRequest("/repos/"+repository+"/commits?"+query.toString(),req.github.accessToken);
-    const latest=Array.isArray(commits)?commits[0]:null;
-    if(!latest) return res.json({date:null,message:null,author:null,sha:null});
-    const date=latest.commit?.author?.date||latest.commit?.committer?.date||null;
-    res.set("Cache-Control","private, max-age=30");
-    res.json({date,message:String(latest.commit?.message||"").split("\\n")[0]||null,author:latest.commit?.author?.name||latest.author?.login||null,sha:latest.sha||null,url:latest.html_url||null});
-  } catch(error) { safeError(res,error); }
+async function ensureRepoTrackingSchema(){
+  if(!pool) return false;
+  if(!repoTrackingSchemaReady) repoTrackingSchemaReady=pool.query(
+    "CREATE TABLE IF NOT EXISTS nexus_repo_sync_state (repository TEXT NOT NULL, branch TEXT NOT NULL, last_sha TEXT, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), PRIMARY KEY(repository,branch));"+
+    "CREATE TABLE IF NOT EXISTS nexus_repo_file_updates (repository TEXT NOT NULL, branch TEXT NOT NULL, file_path TEXT NOT NULL, commit_sha TEXT NOT NULL, commit_date TIMESTAMPTZ, commit_message TEXT NOT NULL DEFAULT '', commit_author TEXT NOT NULL DEFAULT '', updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), PRIMARY KEY(repository,branch,file_path));"+
+    "CREATE INDEX IF NOT EXISTS nexus_repo_file_updates_lookup_idx ON nexus_repo_file_updates(repository,branch,file_path);"
+  ).catch(error=>{repoTrackingSchemaReady=null;throw error;});
+  await repoTrackingSchemaReady;return true;
+}
+app.post("/api/repo-changes/sync",requireSession,async(req,res)=>{
+ try{
+  const repository=req.body?.repository,branchInput=String(req.body?.branch||"");
+  if(!validRepoName(repository))return res.status(400).json({error:"Repository and branch are required."});
+  const repo=await githubRequest("/repos/"+repository,req.github.accessToken),branch=branchInput||repo.default_branch;
+  const commits=await githubRequest("/repos/"+repository+"/commits?"+new URLSearchParams({sha:branch,per_page:"100"}),req.github.accessToken);
+  const latest=Array.isArray(commits)?commits[0]:null;if(!latest)return res.json({ok:true,scanned:0,head:null});
+  const persistent=await ensureRepoTrackingSchema();let lastSha=null;
+  if(persistent){const q=await pool.query("SELECT last_sha FROM nexus_repo_sync_state WHERE repository=$1 AND branch=$2",[repository,branch]);lastSha=q.rows[0]?.last_sha||null;}
+  else lastSha=repoTrackingFallback.get(repository+"@"+branch)?.lastSha||null;
+  const pending=[];for(const commit of commits||[]){if(commit.sha===lastSha)break;pending.push(commit);if(pending.length>=30)break;}
+  let scanned=0;
+  for(const commit of pending.reverse()){
+   const detail=await githubRequest("/repos/"+repository+"/commits/"+commit.sha,req.github.accessToken);
+   const date=commit.commit?.author?.date||commit.commit?.committer?.date||null,message=String(commit.commit?.message||"").split("\n")[0],author=commit.commit?.author?.name||commit.author?.login||"GitHub";
+   for(const file of detail.files||[]){
+    if(persistent)await pool.query("INSERT INTO nexus_repo_file_updates(repository,branch,file_path,commit_sha,commit_date,commit_message,commit_author) VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT(repository,branch,file_path) DO UPDATE SET commit_sha=EXCLUDED.commit_sha,commit_date=EXCLUDED.commit_date,commit_message=EXCLUDED.commit_message,commit_author=EXCLUDED.commit_author,updated_at=NOW() WHERE nexus_repo_file_updates.commit_date IS NULL OR EXCLUDED.commit_date>=nexus_repo_file_updates.commit_date",[repository,branch,file.filename,commit.sha,date,message,author]);
+    else{const key=repository+"@"+branch,cache=repoTrackingFallback.get(key)||{files:{}};const old=cache.files[file.filename];if(!old||!old.date||!date||new Date(date)>=new Date(old.date))cache.files[file.filename]={sha:commit.sha,date,message,author};repoTrackingFallback.set(key,cache);}
+   }scanned++;
+  }
+  if(persistent)await pool.query("INSERT INTO nexus_repo_sync_state(repository,branch,last_sha) VALUES($1,$2,$3) ON CONFLICT(repository,branch) DO UPDATE SET last_sha=EXCLUDED.last_sha,updated_at=NOW()",[repository,branch,latest.sha]);
+  else{const key=repository+"@"+branch,cache=repoTrackingFallback.get(key)||{files:{}};cache.lastSha=latest.sha;repoTrackingFallback.set(key,cache);}
+  res.json({ok:true,scanned,head:latest.sha,persistent});
+ }catch(error){safeError(res,error);}
+});
+app.get("/api/repo-changes/file",requireSession,async(req,res)=>{
+ try{
+  const repository=req.query.repository,path=typeof req.query.path==="string"?req.query.path:"",branchInput=String(req.query.branch||"");
+  if(!validRepoName(repository)||!validPath(path))return res.status(400).json({error:"Repository and valid file path are required."});
+  const repo=await githubRequest("/repos/"+repository,req.github.accessToken),branch=branchInput||repo.default_branch,persistent=await ensureRepoTrackingSchema();let item=null;
+  if(persistent){const q=await pool.query("SELECT commit_sha AS sha,commit_date AS date,commit_message AS message,commit_author AS author FROM nexus_repo_file_updates WHERE repository=$1 AND branch=$2 AND file_path=$3",[repository,branch,path]);item=q.rows[0]||null;}
+  else item=repoTrackingFallback.get(repository+"@"+branch)?.files?.[path]||null;
+  if(!item)return res.status(404).json({error:"No tracked commit found yet. Refresh the repository to start tracking changes."});
+  res.set("Cache-Control","private, max-age=30");res.json(item);
+ }catch(error){safeError(res,error);}
 });
 app.get("/api/repo-activity", requireSession, async (req, res) => {
   try {

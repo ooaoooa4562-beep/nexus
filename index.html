@@ -11,7 +11,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/css/style.css?v=4.0.0">
 <link rel="stylesheet" href="assets/css/atelier.css?v=1.0.0">
-<link rel="stylesheet" href="assets/css/meridian.css?v=6.0.0">
+<link rel="stylesheet" href="assets/css/meridian.css?v=6.1.0">
 </head>
 <body>
 <div class="app-shell">
@@ -27,7 +27,7 @@
   </div>
   <div class="sidebar-scroll" id="sidebarScroll">
    <div class="sidebar-group">
-    <button class="side-label side-group-toggle" type="button" data-group="build" aria-expanded="true"><span>BUILD</span><i>⌄</i></button>
+    <button class="side-label side-group-toggle" type="button" data-group="build" aria-expanded="true"><span>CREATE</span><i>⌄</i></button>
     <nav class="navigation" data-nav-group="build">
      <a class="nav-link active" href="#overview" data-page="overview"><span class="nav-icon">00</span><span class="nav-text">Overview</span><kbd>⌘ 1</kbd></a>
      <a class="nav-link" href="#editor" data-page="editor"><span class="nav-icon">⌘</span><span class="nav-text">Code Editor</span><kbd>⌘ 2</kbd></a>
@@ -36,7 +36,7 @@
     </nav>
    </div>
    <div class="sidebar-group">
-    <button class="side-label side-group-toggle" type="button" data-group="manage" aria-expanded="true"><span>MANAGE</span><i>⌄</i></button>
+    <button class="side-label side-group-toggle" type="button" data-group="manage" aria-expanded="true"><span>SYSTEMS</span><i>⌄</i></button>
     <nav class="navigation" data-nav-group="manage">
      <a class="nav-link" href="#storage" data-page="storage"><span class="nav-icon">▤</span><span class="nav-text">Storage</span></a>
      <a class="nav-link" href="#monitor" data-page="monitor"><span class="nav-icon">◷</span><span class="nav-text">Monitor</span></a>
@@ -45,7 +45,7 @@
     </nav>
    </div>
    <div class="sidebar-group">
-    <button class="side-label side-group-toggle" type="button" data-group="personal" aria-expanded="true"><span>PERSONAL</span><i>⌄</i></button>
+    <button class="side-label side-group-toggle" type="button" data-group="personal" aria-expanded="true"><span>IDENTITY</span><i>⌄</i></button>
     <nav class="navigation" data-nav-group="personal">
      <a class="nav-link" href="#profile" data-page="profile"><span class="nav-icon">◉</span><span class="nav-text">Your profile</span></a>
      <a class="nav-link" href="#settings" data-page="settings"><span class="nav-icon">⚙</span><span class="nav-text">Preferences</span></a>
@@ -84,60 +84,54 @@
 
   <div class="workspace-content">
    <section class="page active-page dashboard-page" id="overview">
-    <div class="dashboard-welcome">
+    <header class="dashboard-welcome">
      <div class="welcome-copy">
-      <div class="eyebrow"><span class="eyebrow-line"></span> YOUR SPACE. YOUR PACE.</div>
-      <h1>Make room for<br><span>great work.</span></h1>
-      <p class="subtitle">Welcome back, <b id="welcomeName">Operator.</b> Your tools, code and systems are right where you need them.</p>
+      <div class="eyebrow"><span class="eyebrow-line"></span> NEXUS / CONTROL SURFACE</div>
+      <h1>Build beyond<br><span>the ordinary.</span></h1>
+      <p class="subtitle">A focused environment for code, systems and experiments. Welcome back, <b id="welcomeName">Operator.</b></p>
       <div class="welcome-actions">
-       <button class="primary-button" type="button" data-open-page="editor"><span>⌘</span> Open workspace <b>↗</b></button>
-       <button class="secondary-button" type="button" data-open-command-palette>⌕ Find a tool <kbd>⌘ K</kbd></button>
+       <button class="primary-button" type="button" data-open-page="pythonreplicator">Launch Python <b>↗</b></button>
+       <button class="secondary-button" type="button" data-open-page="editor">Open source workspace</button>
+       <button class="secondary-button" type="button" data-open-command-palette>Command search <kbd>⌘ K</kbd></button>
       </div>
      </div>
-     <div class="welcome-orbit" aria-hidden="true">
-      <div class="orbit-ring orbit-one"></div><div class="orbit-ring orbit-two"></div>
-      <div class="orbit-core"><span>N</span><small>STUDIO</small></div>
-      <i class="orbit-dot dot-one"></i><i class="orbit-dot dot-two"></i><i class="orbit-dot dot-three"></i>
-     </div>
+     <div class="welcome-orbit" aria-hidden="true"><div class="orbit-ring orbit-one"></div><div class="orbit-ring orbit-two"></div><div class="orbit-core"><span>N</span><small>ORBITAL</small></div><i class="orbit-dot dot-one"></i><i class="orbit-dot dot-two"></i><i class="orbit-dot dot-three"></i></div>
      <div class="welcome-date"><small id="dateLabel">LOCAL SESSION</small><b id="welcomeClock">--:--:--</b></div>
-    </div>
-
+    </header>
     <div class="dashboard-stats">
-     <article class="stat-tile"><span class="stat-icon stat-blue">⌘</span><div><small>WORKSPACE MODULES</small><strong>07</strong><em><i></i> Ready to open</em></div><span class="stat-spark spark-blue">01 02 03</span></article>
-     <article class="stat-tile"><span class="stat-icon stat-violet">Py</span><div><small>PYTHON ENGINE</small><strong>WASM</strong><em>Browser runtime</em></div><span class="stat-spark spark-violet">Py 3</span></article>
-     <article class="stat-tile"><span class="stat-icon stat-green">GH</span><div><small>ACTIVE REPOSITORY</small><strong id="activeRepoName">Not selected</strong><em id="activeRepoState">GITHUB WORKSPACE</em></div><span class="stat-spark spark-green">git</span></article>
-     <article class="stat-tile"><span class="stat-icon stat-cyan">◷</span><div><small>LOCAL SESSION</small><strong>ACTIVE</strong><em><i></i> This browser</em></div><span class="stat-spark spark-cyan">● ● ●</span></article>
+     <article class="stat-tile"><span class="stat-icon">⌘</span><div><small>ACTIVE WORKSPACES</small><strong>09</strong><em>Modular environment</em></div></article>
+     <article class="stat-tile"><span class="stat-icon">Py</span><div><small>PYTHON REPLICATOR</small><strong>3.12</strong><em>WebAssembly runtime</em></div></article>
+     <article class="stat-tile"><span class="stat-icon">GH</span><div><small>SOURCE CONTROL</small><strong id="activeRepoName">LOCAL</strong><em id="activeRepoState">Repository connection</em></div></article>
+     <article class="stat-tile"><span class="stat-icon">✣</span><div><small>UTILITY FOUNDRY</small><strong>50</strong><em>Developer instruments</em></div></article>
     </div>
-
     <div class="dashboard-main-grid">
      <section class="dashboard-panel launch-panel">
-      <div class="dashboard-panel-head"><div><div class="eyebrow">START WITH AN INTENTION</div><h2>Pick up and build</h2></div><span class="panel-counter">01 — 04</span></div>
+      <div class="dashboard-panel-head"><div><div class="eyebrow">01 / WORKSPACES</div><h2>Choose your next move</h2></div><span class="panel-counter">LIVE MODULES</span></div>
       <div class="launch-grid">
-       <button class="launch-card launch-editor" type="button" data-open-page="editor"><span class="launch-card-top"><i>⌘</i><b>01 / CODE</b></span><strong>Code Editor</strong><small>Open files, write code and work with your repositories.</small><span class="launch-open">OPEN EDITOR <b>↗</b></span></button>
-       <button class="launch-card launch-terminal" type="button" data-open-page="terminal"><span class="launch-card-top"><i>$_</i><b>02 / SHELL</b></span><strong>Terminal</strong><small>Run commands, Python scripts and package tools.</small><span class="launch-open">OPEN TERMINAL <b>↗</b></span></button>
-       <button class="launch-card launch-github" type="button" data-open-page="github"><span class="launch-card-top"><i>GH</i><b>03 / SOURCE</b></span><strong>GitHub Hub</strong><small>Repositories, branches, issues and collaboration.</small><span class="launch-open">OPEN GITHUB <b>↗</b></span></button>
-       <button class="launch-card launch-storage" type="button" data-open-page="storage"><span class="launch-card-top"><i>▤</i><b>04 / FILES</b></span><strong>Storage</strong><small>Keep files, folders and project assets together.</small><span class="launch-open">OPEN STORAGE <b>↗</b></span></button>
+       <button class="launch-card launch-editor" type="button" data-open-page="editor"><span class="launch-card-top"><i>⌘</i><b>01 / SOURCE</b></span><strong>Code Studio</strong><small>Explore files, edit source and manage repository changes.</small><span class="launch-open">ENTER STUDIO <b>↗</b></span></button>
+       <button class="launch-card launch-terminal" type="button" data-open-page="pythonreplicator"><span class="launch-card-top"><i>Py</i><b>02 / EXECUTION</b></span><strong>Python Replicator</strong><small>Execute Python scripts and manage the isolated package environment.</small><span class="launch-open">OPEN RUNTIME <b>↗</b></span></button>
+       <button class="launch-card launch-github" type="button" data-open-page="github"><span class="launch-card-top"><i>GH</i><b>03 / COLLABORATION</b></span><strong>GitHub Control</strong><small>Repositories, branches and project collaboration.</small><span class="launch-open">OPEN SOURCE CONTROL <b>↗</b></span></button>
+       <button class="launch-card launch-storage" type="button" data-open-page="toolbox"><span class="launch-card-top"><i>✣</i><b>04 / UTILITIES</b></span><strong>Utility Foundry</strong><small>Find a focused tool for data, code and everyday tasks.</small><span class="launch-open">BROWSE TOOLS <b>↗</b></span></button>
       </div>
      </section>
      <section class="dashboard-panel activity-panel">
-      <div class="dashboard-panel-head"><div><div class="eyebrow">A QUIET RECORD OF YOUR WORK</div><h2>Recent activity</h2></div><button class="text-button" id="clearLog" type="button">CLEAR LOG</button></div>
+      <div class="dashboard-panel-head"><div><div class="eyebrow">02 / SESSION TRACE</div><h2>Recent activity</h2></div><button class="text-button" id="clearLog" type="button">PURGE TRACE</button></div>
       <div class="event-list" id="eventList">
-       <div class="event-item"><span class="event-icon success">✓</span><span><b>Workspace initialized</b><small>NEXUS is ready for your next session</small></span><time>NOW</time></div>
-       <div class="event-item"><span class="event-icon info">↗</span><span><b>Atelier interface loaded</b><small>Your workspace has a fresh coat of paint</small></span><time>NOW</time></div>
+       <div class="event-item"><span class="event-icon success">✓</span><span><b>Orbital interface initialized</b><small>Workspace services are ready for this session.</small></span><time>NOW</time></div>
+       <div class="event-item"><span class="event-icon info">↗</span><span><b>Runtime isolated</b><small>Python execution is available in its own workspace.</small></span><time>NOW</time></div>
       </div>
-      <div class="activity-foot"><span class="activity-pulse"></span> ACTIVITY IS STORED IN THIS SESSION</div>
+      <div class="activity-foot"><span class="activity-pulse"></span> SESSION ACTIVITY / LOCAL STORAGE</div>
      </section>
     </div>
-
     <section class="dashboard-tools">
-     <div class="dashboard-panel-head"><div><div class="eyebrow">THE REST OF YOUR WORKBENCH</div><h2>Systems and utilities</h2></div><span class="panel-counter">03 MODULES</span></div>
+     <div class="dashboard-panel-head"><div><div class="eyebrow">03 / SYSTEM HEALTH</div><h2>Infrastructure panels</h2></div><span class="panel-counter">SYSTEMS</span></div>
      <div class="tool-list">
-      <a href="#monitor" data-page="monitor"><span class="tool-symbol tool-green">◷</span><span><b>Monitor</b><small>Uptime and incidents</small></span><i>↗</i></a>
-      <a href="#network" data-page="network"><span class="tool-symbol tool-blue">⌁</span><span><b>Network</b><small>Connectivity diagnostics</small></span><i>↗</i></a>
-      <a href="#extensions" data-page="extensions"><span class="tool-symbol tool-violet">⊞</span><span><b>Extensions</b><small>Workspace capabilities</small></span><i>↗</i></a>
+      <a href="#monitor" data-page="monitor"><span class="tool-symbol tool-green">◷</span><span><b>Monitor</b><small>Runtime and session diagnostics</small></span><i>↗</i></a>
+      <a href="#network" data-page="network"><span class="tool-symbol tool-blue">⌁</span><span><b>Network</b><small>Connectivity and API status</small></span><i>↗</i></a>
+      <a href="#extensions" data-page="extensions"><span class="tool-symbol tool-violet">⊞</span><span><b>Extensions</b><small>Installed workspace modules</small></span><i>↗</i></a>
      </div>
     </section>
-    <footer class="dashboard-footer"><span>NEXUS / ATELIER <i>•</i> INTERFACE 4.0</span><span>MADE FOR THE MAKING <b>✳</b></span></footer>
+    <footer class="dashboard-footer"><span>NEXUS / ORBITAL <i>•</i> INTERFACE 6.0</span><span>ENGINEERED FOR CURIOSITY <b>✳</b></span></footer>
    </section>
    <section class="page module-page" id="modulePage" hidden></section>
   </div>
@@ -162,6 +156,6 @@
 <script src="assets/js/preferences.js?v=1.0.6"></script>
 <script src="assets/js/app.js?v=4.0.0"></script>
 <script src="assets/js/atelier.js?v=1.0.0"></script>
-<script src="assets/js/meridian.js?v=6.0.0"></script>
+<script src="assets/js/meridian.js?v=6.1.0"></script>
 </body>
 </html>

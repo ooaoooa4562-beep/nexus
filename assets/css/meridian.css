@@ -463,3 +463,10 @@ body:before{background-image:linear-gradient(rgba(185,211,225,.035) 1px,transpar
 @media(max-width:900px){.topbar-select{height:35px;padding:0 7px}.topbar-select select{max-width:52px}.accent-select select{max-width:66px}.dashboard-side-stack{grid-template-columns:1fr}.dashboard-python-card{max-width:none}.welcome-copy{max-width:100%}.welcome-actions{position:relative;flex-direction:row;flex-wrap:wrap}.welcome-orbit{right:3%;opacity:.2}.welcome-date{display:none}}
 @media(max-width:620px){.topbar-select{gap:3px;padding:0 5px;height:32px}.topbar-select select{max-width:38px;font-size:8px}.accent-select{display:none}.welcome-actions{flex-direction:column;align-items:stretch}.welcome-actions button{width:100%;justify-content:center}.dashboard-side-stack{display:flex}.dashboard-python-card{padding:18px}.dashboard-python-card h2{font-size:25px}.python-card-meta{margin:13px 0}.python-launch-button{font-size:8px}.dashboard-main-grid{gap:13px}}
 @media(prefers-reduced-motion:reduce){.orbit-ripple{display:none}.primary-button,.secondary-button,.icon-button,.launch-card,.tool-index-item,.extension-row,.quick-card,.module-card,.nav-icon{transition:none!important}.primary-button:before,.secondary-button:before{display:none}}
+
+/* Accent tokens drive interactive controls, not just decorative highlights */
+.primary-button{background:linear-gradient(135deg,var(--n-accent-bright),var(--n-accent));border-color:color-mix(in srgb,var(--n-accent) 58%,white);color:#10170d}
+.primary-button:hover{background:linear-gradient(135deg,color-mix(in srgb,var(--n-accent-bright) 82%,white),var(--n-accent))}
+.nav-link.active{border-color:color-mix(in srgb,var(--n-accent) 26%,transparent);background:linear-gradient(100deg,color-mix(in srgb,var(--n-accent) 15%,transparent),transparent)}
+.nav-link.active .nav-icon,.text-button,.eyebrow{color:var(--n-accent-bright)}
+::selection{background:color-mix(in srgb,var(--n-accent) 42%,transparent)}

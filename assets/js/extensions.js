@@ -1,6 +1,8 @@
 (() => {
  const api=window.NEXUSModules=window.NEXUSModules||{},KEY='nexus.extensions.disabled.v1';
  const catalog=[
+ {id:'pythonreplicator',name:'Python Replicator',version:'1.0',description:'Dedicated Python WebAssembly runtime, script execution and package control.',icon:'Py',group:'DEVELOPMENT'},
+ {id:'toolbox',name:'Utility Foundry',version:'1.0',description:'Fifty practical developer tools and text/data transforms.',icon:'✣',group:'WORKSPACE'},
  {id:'terminal',name:'Terminal',version:'0.6',description:'Command interface and GitHub repository tools.',icon:'›_',group:'SYSTEM TOOLS'},
  {id:'storage',name:'Storage',version:'0.5',description:'Local records with JSON import and export.',icon:'▤',group:'WORKSPACE'},
  {id:'monitor',name:'Monitor',version:'0.1',description:'Browser session diagnostics and event stream.',icon:'◷',group:'SYSTEM TOOLS'},

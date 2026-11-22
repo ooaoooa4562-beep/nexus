@@ -11,7 +11,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/css/style.css?v=4.0.0">
 <link rel="stylesheet" href="assets/css/atelier.css?v=1.0.0">
-<link rel="stylesheet" href="assets/css/meridian.css?v=6.2.0">
+<link rel="stylesheet" href="assets/css/meridian.css?v=7.0.0">
 </head>
 <body>
 <div class="app-shell">
@@ -76,7 +76,7 @@
    </div>
    <div class="topbar-actions">
     <label class="global-search"><span aria-hidden="true">⌕</span><input id="globalSearch" type="search" placeholder="Jump to anything…" aria-label="Search workspace"><kbd>⌘ K</kbd></label>
-    <span class="clock" id="clock">--:--:--</span>
+    <span class="clock" id="clock">--:--:--</span><label class="topbar-select" title="Interface language"><span>文</span><select id="localeSelect" aria-label="Interface language"><option value="en">EN</option><option value="ru">RU</option><option value="uz">UZ</option></select></label><label class="topbar-select accent-select" title="Accent color"><span>◈</span><select id="accentSelect" aria-label="Accent color"><option value="aurora">Aurora</option><option value="cyan">Cyan</option><option value="violet">Violet</option><option value="ember">Ember</option><option value="rose">Rose</option><option value="gold">Gold</option></select></label>
     <button class="icon-button" id="themeButton" type="button" title="Switch light and dark appearance" aria-label="Toggle appearance">◐</button>
     <button class="top-avatar" id="topProfile" type="button" title="Open your profile" aria-label="Open your profile">N</button>
    </div>
@@ -100,9 +100,9 @@
     </header>
     <div class="dashboard-stats">
      <article class="stat-tile"><span class="stat-icon">⌘</span><div><small>ACTIVE WORKSPACES</small><strong>09</strong><em>Modular environment</em></div></article>
-     <article class="stat-tile"><span class="stat-icon">Py</span><div><small>PYTHON REPLICATOR</small><strong>3.12</strong><em>WebAssembly runtime</em></div></article>
+     <article class="stat-tile"><span class="stat-icon">文</span><div><small>INTERFACE LANGUAGES</small><strong>03</strong><em>English · Русский · Oʻzbek</em></div></article>
      <article class="stat-tile"><span class="stat-icon">GH</span><div><small>SOURCE CONTROL</small><strong id="activeRepoName">LOCAL</strong><em id="activeRepoState">Repository connection</em></div></article>
-     <article class="stat-tile"><span class="stat-icon">✣</span><div><small>UTILITY FOUNDRY</small><strong>50</strong><em>Developer instruments</em></div></article>
+     <article class="stat-tile"><span class="stat-icon">✣</span><div><small>UTILITY FOUNDRY</small><strong>100</strong><em>Developer instruments</em></div></article>
     </div>
     <div class="dashboard-main-grid">
      <section class="dashboard-panel launch-panel">
@@ -114,7 +114,7 @@
        <button class="launch-card launch-storage" type="button" data-open-page="toolbox"><span class="launch-card-top"><i>✣</i><b>04 / UTILITIES</b></span><strong>Utility Foundry</strong><small>Find a focused tool for data, code and everyday tasks.</small><span class="launch-open">BROWSE TOOLS <b>↗</b></span></button>
       </div>
      </section>
-     <section class="dashboard-panel activity-panel">
+     <aside class="dashboard-side-stack"><section class="dashboard-python-card"><div class="python-card-top"><span class="python-chip">Py</span><span class="python-live"><i></i> WASM RUNTIME</span></div><div class="eyebrow">DEDICATED EXECUTION SPACE</div><h2>Python, <span>without the clutter.</span></h2><p>Run scripts, inspect dependencies and manage packages in a separate runtime workspace.</p><div class="python-card-meta"><span>PYTHON 3.12</span><span>ISOLATED WORKER</span></div><button class="primary-button python-launch-button" type="button" data-open-page="pythonreplicator">OPEN PYTHON REPLICATOR <b>↗</b></button></section><section class="dashboard-panel activity-panel">
       <div class="dashboard-panel-head"><div><div class="eyebrow">02 / SESSION TRACE</div><h2>Recent activity</h2></div><button class="text-button" id="clearLog" type="button">PURGE TRACE</button></div>
       <div class="event-list" id="eventList">
        <div class="event-item"><span class="event-icon success">✓</span><span><b>Orbital interface initialized</b><small>Workspace services are ready for this session.</small></span><time>NOW</time></div>
@@ -122,6 +122,7 @@
       </div>
       <div class="activity-foot"><span class="activity-pulse"></span> SESSION ACTIVITY / LOCAL STORAGE</div>
      </section>
+    </aside>
     </div>
     <section class="dashboard-tools">
      <div class="dashboard-panel-head"><div><div class="eyebrow">03 / SYSTEM HEALTH</div><h2>Infrastructure panels</h2></div><span class="panel-counter">SYSTEMS</span></div>
@@ -156,6 +157,7 @@
 <script src="assets/js/preferences.js?v=1.0.6"></script>
 <script src="assets/js/app.js?v=4.0.0"></script>
 <script src="assets/js/atelier.js?v=1.0.0"></script>
-<script src="assets/js/meridian.js?v=6.2.0"></script>
+<script src="assets/js/meridian.js?v=7.0.0"></script>
+<script src="assets/js/interface-plus.js?v=1.0.0"></script>
 </body>
 </html>

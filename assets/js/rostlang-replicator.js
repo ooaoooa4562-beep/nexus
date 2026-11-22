@@ -12,7 +12,7 @@
   mount(root){
    const $=id=>root.querySelector('#'+id);
    const runtime=window.NEXUSPythonRuntime;
-   let files=readFiles(),current='main.rost',busy=false,sourceCache=null,started=0;
+   let files=readFiles(),current='main.rost',busy=false,cancelled=false,sourceCache=null,started=0;
    if(!Object.keys(files).length){files={'main.rost':starter};localStorage.setItem(KEY,JSON.stringify(files));}
    if(!files['main.rost'])files['main.rost']=starter;
    const saveAll=()=>{try{localStorage.setItem(KEY,JSON.stringify(files));}catch(e){status('LOCAL STORAGE FULL',true);}};
@@ -21,7 +21,7 @@
    const refreshLines=()=>{$('rostLineCount').textContent=Math.max(1,$('rostCode').value.split('\n').length)+' LINES';};
    const fillSelect=()=>{const select=$('rostFileSelect');select.replaceChildren();Object.keys(files).sort().forEach(name=>{const option=document.createElement('option');option.value=name;option.textContent=name;select.append(option);});select.value=current;$('rostCurrentName').textContent=current;};
    const saveCurrent=(quiet=false)=>{files[current]=$('rostCode').value;saveAll();$('rostFileState').textContent='SAVED LOCALLY';if(!quiet)status('FILE SAVED TO THIS BROWSER');};
-   const switchFile=name=>{if(!files[name])return;saveCurrent(true);current=name;$('rostCode').value=files[current];fillSelect();refreshLines();};
+   const switchFile=name=>{if(!Object.prototype.hasOwnProperty.call(files,name))return;saveCurrent(true);current=name;$('rostCode').value=files[current];fillSelect();refreshLines();};
    const setBusy=value=>{busy=value;$('rostRun').disabled=value;$('rostStop').disabled=!value;$('rostRun').classList.toggle('is-running',value);$('rostRun').querySelector('.rost-run-label').textContent=value?'RUNNING…':'RUN PROGRAM';$('rostRun').querySelector('.rost-run-icon').textContent=value?'◌':'▶';$('rostStatusLight').classList.toggle('running',value);};
    const loadSources=async()=>{if(sourceCache)return sourceCache;sourceCache={};for(const file of FILES){const url=new URL('../rostlang-runtime/'+file,base);const response=await fetch(url.href,{cache:'force-cache'});if(!response.ok)throw Error('Could not load RostLang runtime source: '+file+' ('+response.status+')');sourceCache[file]=await response.text();}return sourceCache;};
    const pythonLiteral=value=>JSON.stringify(JSON.stringify(value));
@@ -41,10 +41,10 @@
      'from rostlang.interpreter import RostInterpreter\n'+
      'RostInterpreter().run(payload["workspace"]['+JSON.stringify(current)+'], str((root / '+JSON.stringify(current)+').resolve()))\n';
    };
-   const run=async()=>{if(busy)return;saveCurrent(true);$('rostOutput').replaceChildren();$('rostExitCode').textContent='RUNNING';started=performance.now();setBusy(true);status('STARTING ROSTLANG INTERPRETER');append('NEXUS / RostLang 0.7.0-alpha','system');append('Loading original interpreter, lexer and parser…','system');try{const code=await makeBootstrap();await runtime.run(code,'rostlang-replicator.py');$('rostExitCode').textContent='EXIT CODE 0';status('EXECUTION COMPLETED');append('Program finished successfully.','success');}catch(error){const message=String(error&&error.message||error);$('rostExitCode').textContent='EXECUTION ERROR';status('EXECUTION FAILED',true);append(message,'error');}finally{$('rostElapsed').textContent=((performance.now()-started)/1000).toFixed(2)+' S';setBusy(false);}};
+   const run=async()=>{if(busy)return;cancelled=false;saveCurrent(true);$('rostOutput').replaceChildren();$('rostExitCode').textContent='RUNNING';started=performance.now();setBusy(true);status('STARTING ROSTLANG INTERPRETER');append('NEXUS / RostLang 0.7.0-alpha','system');append('Loading original interpreter, lexer and parser…','system');try{const code=await makeBootstrap();if(cancelled)return;await runtime.run(code,'rostlang-replicator.py');if(cancelled)return;$('rostExitCode').textContent='EXIT CODE 0';status('EXECUTION COMPLETED');append('Program finished successfully.','success');}catch(error){if(cancelled){$('rostExitCode').textContent='STOPPED';status('EXECUTION STOPPED',true);}else{const message=String(error&&error.message||error);$('rostExitCode').textContent='EXECUTION ERROR';status('EXECUTION FAILED',true);append(message,'error');}}finally{$('rostElapsed').textContent=((performance.now()-started)/1000).toFixed(2)+' S';setBusy(false);}};
    runtime.configure((line,kind)=>append(line,kind==='term-error'?'error':kind==='term-success'?'success':''));
    $('rostRun').addEventListener('click',run);
-   $('rostStop').addEventListener('click',()=>{runtime.stop();setBusy(false);$('rostExitCode').textContent='STOPPED';status('EXECUTION STOPPED',true);append('Execution stopped by operator.','system');});
+   $('rostStop').addEventListener('click',()=>{cancelled=true;runtime.stop();setBusy(false);$('rostExitCode').textContent='STOPPED';status('EXECUTION STOPPED',true);append('Execution stopped by operator.','system');});
    $('rostCode').addEventListener('input',()=>{$('rostFileState').textContent='UNSAVED CHANGES';refreshLines();});
    $('rostSave').addEventListener('click',()=>saveCurrent());
    $('rostFileSelect').addEventListener('change',event=>switchFile(event.target.value));

@@ -49,8 +49,8 @@
   if(langSelect){langSelect.addEventListener('change',()=>setLanguage(langSelect.value));setLanguage(localStorage.getItem(STORE)||'en');}
   if(accentSelect){accentSelect.addEventListener('change',()=>setAccent(accentSelect.value));setAccent(localStorage.getItem(COLOR)||'aurora');}
   scan();
-  observer=new MutationObserver(records=>{if(busy)return;for(const r of records){if(r.type==='childList'){r.addedNodes.forEach(n=>{if(n.nodeType===Node.ELEMENT_NODE)scan(n);else if(n.nodeType===Node.TEXT_NODE&&!skip(n)){if(!originals.has(n))originals.set(n,n.nodeValue);const next=translate(originals.get(n),language);if(n.nodeValue!==next)n.nodeValue=next;}});}else if(r.type==='characterData'&&!originals.has(r.target)){originals.set(r.target,r.target.nodeValue);}}});
-  observer.observe(document.body,{subtree:true,childList:true,characterData:true});
+  observer=new MutationObserver(records=>{if(busy)return;for(const r of records){if(r.type==='childList'){r.addedNodes.forEach(n=>{if(n.nodeType===Node.ELEMENT_NODE)scan(n);else if(n.nodeType===Node.TEXT_NODE&&!skip(n)){if(!originals.has(n))originals.set(n,n.nodeValue);const next=translate(originals.get(n),language);if(n.nodeValue!==next)n.nodeValue=next;}});}else if(r.type==='characterData'&&!originals.has(r.target)){originals.set(r.target,r.target.nodeValue);}else if(r.type==='attributes'){scan(r.target.parentElement||document);}}});
+  observer.observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['placeholder','title','aria-label']});
   document.addEventListener('click',event=>{const button=event.target.closest('button');if(!button||button.disabled||button.classList.contains('nav-link'))return;const rect=button.getBoundingClientRect(),dot=document.createElement('span');dot.className='orbit-ripple';dot.style.left=(event.clientX-rect.left)+'px';dot.style.top=(event.clientY-rect.top)+'px';button.append(dot);setTimeout(()=>dot.remove(),650);},{passive:true});
   window.NEXUSLocale={set:setLanguage,get:()=>language,refresh:()=>scan(),setAccent};
  }

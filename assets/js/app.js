@@ -10,7 +10,7 @@
   }
   return rawFetch(input,options);
  };
- const files={terminal:'terminal.js?v=1.0.2',storage:'storage.js?v=2.2.0',monitor:'monitor.js',network:'network.js?v=1.3.0',extensions:'extensions.js',editor:'editor.js',github:'github.js?v=1.0.0'};
+ const files={pythonreplicator:'python-replicator.js?v=1.0.0',toolbox:'toolbox.js?v=1.0.0',terminal:'terminal.js?v=1.0.2',storage:'storage.js?v=2.2.0',monitor:'monitor.js',network:'network.js?v=1.3.0',extensions:'extensions.js',editor:'editor.js',github:'github.js?v=1.0.0'};
  const ensure=(id,file)=>{window.NEXUSModules=window.NEXUSModules||{};if(window.NEXUSModules[id])return Promise.resolve();return new Promise((ok,no)=>{const s=document.createElement('script');s.src=new URL(file,base).href;s.onload=()=>window.NEXUSModules&&window.NEXUSModules[id]?ok():no(Error(id+' did not register'));s.onerror=()=>no(Error('Could not load '+file));document.head.append(s);});};
  Promise.all(Object.entries(files).map(([id,file])=>ensure(id,file))).then(start).catch(e=>{console.error('[NEXUS]',e);start(e);});
  async function start(loadError){
@@ -21,7 +21,7 @@
    catch(error){console.error('[NEXUS '+authProvider+']',error);history.replaceState(null,'',location.pathname+location.hash);}
   }
   const $=s=>document.querySelector(s),sidebar=$('#sidebar'),home=$('#overview'),page=$('#modulePage'),crumb=$('#breadcrumb');
-  const info={editor:['Code Editor'],github:['GitHub Hub'],terminal:['Terminal'],storage:['Storage'],monitor:['Monitor'],network:['Network'],extensions:['Extensions'],profile:['My profile'],settings:['Settings']};
+  const info={pythonreplicator:['Python Replicator'],toolbox:['Utility Foundry'],editor:['Code Editor'],github:['GitHub Hub'],terminal:['Terminal'],storage:['Storage'],monitor:['Monitor'],network:['Network'],extensions:['Extensions'],profile:['My profile'],settings:['Settings']};
   const read=(k,f)=>{try{return JSON.parse(localStorage.getItem(k)||'null')||f;}catch{return f;}};
   const profile=read('nexus.profile.v1',{name:'Operator',bio:'Building things with NEXUS.',avatar:'',id:'NX-'+Math.random().toString(36).slice(2,8).toUpperCase()});
   const prefs=read('nexus.settings.v1',{theme:'dark',accent:'multi',motion:'advanced'});

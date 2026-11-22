@@ -95,7 +95,8 @@
  case 97:return [...new Set(a.split(/[\s,;]+/).filter(x=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(x.toLowerCase())).map(x=>x.toLowerCase()))].join('\n');
  case 98:return a.replace(/[^+\d]/g,'');
  case 99:return 'QR payload prepared ('+new TextEncoder().encode(a).length+' bytes). Copy this text into a QR generator.';
-\n default:throw Error('Unknown instrument');
+
+ default:throw Error('Unknown instrument');
  }}
  api.toolbox={
  render:()=>'<div class="toolbox-shell"><header class="toolbox-hero"><div><div class="eyebrow">NEXUS UTILITY ARRAY / 100</div><h1>Utility <span>Foundry</span></h1><p>Small instruments for everyday development work. Search, select, transform and copy.</p></div><div class="toolbox-count"><b>100</b><small>TOOLS ONLINE</small></div></header><div class="toolbox-layout"><aside class="toolbox-index panel"><input id="toolSearch" placeholder="Filter instruments…"><div id="toolList" class="tool-list"></div></aside><section class="toolbox-work panel"><div class="tool-selected"><div><small>SELECTED INSTRUMENT</small><h2 id="toolTitle">Choose a tool</h2><p id="toolDescription">Select an instrument from the index.</p></div><span id="toolIndex">— / 50</span></div><div class="tool-inputs"><textarea id="toolInput" placeholder="Input data…" spellcheck="false"></textarea><textarea id="toolExtra" placeholder="Optional second input / parameters…" spellcheck="false"></textarea></div><div class="tool-controls"><button id="toolRun" class="primary-button">RUN TRANSFORM</button><button id="toolCopy" class="secondary-button">COPY RESULT</button><button id="toolClear" class="secondary-button">RESET</button></div><pre id="toolOutput">Your result will appear here.</pre></section></div></div>',

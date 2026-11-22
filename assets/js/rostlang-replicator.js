@@ -29,7 +29,7 @@
     const upstream=await loadSources();
     const workspace={...files};workspace[current]=$('rostCode').value;
     const payload={sources:upstream,workspace};
-    return 'import builtins, json, os, pathlib, sys\n'+
+    return 'import builtins, importlib, json, os, pathlib, sys\n'+
      'payload = json.loads('+pythonLiteral(payload)+')\n'+
      "root = pathlib.Path('/home/pyodide/rostlang-workspace').resolve()\n"+
      "package = root / 'rostlang'\npackage.mkdir(parents=True, exist_ok=True)\n"+
@@ -38,7 +38,7 @@
      "os.chdir(root)\nsys.path.insert(0, str(root))\n"+
      "def _nexus_input(prompt=''):\n    raise ValueError('ask/input is interactive and is not available in this browser runtime yet.')\n"+
      'builtins.input = _nexus_input\n'+
-     'from rostlang.interpreter import RostInterpreter\n'+
+     'RostInterpreter = importlib.import_module("rostlang.interpreter").RostInterpreter\n'+
      'RostInterpreter().run(payload["workspace"]['+JSON.stringify(current)+'], str((root / '+JSON.stringify(current)+').resolve()))\n';
    };
    const run=async()=>{if(busy)return;cancelled=false;saveCurrent(true);$('rostOutput').replaceChildren();$('rostExitCode').textContent='RUNNING';started=performance.now();setBusy(true);status('STARTING ROSTLANG INTERPRETER');append('NEXUS / RostLang 0.7.0-alpha','system');append('Loading original interpreter, lexer and parser…','system');try{const code=await makeBootstrap();if(cancelled)return;await runtime.run(code,'rostlang-replicator.py');if(cancelled)return;$('rostExitCode').textContent='EXIT CODE 0';status('EXECUTION COMPLETED');append('Program finished successfully.','success');}catch(error){if(cancelled){$('rostExitCode').textContent='STOPPED';status('EXECUTION STOPPED',true);}else{const message=String(error&&error.message||error);$('rostExitCode').textContent='EXECUTION ERROR';status('EXECUTION FAILED',true);append(message,'error');}}finally{$('rostElapsed').textContent=((performance.now()-started)/1000).toFixed(2)+' S';setBusy(false);}};

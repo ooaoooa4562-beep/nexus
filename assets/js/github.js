@@ -22,21 +22,36 @@
    const requireRepo=()=>{if(!state.repo){content.innerHTML=empty('Select a repository','Choose a repository from the left panel to inspect repository features.');return false;}return true;};
    const apiList=async(path)=>{const d=await request(path);return Array.isArray(d)?d:(d.items||d.repositories||d.workflow_runs||d.packages||[]);};
    async function loadRepos(){
-    const me=await request('/user');state.user=me;
+    const me=await request('/user');if(!me||!me.login)throw new Error('GitHub returned an invalid account response. Reconnect your GitHub account and try again.');state.user=me;
     $('#ghAccount').innerHTML='<img class="gh-avatar" src="'+esc(me.avatar_url||'')+'" alt=""><span><b>'+esc(me.name||me.login)+'</b><small>@'+esc(me.login)+'</small></span>';
     $('#ghStatus').textContent='CONNECTED · @'+me.login;
     const repos=await apiList('/user/repos?per_page=100&sort=updated&affiliation=owner,collaborator,organization_member');
     const picker=$('#ghRepo');picker.innerHTML='<option value="">Select repository…</option>'+repos.map(r=>'<option value="'+esc(r.full_name)+'">'+(r.private?'🔒 ':'')+esc(r.full_name)+'</option>').join('');
-    if(state.repo&&repos.some(r=>r.full_name===state.repo))picker.value=state.repo;else if(repos.length){state.repo=repos[0].full_name;picker.value=state.repo;localStorage.setItem('nexus.github.repository',state.repo);}
+    if(state.repo&&repos.some(r=>r.full_name===state.repo))picker.value=state.repo;else if(repos.length){state.repo=repos[0].full_name;picker.value=state.repo;localStorage.setItem('nexus.github.repository',state.repo);}else{state.repo='';state.repoData=null;state.branch='';localStorage.removeItem('nexus.github.repository');$('#ghRepoMeta').textContent='No accessible repositories';content.innerHTML=empty('No repositories available','This GitHub account has no repositories visible to the current authorization.');return;}
     await loadCurrentRepo();
    }
-   async function loadCurrentRepo(){if(!state.repo){$('#ghRepoMeta').textContent='No repository selected';return;}state.repoData=await request(repoPath());state.branch=state.repoData.default_branch;$('#ghRepoMeta').innerHTML='<span>★ '+(state.repoData.stargazers_count||0)+'</span><span>⑂ '+(state.repoData.forks_count||0)+'</span><span>'+(state.repoData.private?'PRIVATE':'PUBLIC')+'</span>';await renderTab();}
+   async function loadCurrentRepo(){
+    state.repoData=null;state.branch='';
+    if(!state.repo){$('#ghRepoMeta').textContent='No repository selected';content.innerHTML=empty('Select a repository','Choose a repository from the left panel to inspect repository features.');return;}
+    try{
+     const data=await request(repoPath());
+     if(!data||typeof data!=='object'||!data.full_name)throw new Error('GitHub did not return repository metadata. Check that the repository still exists and that your account has access.');
+     if(!data.default_branch)throw new Error('GitHub returned repository details without a default branch. Refresh the repository list or reconnect GitHub.');
+     state.repoData=data;state.branch=data.default_branch;
+     $('#ghRepoMeta').innerHTML='<span>★ '+(data.stargazers_count||0)+'</span><span>⑂ '+(data.forks_count||0)+'</span><span>'+(data.private?'PRIVATE':'PUBLIC')+'</span>';
+     await renderTab();
+    }catch(error){
+     state.repoData=null;state.branch='';$('#ghRepoMeta').textContent='Repository unavailable';
+     content.innerHTML='<div class="gh-error"><b>Could not load repository</b><p>'+esc(error.message)+'</p><button class="secondary-button" data-gh-action="retry-repo">TRY AGAIN</button><button class="secondary-button" data-gh-action="clear-repo">CHOOSE ANOTHER REPOSITORY</button></div>';
+    }
+   }
    async function renderTab(){
     $('#ghBreadcrumb').textContent='GITHUB / '+state.tab.toUpperCase();$('#ghHeading').textContent=({overview:'Repository overview',code:'Code browser',branches:'Branches',commits:'Commit history',pulls:'Pull requests',issues:'Issues',releases:'Releases',actions:'Actions',projects:'Projects',discussions:'Discussions',packages:'Packages',people:'People & access',profile:'GitHub profile',settings:'Repository settings'})[state.tab];
     content.innerHTML='<div class="gh-loading">Loading '+esc(state.tab)+' from GitHub…</div>';
     try{
      if(state.tab==='profile'){const u=state.user||await request('/user');content.innerHTML=heading('GitHub profile','Your authenticated GitHub identity')+'<div class="gh-profile-card"><img src="'+esc(u.avatar_url)+'" alt=""><div><h2>'+esc(u.name||u.login)+'</h2><p>@'+esc(u.login)+'</p><p>'+esc(u.bio||'No bio set')+'</p><a href="'+esc(u.html_url)+'" target="_blank" rel="noopener">Open GitHub profile ↗</a></div></div>'+table(['Followers','Following','Public repositories','Location'],[row([u.followers||0,u.following||0,u.public_repos||0,esc(u.location||'—')])]);return;}
      if(!requireRepo())return;
+     if(!state.repoData){content.innerHTML=empty('Repository data unavailable','Reload the repository or select another one from the sidebar.');return;}
      const p=repoPath();
      if(state.tab==='overview'){
       const results=await Promise.allSettled([apiList(p+'/commits?per_page=5'),apiList(p+'/pulls?state=open&per_page=5'),apiList(p+'/issues?state=open&per_page=5'),apiList(p+'/branches?per_page=100')]);const [commits,prs,issues,branches]=results.map(x=>x.status==='fulfilled'?x.value:[]);const failed=results.filter(x=>x.status==='rejected');
@@ -85,7 +100,10 @@
    async function action(name){
     try{
      const p=repoPath();
-     if(name==='retry'){await renderTab();return;}
+     if(!['retry','retry-repo','clear-repo'].includes(name)&&!state.repoData)throw new Error('Repository metadata is not loaded. Reload the repository before running this action.');
+     if(name==='retry'){if(!state.repoData){await loadCurrentRepo();return;}await renderTab();return;}
+     if(name==='retry-repo'){await loadCurrentRepo();return;}
+     if(name==='clear-repo'){state.repo='';state.repoData=null;state.branch='';localStorage.removeItem('nexus.github.repository');$('#ghRepo').value='';$('#ghRepoMeta').textContent='No repository selected';content.innerHTML=empty('Select a repository','Choose another repository from the left panel.');return;}
      if(name==='newissue'){const title=prompt('Issue title');if(!title)return;const body=prompt('Issue description (Markdown)','')||'';await request(p+'/issues','POST',{title,body});}
      else if(name==='newpr'){const head=prompt('Head branch name');if(!head)return;const base=prompt('Base branch name',state.repoData.default_branch)||state.repoData.default_branch;const title=prompt('Pull request title');if(!title)return;await request(p+'/pulls','POST',{title,head,base,body:prompt('Description','')||''});}
      else if(name==='newbranch'){const name=prompt('New branch name');if(!name)return;const ref=await request(p+'/git/ref/heads/'+encodeURIComponent(state.repoData.default_branch));await request(p+'/git/refs','POST',{ref:'refs/heads/'+name,sha:ref.object.sha});}
@@ -100,7 +118,7 @@
    content.addEventListener('click',e=>{const b=e.target.closest('[data-gh-action]');if(b)action(b.dataset.ghAction);});
    content.addEventListener('submit',async e=>{if(e.target.id!=='ghSettings')return;e.preventDefault();const f=new FormData(e.target);try{await request(repoPath(),'PATCH',{name:f.get('name'),description:f.get('description'),homepage:f.get('homepage'),private:f.get('private')==='true',has_issues:f.has('has_issues'),has_discussions:f.has('has_discussions')});toast('Repository settings saved.');state.repoData=await request(repoPath());renderTab();}catch(err){toast(err.message,true);}});
    $('#ghRepo').addEventListener('change',async e=>{state.repo=e.target.value;localStorage.setItem('nexus.github.repository',state.repo);await loadCurrentRepo().catch(err=>toast(err.message,true));});
-   $('#ghRefresh').onclick=()=>state.tab==='profile'?request('/user').then(u=>{state.user=u;renderTab();}):renderTab();
+   $('#ghRefresh').onclick=()=>state.tab==='profile'?request('/user').then(u=>{state.user=u;renderTab();}).catch(e=>toast(e.message,true)):loadCurrentRepo();
    $('#ghReconnect').onclick=()=>location.href=API+'/auth/github';
    loadRepos().catch(error=>{content.innerHTML='<div class="gh-error"><b>GitHub connection required</b><p>'+esc(error.message)+'</p><button class="primary-button" id="ghConnectNow">CONNECT GITHUB</button></div>';$('#ghConnectNow')?.addEventListener('click',()=>location.href=API+'/auth/github');$('#ghStatus').textContent='NOT CONNECTED';});
   }

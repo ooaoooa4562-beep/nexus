@@ -19,7 +19,7 @@ const FRONTEND_URL = (() => {
 const COOKIE_NAME = "nexus_github_session";
 const STATE_COOKIE = "nexus_oauth_state";
 const oauthHandoffs = new Map();
-const SESSION_TTL = 8 * 60 * 60;
+const SESSION_TTL = 30 * 24 * 60 * 60; // 30-day remembered login session
 const MAX_FILE_BYTES = 1024 * 1024;
 const MAX_AVATAR_BYTES = 1024 * 1024;
 const pool = process.env.DATABASE_URL ? new Pool({ connectionString: process.env.DATABASE_URL, ssl: process.env.DATABASE_SSL === "false" ? false : { rejectUnauthorized: false }, max: 5, connectionTimeoutMillis: 8000 }) : null;
@@ -339,7 +339,9 @@ app.get("/auth/email/verify", async (req, res) => {
     const email = result.rows[0].email;
     const session = seal({ provider: "email", email, login: email, expiresAt: Date.now() + SESSION_TTL * 1000 });
     res.append("Set-Cookie", COOKIE_NAME + "=" + encodeURIComponent(session) + "; " + cookieOptions(SESSION_TTL));
-    res.redirect(FRONTEND_URL + "/?auth=email-connected");
+    const handoffCode = crypto.randomBytes(32).toString("hex");
+    oauthHandoffs.set(handoffCode, { session, expiresAt: Date.now() + 60_000 });
+    res.redirect(FRONTEND_URL + "/?auth=email-handoff&code=" + handoffCode);
   } catch (error) { res.status(error.status || 500).send("Email verification could not be completed."); }
 });
 app.post("/auth/email/login", async (req, res) => {
@@ -351,7 +353,8 @@ app.post("/auth/email/login", async (req, res) => {
     if (!result.rows[0].verified) return res.status(403).json({ error: "Verify your email address before signing in." });
     const session = seal({ provider: "email", email, login: email, expiresAt: Date.now() + SESSION_TTL * 1000 });
     res.append("Set-Cookie", COOKIE_NAME + "=" + encodeURIComponent(session) + "; " + cookieOptions(SESSION_TTL));
-    res.json({ ok: true, provider: "email", email });
+    res.setHeader("Cache-Control", "no-store");
+    res.json({ ok: true, provider: "email", email, session });
   } catch (error) { res.status(error.status || 500).json({ error: error.message || "Email sign-in failed." }); }
 });
 app.get("/auth/github", (req, res) => {
